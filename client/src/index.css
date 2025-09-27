@@ -1,0 +1,303 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222.2 84% 4.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222.2 84% 4.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222.2 84% 4.9%);
+  --primary: hsl(221.2 83.2% 53.3%);
+  --primary-foreground: hsl(210 40% 98%);
+  --secondary: hsl(210 40% 96%);
+  --secondary-foreground: hsl(222.2 84% 4.9%);
+  --muted: hsl(210 40% 96%);
+  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --accent: hsl(142.1 76.2% 36.3%);
+  --accent-foreground: hsl(355.7 100% 97.3%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(214.3 31.8% 91.4%);
+  --input: hsl(214.3 31.8% 91.4%);
+  --ring: hsl(221.2 83.2% 53.3%);
+  --chart-1: hsl(221.2 83.2% 53.3%);
+  --chart-2: hsl(142.1 76.2% 36.3%);
+  --chart-3: hsl(42.0290 92.8251% 56.2745%);
+  --chart-4: hsl(147.1429 78.5047% 41.9608%);
+  --chart-5: hsl(341.4894 75.2000% 50.9804%);
+  --sidebar: hsl(210 40% 96%);
+  --sidebar-foreground: hsl(222.2 84% 4.9%);
+  --sidebar-primary: hsl(221.2 83.2% 53.3%);
+  --sidebar-primary-foreground: hsl(210 40% 98%);
+  --sidebar-accent: hsl(142.1 76.2% 36.3%);
+  --sidebar-accent-foreground: hsl(355.7 100% 97.3%);
+  --sidebar-border: hsl(214.3 31.8% 91.4%);
+  --sidebar-ring: hsl(221.2 83.2% 53.3%);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 1px 2px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 1px 2px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 2px 4px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 4px 6px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 8px 10px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00);
+  --tracking-normal: 0em;
+  --spacing: 1.5rem;
+}
+
+.dark {
+  --background: hsl(0 0% 0%);
+  --foreground: hsl(200 6.6667% 91.1765%);
+  --card: hsl(228 9.8039% 10%);
+  --card-foreground: hsl(0 0% 85.0980%);
+  --popover: hsl(0 0% 0%);
+  --popover-foreground: hsl(200 6.6667% 91.1765%);
+  --primary: hsl(221.2 83.2% 53.3%);
+  --primary-foreground: hsl(210 40% 98%);
+  --secondary: hsl(195.0000 15.3846% 94.9020%);
+  --secondary-foreground: hsl(222.2 84% 4.9%);
+  --muted: hsl(0 0% 9.4118%);
+  --muted-foreground: hsl(210 3.3898% 46.2745%);
+  --accent: hsl(142.1 76.2% 36.3%);
+  --accent-foreground: hsl(355.7 100% 97.3%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(210 5.2632% 14.9020%);
+  --input: hsl(207.6923 27.6596% 18.4314%);
+  --ring: hsl(221.2 83.2% 53.3%);
+  --chart-1: hsl(221.2 83.2% 53.3%);
+  --chart-2: hsl(142.1 76.2% 36.3%);
+  --chart-3: hsl(42.0290 92.8251% 56.2745%);
+  --chart-4: hsl(147.1429 78.5047% 41.9608%);
+  --chart-5: hsl(341.4894 75.2000% 50.9804%);
+  --sidebar: hsl(228 9.8039% 10%);
+  --sidebar-foreground: hsl(0 0% 85.0980%);
+  --sidebar-primary: hsl(221.2 83.2% 53.3%);
+  --sidebar-primary-foreground: hsl(210 40% 98%);
+  --sidebar-accent: hsl(142.1 76.2% 36.3%);
+  --sidebar-accent-foreground: hsl(355.7 100% 97.3%);
+  --sidebar-border: hsl(210 5.2632% 14.9020%);
+  --sidebar-ring: hsl(221.2 83.2% 53.3%);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 1px 2px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 1px 2px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 2px 4px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 4px 6px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00), 0px 8px 10px -1px hsl(221.2 83.2% 53.3% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(221.2 83.2% 53.3% / 0.00);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* World Design Guidelines: 24px spacing grid and interactions */
+.message-bubble {
+  transition: all 0.2s ease-in-out;
+}
+
+.message-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth fade-in animation for new messages */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-enter {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* Pulse animation for online indicator */
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.5; 
+  }
+}
+
+.animate-pulse-skeleton {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Composer area gradient background */
+.compose-area {
+  background: linear-gradient(to top, var(--background) 80%, transparent);
+}
+
+/* Safe area padding for mobile devices */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Large tap targets following World guidelines */
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Accessibility improvements */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus indicators for keyboard navigation */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+/* Smooth scrolling for message containers */
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* Rate limit cooldown progress indicator */
+@keyframes cooldown {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.cooldown-bar {
+  animation: cooldown linear;
+}
+
+/* Star animation */
+@keyframes starPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.star-animation {
+  animation: starPulse 0.3s ease-in-out;
+}
+
+/* Loading spinner for buttons */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Gradient text effect for headers */
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Modal backdrop blur effect */
+.backdrop-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Connection status indicator styles */
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.connection-dot.connected {
+  background-color: hsl(142.1 76.2% 36.3%);
+  box-shadow: 0 0 0 2px hsla(142.1, 76.2%, 36.3%, 0.2);
+}
+
+.connection-dot.disconnected {
+  background-color: hsl(0 84.2% 60.2%);
+  box-shadow: 0 0 0 2px hsla(0, 84.2%, 60.2%, 0.2);
+}
+
+/* Responsive design enhancements */
+@media (max-width: 640px) {
+  .message-bubble {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  /* Ensure text remains readable on small screens */
+  .text-responsive {
+    font-size: clamp(0.875rem, 2.5vw, 1rem);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .message-bubble {
+    border-width: 2px;
+  }
+  
+  .button-primary {
+    border-width: 2px;
+    border-color: var(--primary);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble,
+  .animate-pulse-skeleton,
+  .cooldown-bar,
+  .star-animation {
+    animation: none;
+    transition: none;
+  }
+  
+  .message-bubble:hover {
+    transform: none;
+  }
+}
