@@ -88,15 +88,18 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   starsCount: true,
   reportsCount: true,
   isHidden: true,
+  authorHumanId: true, // This will be added by authentication middleware
 });
 
 export const insertStarSchema = createInsertSchema(stars).omit({
   createdAt: true,
+  humanId: true, // This will be added by authentication middleware
 });
 
 export const insertReportSchema = createInsertSchema(reports).omit({
   id: true,
   createdAt: true,
+  reporterHumanId: true, // This will be added by authentication middleware
 });
 
 export const insertThemeSchema = createInsertSchema(themes).omit({
@@ -111,6 +114,7 @@ export const insertLedgerEntrySchema = createInsertSchema(ledgerEntries).omit({
 export const insertConnectRequestSchema = createInsertSchema(connectRequests).omit({
   id: true,
   createdAt: true,
+  requesterHumanId: true, // This will be added by authentication middleware
 });
 
 // Types
