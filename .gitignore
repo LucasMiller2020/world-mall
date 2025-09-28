@@ -1,6 +1,14 @@
-node_modules
-dist
-.DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+# Node / builds
+node_modules/
+dist/
+build/
+
+# Env & local
+.env
+.env.*
+*.local
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
