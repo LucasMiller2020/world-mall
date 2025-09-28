@@ -593,7 +593,7 @@ export default function GlobalSquare() {
       </div>
 
       {/* Guest Mode Banner */}
-      {isGuest() && (
+      {isGuest() && role !== 'verified' && (
         <div className="bg-muted/50 border-t border-border px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -604,15 +604,17 @@ export default function GlobalSquare() {
                 60 chars • {guestStats?.messagesRemaining ?? 10} left today • 30s cooldown
               </span>
             </div>
-            <Button 
-              onClick={verify} 
-              size="sm" 
-              variant="outline"
-              data-testid="button-verify-banner"
-            >
-              <Shield className="h-3 w-3 mr-1" />
-              Verify for Full Access
-            </Button>
+            {role !== 'verified' && (
+              <Button 
+                onClick={verify} 
+                size="sm" 
+                variant="outline"
+                data-testid="button-verify-banner"
+              >
+                <Shield className="h-3 w-3 mr-1" />
+                Verify for Full Access
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -660,7 +662,7 @@ export default function GlobalSquare() {
               <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
                 <CardContent className="pt-4 text-center">
                   <p className="text-sm text-amber-800 dark:text-amber-200" data-testid="text-cooldown-notice">
-                    {isGuest() ? `Wait ${cooldownSeconds}s before sending another message` : `Take a breath—back in ${cooldownSeconds}s`}
+                    {isGuest() && role !== 'verified' ? `Wait ${cooldownSeconds}s before sending another message` : `Take a breath—back in ${cooldownSeconds}s`}
                   </p>
                 </CardContent>
               </Card>
@@ -668,10 +670,10 @@ export default function GlobalSquare() {
 
             <div className="relative">
               <Textarea
-                placeholder={isGuest() ? "Say hello 👋 (verify to unlock full chat)" : "Say something useful, kind, or curious…"}
+                placeholder={isGuest() && role !== 'verified' ? "Say hello 👋 (verify to unlock full chat)" : "Say something useful, kind, or curious…"}
                 value={message}
                 onChange={(e) => {
-                  if (isGuest() && e.target.value.length > maxChars) {
+                  if (isGuest() && role !== 'verified' && e.target.value.length > maxChars) {
                     return; // Prevent typing beyond limit for guests
                   }
                   setMessage(e.target.value);
@@ -687,7 +689,7 @@ export default function GlobalSquare() {
                   <span className={`text-xs ${characterCount > maxChars ? 'text-destructive' : 'text-muted-foreground'}`} data-testid="text-character-count">
                     {characterCount}/{maxChars}
                   </span>
-                  {isGuest() && (
+                  {isGuest() && role !== 'verified' && (
                     <span className="text-xs text-muted-foreground" data-testid="text-messages-remaining">
                       {guestStats?.messagesRemaining ?? 10} messages left today
                     </span>

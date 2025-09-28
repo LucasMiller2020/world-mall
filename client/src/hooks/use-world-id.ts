@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useMiniKit } from "@worldcoin/minikit-js/minikit-provider";
 import { VerificationLevel, VerifyCommandInput, MiniKit } from "@worldcoin/minikit-js";
 import { useQueryClient } from "@tanstack/react-query";
+import { getSessionId } from "@/lib/session";
 
 export function useWorldId() {
   const [humanId, setHumanId] = useState<string | null>(null);
@@ -48,6 +49,9 @@ export function useWorldId() {
       const result = await MiniKit.commandsAsync.verify(verifyPayload);
       
       if (result.finalPayload.status === 'success') {
+        // Get session ID for header
+        const sessionId = await getSessionId();
+        
         // POST the proof to our backend
         const verificationData = {
           nullifier_hash: result.finalPayload.nullifier_hash,
@@ -62,6 +66,7 @@ export function useWorldId() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Session': sessionId,
           },
           credentials: 'include', // Include cookies for session
           body: JSON.stringify(verificationData),
@@ -74,24 +79,30 @@ export function useWorldId() {
 
         const serverResult = await response.json();
         
-        // Update local state with server response
-        const verifiedHumanId = serverResult.humanId;
-        setHumanId(verifiedHumanId);
-        setIsVerified(true);
+        // Check if verification was successful
+        if (serverResult.ok && serverResult.role === 'verified') {
+          // Update local state with server response
+          const verifiedHumanId = serverResult.humanId;
+          setHumanId(verifiedHumanId);
+          setIsVerified(true);
 
-        // Persist verification state with new naming convention
-        localStorage.setItem('wm_human_id', verifiedHumanId);
-        localStorage.setItem('wm_verified', 'true');
-        localStorage.setItem('wm_role', serverResult.role || 'verified');
+          // Persist verification state with new naming convention
+          localStorage.setItem('wm_human_id', verifiedHumanId);
+          localStorage.setItem('wm_verified', 'true');
+          localStorage.setItem('wm_role', serverResult.role);
+          localStorage.setItem('wm_uid', verifiedHumanId);
 
-        // Refetch user data and policy to get updated permissions
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['/api/me'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/policy'] }),
-        ]);
+          // Refetch user data and policy to get updated permissions
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['/api/me'] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/policy'] }),
+          ]);
 
-        console.log('World ID verification successful');
-        return verifiedHumanId;
+          console.log('World ID verification successful');
+          return verifiedHumanId;
+        } else {
+          throw new Error(serverResult.message || 'Verification failed');
+        }
       } else {
         throw new Error('Verification failed');
       }

@@ -204,6 +204,7 @@ export interface IStorage {
   getGuestSessionByHash(ipHash: string, userAgentHash: string): Promise<GuestSession | undefined>;
   createGuestSession(session: InsertGuestSession): Promise<GuestSession>;
   updateGuestSessionActivity(id: string): Promise<void>;
+  updateGuestSessionVerification(id: string, humanId: string): Promise<void>;
   incrementGuestMessageCount(id: string, dayBucket: string): Promise<void>;
   getGuestMessageCount(id: string, dayBucket: string): Promise<number>;
   getGuestLastMessageTime(id: string): Promise<Date | undefined>;
@@ -857,6 +858,15 @@ export class MemStorage implements IStorage {
   async updateGuestSessionActivity(id: string): Promise<void> {
     const session = this.guestSessions.get(id);
     if (session) {
+      session.lastSeen = new Date();
+      this.guestSessions.set(id, session);
+    }
+  }
+  
+  async updateGuestSessionVerification(id: string, humanId: string): Promise<void> {
+    const session = this.guestSessions.get(id);
+    if (session) {
+      session.humanId = humanId;
       session.lastSeen = new Date();
       this.guestSessions.set(id, session);
     }
@@ -2919,6 +2929,13 @@ export class DatabaseStorage implements IStorage {
 
   async updateGuestSessionActivity(id: string): Promise<void> {
     await db.update(guestSessions).set({ lastSeen: new Date() }).where(eq(guestSessions.id, id));
+  }
+  
+  async updateGuestSessionVerification(id: string, humanId: string): Promise<void> {
+    await db.update(guestSessions).set({ 
+      humanId,
+      lastSeen: new Date() 
+    }).where(eq(guestSessions.id, id));
   }
 
   async incrementGuestMessageCount(id: string, dayBucket: string): Promise<void> {

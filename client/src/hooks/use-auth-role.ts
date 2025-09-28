@@ -100,16 +100,41 @@ export function useAuthRole() {
 
   const verifyWithWorldId = async (proof: any) => {
     try {
+      // Get session ID for header
+      const { getSessionId } = await import('@/lib/session');
+      const sessionId = await getSessionId();
+      
       const response = await fetch('/api/verify/worldid', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Session': sessionId,
         },
+        credentials: 'include',
         body: JSON.stringify(proof),
       });
 
       if (response.ok) {
         const result = await response.json();
+        
+        // Update local state immediately if we got the data
+        if (result.ok && result.role === 'verified') {
+          setAuthState(prev => ({
+            ...prev,
+            humanId: result.humanId,
+            role: 'verified',
+            isVerified: true,
+            limits: {
+              maxChars: 240,
+              features: ['global_room', 'star', 'report', 'work_mode', 'connect']
+            }
+          }));
+          
+          // Store in localStorage for persistence
+          localStorage.setItem('wm_uid', result.humanId);
+          localStorage.setItem('wm_role', 'verified');
+        }
+        
         // Refetch user info after successful verification
         await refetchUserInfo();
         return result;

@@ -2364,7 +2364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // World ID Verification endpoint
   app.post('/api/verify/worldid', handleGuestSession, async (req: AuthenticatedRequest, res) => {
     try {
-      const { proof, nullifier_hash, merkle_root } = req.body;
+      const { proof, nullifier_hash, merkle_root, action, signal, verification_level } = req.body;
 
       // Basic validation
       if (!proof || !nullifier_hash || !merkle_root) {
@@ -2421,9 +2421,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Upgrade from guest to verified
         await storage.updateHumanRole(humanId, 'verified');
       }
+      
+      // If there's a guest session, associate it with the verified human
+      if (req.guestSessionId) {
+        // Update the guest session to mark it as verified
+        await storage.updateGuestSessionVerification(req.guestSessionId, humanId);
+      }
+      
+      // Set wm_uid cookie in addition to session mapping
+      const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
+      res.setHeader('Set-Cookie', [
+        `wm_uid=${humanId}; HttpOnly; Path=/; SameSite=${isSecure ? 'None' : 'Lax'}; ${isSecure ? 'Secure; ' : ''}Max-Age=${365*24*60*60}`,
+        // Keep the existing session cookie as well
+        ...(req.guestSessionId ? [`wm_sid=${req.guestSessionId}; HttpOnly; Path=/; SameSite=${isSecure ? 'None' : 'Lax'}; ${isSecure ? 'Secure; ' : ''}Max-Age=${365*24*60*60}`] : [])
+      ]);
 
       res.json({
-        success: true,
+        ok: true,
         humanId,
         role: 'verified',
         message: 'Successfully verified with World ID'
