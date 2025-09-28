@@ -1,0 +1,162 @@
+World Mall – Mini App fix pass (send/verify/guest), live feed, UI trim, profiles, default light theme
+Goal: Make the World Mall Mini App fully usable: guests and verified can send messages from World App, live feed shows, UI is tidy, and verified users have basic profiles. Keep the web version working the same.
+Do all tasks below. Use the exact file hints. Run acceptance checks after each section.
+
+1) Robust session in WebView (cookie + header)
+Why: iOS/Android WebViews can drop cookies. We need a dual path.
+Client
+File: client/src/lib/session.ts (create if missing)
+Export getSessionId() that:
+Reads from localStorage['wm_sid'].
+If absent, POST /api/session to create one; store it in localStorage['wm_sid'].
+File: client/src/lib/api.ts (or wherever fetch wrappers live)
+Ensure every request adds headers: {'X-Session': <getSessionId()>}. If you’re already setting credentials: 'include', keep that. We want BOTH cookie and header.
+File: client/src/pages/global-square.tsx and any composer component
+Before first send, call await getSessionId() to guarantee an id exists.
+Server
+File: server/routes.ts (or middleware)
+In handleGuestSession (or equivalent), accept either cookie wm_sid or header X-Session / Authorization: Bearer.
+If only header exists, set/refresh the cookie too (HttpOnly, SameSite=Lax in dev, None+Secure in prod).
+New endpoint: POST /api/session
+Returns {sid} (existing or new). Ensure it also sets the cookie.
+Acceptance:
+In Mini App (iOS), open Global Square. Without verifying, send a short message. It succeeds and shows in web Preview feed.
+In browser (web), guest sends still work.
+
+2) Make Mini App prefer polling for live feed
+Client
+File: client/src/hooks/use-websocket.ts (or wherever live updates handled)
+Detect Mini App (window?.minikit / user‑agent fallback) and set strategy = 'poll'.
+Poll /api/messages?room=global&since=<lastId> every 2–3s in Mini App only.
+File: client/src/pages/landing.tsx
+The “Live from Global Square” preview must use the same polling fallback when in Mini App context.
+Acceptance:
+In Mini App, the “Live from Global Square” updates within ~3s of new posts.
+
+3) World ID verify → server v2 (Cloud) → upgrade role
+Client
+File: client/src/hooks/use-auth-role.ts
+After verify success, call POST /api/verify/worldid with the proof and include X-Session header.
+On {ok:true, role:'verified'}, update local auth store and hide verify/guest controls in the composer.
+File: client/src/pages/global-square.tsx
+If role === 'verified', hide the “Verify for Full Access” area and the “Guest Mode” chip.
+Server
+File: server/routes.ts in /api/verify/worldid
+Ensure we associate the verification with the session id we resolved in Task 1 (cookie or header).
+Return {ok:true, role:'verified'} and set wm_uid cookie + keep session mapping.
+Acceptance:
+In Mini App, tap Verify, complete flow, and then send a 100+ char message (should succeed). Verify UI hides guest/verify controls.
+
+4) Landing & room UI trim (clean, friendly)
+Copy & layout
+File: client/src/pages/landing.tsx
+Keep hero title World Mall.
+Subtitle: “Talk. Learn. Build. Connect.” (remove “One human, one voice.”)
+Replace “Verify with World ID” big button with a small shield icon button to the right of “Enter Global Square”. Tooltip: “Verify to unlock full chat”.
+Remove/Hide Admin Access button (leave route but no visible CTA).
+Remove the yellow “open in World App” banner in web; keep a small hint text only on web if necessary.
+Room UI
+File: client/src/components/message-item.tsx
+Remove mic icon, the star/heart/laugh cluster.
+Add compact controls: ⬆️ (upvote), ⬇️ (downvote), ⭐ (star), 🙂 (grey emoji launcher).
+Emoji launcher opens a small popover with a few defaults (👍 ❤️ 😂 🔥) and a “+ custom” disabled stub.
+File: client/src/components/report-modal.tsx
+Add an overflow “⋯” menu on each message: Report, Mute, Block user (block/mute can be stubs with toast for now; report should call the existing endpoint).
+Acceptance:
+Landing shows new copy and smaller shield button.
+Message items show the new action row; mic & old right‑corner cluster are gone.
+
+5) Profiles (verified‑only edit, everyone can view)
+Schema
+File: shared/schema.ts
+For humans table, add nullable columns: avatarUrl, mbti, zodiac, ageSmallInt.
+Add index on handle.
+Update insert/update schemas & types. Run npm run db:push.
+API
+Server endpoints:
+GET /api/profile/:handle → returns public fields and counts.
+PUT /api/me/profile (verified only) → accepts {avatarUrl?, mbti?, zodiac?, age?} and updates the current human by wm_uid / session.
+Client
+File: client/src/components/profile-modal.tsx
+View mode for other users (open from tapping a username).
+If viewing own profile and verified → show Edit button (opens a simple form with avatar picker (URL upload for now), MBTI dropdown, Zodiac dropdown, Age numeric).
+File: client/src/pages/global-square.tsx
+Ensure clicking an author chip opens the profile lightbox.
+Acceptance:
+As verified user, open your profile, edit MBTI/zodiac/age → save → reopen and see changes.
+Viewing others shows read‑only.
+
+6) Hide the referral dashboard for now
+File: wherever the referrals route is linked (landing + header)
+If feature flag ENABLE_REFERRALS !== 'true', hide link and route should render a small “Coming soon” page, not a red X.
+Acceptance:
+No more big red X; either hidden or “Coming soon”.
+
+7) Theme: default light, toggle + sunrise/sunset
+File: client/index.html
+Set <html data-theme="light"> as hard default.
+File: client/src/index.css (or theme provider)
+Ensure theme reads from document.documentElement.dataset.theme without FOUC.
+File: client/src/components/ThemeToggle.tsx (or create)
+Toggle with 4 options: Light / Dark / System / Auto (Sunrise→Sunset). Persist as localStorage['wm_theme'].
+File: client/src/App.tsx (or root)
+On mount, read wm_theme, set data-theme, and set <meta name="theme-color"> accordingly to avoid white flash.
+Acceptance:
+Preview loads light on first paint. Toggle persists across reloads.
+
+8) Mini App detection helper
+File: client/src/lib/platform.ts
+Export isMiniApp() that checks injected MiniKit bridge or UA hint.
+Use this in: polling strategy, hiding web‑only banners, etc.
+Acceptance:
+In Mini App, we see polling; in web, we use WS/SSE where possible.
+
+9) Smaller composer & shield‑only verify
+File: client/src/pages/global-square.tsx
+Replace large “Verify for Full Access” stripe with a shield icon next to the Guest Mode chip.
+When verified, hide both the chip and shield (composer just shows “Say hello 👋 …”).
+Acceptance:
+After verification, no guest/verify controls are visible.
+
+10) Observability & dev aids
+Server: Add structured logs for:
+session.resolve (source=cookie|header, sid=…, ua=MiniApp|Web)
+message.create (role, room, length, outcome)
+verify.worldid (ok/fail, nullifierHashHashed prefix)
+Client dev: Add a small hidden “Debug” route /debug that shows:
+role, sid, miniApp detection, and last 10 logs from /api/logs (dev only).
+Acceptance:
+When your iPhone fails, /debug shows sid and miniApp=true; server logs show whether header/cookie was used.
+
+11) Tests to run (manual)
+Guest in Mini App: open, type “Hi from guest”, press Send → message appears; preview list updates within ~3s.
+Verify flow: verify, composer grows to 240 chars, guest/verify UI disappears; send a 120‑char message → succeeds.
+Web parity: web guest + verified flows still work.
+Profiles: open someone’s chip → profile shows. Edit your own (verified) → data persists.
+UI: no mic icon, new action row (⬆️ ⬇️ ⭐ 🙂). Overflow menu includes report/mute/block.
+
+12) Guardrails & flags
+Add .env.example entries:
+ENABLE_REFERRALS=false
+POLL_INTERVAL_MS=2500
+Make sure app still runs if World ID envs are missing (guest‑only mode).
+
+Notes for the agent
+Respect existing file naming; if a file doesn’t exist, create it in the suggested path.
+Keep the database migration minimal and run npm run db:push.
+Do not break production deploy: keep server listening on process.env.PORT || 5000, 0.0.0.0.
+Maintain cookie and header session mechanisms.
+
+After this runs
+Re‑open the Mini App, try sending as guest and as verified.
+If send still fails on your iPhone, visit /debug and tell me:
+sid, miniApp=true/false, and whether session.resolve logs show header or cookie.
+This will pinpoint remaining session/cookie quirks quickly.
+
+Extra: design trims you asked for (already included above)
+Landing copy = Talk. Learn. Build. Connect.
+Shield replaces big “Verify” block.
+Remove mic & reaction cluster; add compact vote/star/emoji.
+Profiles with avatar/MBTI/zodiac/age (verified edit only).
+Hide referrals until enabled.
+

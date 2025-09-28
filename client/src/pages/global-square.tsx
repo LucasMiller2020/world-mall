@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { filterContent } from "@/lib/content-filter";
+import { getSessionId } from "@/lib/session";
 import type { MessageWithAuthor, OnlinePresence, Theme, Topic } from "@shared/schema";
 
 export default function GlobalSquare() {
@@ -60,7 +61,7 @@ export default function GlobalSquare() {
   const resetGuestSession = () => {
     console.log('[Dev] Resetting guest session...');
     // Clear localStorage
-    localStorage.removeItem('guest_sid');
+    localStorage.removeItem('wm_sid');
     // Clear session cookies
     document.cookie = 'wm_sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     // Reload the page to reset state
@@ -127,14 +128,6 @@ export default function GlobalSquare() {
         body: JSON.stringify(messageData),
         credentials: 'include',
       });
-      
-      // Add X-Session header for World App WebView fallback
-      if (!res.headers['x-world-id-proof']) {
-        const guestSessionId = localStorage.getItem('guest_sid');
-        if (guestSessionId) {
-          res.headers['x-session'] = guestSessionId;
-        }
-      }
       
       if (!res.ok) {
         const error = await res.json();
@@ -272,6 +265,10 @@ export default function GlobalSquare() {
   });
 
   const handleSendMessage = async () => {
+    // Initialize session before first message send
+    // This guarantees the session is initialized before any API calls
+    await getSessionId();
+    
     // Check message length based on user role
     const maxChars = limits?.maxChars || (isGuest() ? 60 : 240);
     if (message.length > maxChars) {

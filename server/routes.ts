@@ -154,8 +154,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (key && value) cookieObj[key] = value;
     });
     
-    // Priority: 1. Cookie (wm_sid), 2. X-Session header (for WebView when cookies blocked)
+    // Priority: 1. Cookie (wm_sid), 2. X-Session header, 3. Authorization: Bearer header (for WebView when cookies blocked)
     let guestSessionId = cookieObj.wm_sid || req.headers['x-session'] as string;
+    
+    // Check Authorization Bearer header as additional fallback
+    if (!guestSessionId && req.headers.authorization) {
+      const auth = req.headers.authorization as string;
+      if (auth.startsWith('Bearer ')) {
+        guestSessionId = auth.substring(7).trim();
+      }
+    }
+    
+    // Track if we got session from header only (not cookie)
+    const sessionFromHeaderOnly = !cookieObj.wm_sid && guestSessionId;
     
     // Hash IP and user agent for privacy-preserving tracking
     const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
@@ -185,6 +196,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } else {
       // Update last seen
       await storage.updateGuestSessionActivity(guestSession.id);
+      
+      // If session came from header only (not cookie), set/refresh the cookie
+      if (sessionFromHeaderOnly) {
+        const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
+        res.setHeader('Set-Cookie', `wm_sid=${guestSession.id}; HttpOnly; Path=/; SameSite=${isSecure ? 'None' : 'Lax'}; ${isSecure ? 'Secure; ' : ''}Max-Age=${365*24*60*60}`);
+      }
     }
     
     req.guestSessionId = guestSession.id;
@@ -346,6 +363,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Session endpoint - creates or retrieves existing session
+  app.post('/api/session', handleGuestSession, async (req: AuthenticatedRequest, res) => {
+    if (!GUEST_CONFIG.ENABLED) {
+      return res.status(403).json({ 
+        message: 'Guest mode is not enabled',
+        code: 'GUEST_MODE_DISABLED'
+      });
+    }
+    
+    // Session already created/retrieved by handleGuestSession middleware
+    if (!req.guestSessionId) {
+      return res.status(500).json({ 
+        message: 'Failed to create session',
+        code: 'SESSION_ERROR'
+      });
+    }
+    
+    // Return the session ID
+    res.json({
+      sid: req.guestSessionId
+    });
+  });
+  
   // Policy endpoint - returns public policy configuration
   app.get('/api/policy', (req, res) => {
     res.json({
