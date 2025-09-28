@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 
-export type ThemeMode = 'light' | 'dark' | 'system' | 'sun';
+export type ThemeMode = 'light' | 'dark' | 'system' | 'autoSun';
 export type ActiveTheme = 'light' | 'dark';
 
 interface ThemeContextValue {
@@ -13,7 +13,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'wm_theme_mode';
+const STORAGE_KEY = 'theme';
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -22,7 +22,7 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [mode, setModeState] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return (stored as ThemeMode) || 'system';
+    return (stored as ThemeMode) || 'light';
   });
 
   const [activeTheme, setActiveTheme] = useState<ActiveTheme>('light');
@@ -80,14 +80,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         return 'dark';
       case 'system':
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      case 'sun':
+      case 'autoSun':
         const now = new Date();
-        if (sunTimes.sunrise && sunTimes.sunset) {
-          const isDay = now >= sunTimes.sunrise && now < sunTimes.sunset;
-          return isDay ? 'light' : 'dark';
-        }
-        // Fallback to simple time check
         const hours = now.getHours();
+        // Simple time-based: light from 7:00-19:00, dark otherwise
         return hours >= 7 && hours < 19 ? 'light' : 'dark';
       default:
         return 'light';
@@ -101,7 +97,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       sunTimeoutRef.current = null;
     }
 
-    if (mode !== 'sun') return;
+    if (mode !== 'autoSun') return;
 
     const now = new Date();
     const times = sunTimes.sunrise && sunTimes.sunset 
@@ -126,36 +122,23 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     
     if (timeout > 0) {
       sunTimeoutRef.current = setTimeout(() => {
-        const theme = computeActiveTheme('sun');
+        const theme = computeActiveTheme('autoSun');
         setActiveTheme(theme);
         scheduleNextSunChange(); // Schedule the next change
       }, Math.min(timeout, 2147483647)); // Max timeout value
     }
   }, [mode, sunTimes, calculateSunTimes, computeActiveTheme]);
 
-  // Initialize sun times when mode is 'sun'
+  // Initialize sun times when mode is 'autoSun'
   useEffect(() => {
-    if (mode === 'sun') {
-      // Try to get user's location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            const times = calculateSunTimes(latitude, longitude);
-            setSunTimes(times);
-          },
-          () => {
-            // Geolocation failed, use default times
-            const times = calculateSunTimes();
-            setSunTimes(times);
-          },
-          { timeout: 5000 }
-        );
-      } else {
-        // No geolocation available
-        const times = calculateSunTimes();
-        setSunTimes(times);
-      }
+    if (mode === 'autoSun') {
+      // Simple time-based (no geolocation)
+      const now = new Date();
+      const sunrise = new Date(now);
+      sunrise.setHours(7, 0, 0, 0);
+      const sunset = new Date(now);
+      sunset.setHours(19, 0, 0, 0);
+      setSunTimes({ sunrise, sunset });
     }
 
     return () => {
@@ -163,7 +146,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         clearTimeout(sunTimeoutRef.current);
       }
     };
-  }, [mode, calculateSunTimes]);
+  }, [mode]);
 
   // Schedule sun mode changes
   useEffect(() => {
@@ -202,7 +185,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Apply theme to document
   useEffect(() => {
     const root = document.documentElement;
-    root.dataset.theme = activeTheme;
+    // Apply data-theme attribute
+    root.setAttribute('data-theme', activeTheme);
+    // Remove any old class-based theme
+    root.classList.remove('light', 'dark');
     
     // Update meta theme-color
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');

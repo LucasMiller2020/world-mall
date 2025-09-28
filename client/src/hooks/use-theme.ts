@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export type ThemeMode = 'light' | 'dark' | 'system' | 'sun';
+export type ThemeMode = 'light' | 'dark' | 'system' | 'autoSun';
 export type ActiveTheme = 'light' | 'dark';
 
 interface UseThemeReturn {
@@ -9,12 +9,12 @@ interface UseThemeReturn {
   activeTheme: ActiveTheme;
 }
 
-const STORAGE_KEY = 'wm_theme_mode';
+const STORAGE_KEY = 'theme';
 
 export function useTheme(): UseThemeReturn {
   const [mode, setModeState] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return (stored as ThemeMode) || 'system';
+    return (stored as ThemeMode) || 'light';
   });
 
   const [activeTheme, setActiveTheme] = useState<ActiveTheme>('light');
@@ -33,11 +33,10 @@ export function useTheme(): UseThemeReturn {
         return 'dark';
       case 'system':
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      case 'sun':
+      case 'autoSun':
         const now = new Date();
         const hours = now.getHours();
-        // Simple sunrise/sunset logic (7 AM to 7 PM)
-        // This will be enhanced in the provider with geolocation
+        // Simple time-based: light from 7:00-19:00, dark otherwise
         return hours >= 7 && hours < 19 ? 'light' : 'dark';
       default:
         return 'light';

@@ -10,9 +10,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { Shield, Settings } from "lucide-react";
+import { Shield, Settings, Sun, Moon } from "lucide-react";
 import { useMiniKitStatus } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
+import { useThemeContext } from "@/theme/ThemeProvider";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { MessageWithAuthor } from "@shared/schema";
 
 export default function Landing() {
@@ -20,8 +30,10 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const { isInstalled } = useMiniKitStatus();
   const { toast } = useToast();
+  const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminKey, setAdminKey] = useState('');
+  const [themeSheetOpen, setThemeSheetOpen] = useState(false);
 
   // Fetch latest messages for preview (no auth required)
   const { data: messages, isLoading } = useQuery<MessageWithAuthor[]>({
@@ -62,8 +74,100 @@ export default function Landing() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Language Switcher */}
-      <div className="absolute top-4 right-4">
+      {/* Header with Theme and Language Switchers */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+        <div className="flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              // Quick toggle between light and dark
+              if (mode === 'light') {
+                setMode('dark');
+              } else if (mode === 'dark') {
+                setMode('light');
+              } else {
+                // If in system or autoSun mode, switch to the opposite of current theme
+                setMode(activeTheme === 'light' ? 'dark' : 'light');
+              }
+            }}
+            data-testid="button-theme-toggle"
+          >
+            {activeTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+          <Sheet open={themeSheetOpen} onOpenChange={setThemeSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" data-testid="button-theme-settings">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Theme Settings</SheetTitle>
+                <SheetDescription>
+                  Choose how you'd like the app to appear.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                <RadioGroup value={mode} onValueChange={(value) => setMode(value as any)}>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="light" id="light" />
+                      <Label htmlFor="light" className="flex-1">
+                        <div className="font-medium">Light</div>
+                        <div className="text-xs text-muted-foreground">Always use light theme</div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="dark" id="dark" />
+                      <Label htmlFor="dark" className="flex-1">
+                        <div className="font-medium">Dark</div>
+                        <div className="text-xs text-muted-foreground">Always use dark theme</div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="system" id="system" />
+                      <Label htmlFor="system" className="flex-1">
+                        <div className="font-medium">Match System</div>
+                        <div className="text-xs text-muted-foreground">Match your device settings</div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="autoSun" id="autoSun" />
+                      <Label htmlFor="autoSun" className="flex-1">
+                        <div className="font-medium">Auto (Sunrise → Sunset)</div>
+                        <div className="text-xs text-muted-foreground">
+                          {sunTimes.sunrise && sunTimes.sunset ? (
+                            <span>
+                              Light from {sunTimes.sunrise.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to{' '}
+                              {sunTimes.sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          ) : (
+                            <span>Light from 7:00 to 19:00, dark otherwise</span>
+                          )}
+                        </div>
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+                {mode === 'autoSun' && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      {activeTheme === 'light' ? (
+                        <Sun className="h-4 w-4 text-warning" />
+                      ) : (
+                        <Moon className="h-4 w-4 text-primary" />
+                      )}
+                      <span className="text-sm">
+                        Currently: {activeTheme === 'light' ? 'Daytime' : 'Nighttime'} mode
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
         <LanguageSwitcher />
       </div>
       

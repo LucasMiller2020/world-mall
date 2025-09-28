@@ -310,7 +310,7 @@ export default function GlobalSquare() {
                 } else if (mode === 'dark') {
                   setMode('light');
                 } else {
-                  // If in system or sun mode, switch to the opposite of current theme
+                  // If in system or autoSun mode, switch to the opposite of current theme
                   setMode(activeTheme === 'light' ? 'dark' : 'light');
                 }
               }}
@@ -335,13 +335,6 @@ export default function GlobalSquare() {
                   <RadioGroup value={mode} onValueChange={(value) => setMode(value as any)}>
                     <div className="space-y-3">
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="system" id="system" />
-                        <Label htmlFor="system" className="flex-1">
-                          <div className="font-medium">System</div>
-                          <div className="text-xs text-muted-foreground">Match your device settings</div>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
                         <RadioGroupItem value="light" id="light" />
                         <Label htmlFor="light" className="flex-1">
                           <div className="font-medium">Light</div>
@@ -356,9 +349,16 @@ export default function GlobalSquare() {
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="sun" id="sun" />
-                        <Label htmlFor="sun" className="flex-1">
-                          <div className="font-medium">Auto (Sunrise→Sunset)</div>
+                        <RadioGroupItem value="system" id="system" />
+                        <Label htmlFor="system" className="flex-1">
+                          <div className="font-medium">Match System</div>
+                          <div className="text-xs text-muted-foreground">Match your device settings</div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="autoSun" id="autoSun" />
+                        <Label htmlFor="autoSun" className="flex-1">
+                          <div className="font-medium">Auto (Sunrise → Sunset)</div>
                           <div className="text-xs text-muted-foreground">
                             {sunTimes.sunrise && sunTimes.sunset ? (
                               <span>
@@ -366,14 +366,14 @@ export default function GlobalSquare() {
                                 {sunTimes.sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             ) : (
-                              <span>Light during daytime hours (7 AM - 7 PM)</span>
+                              <span>Light from 7:00 to 19:00, dark otherwise</span>
                             )}
                           </div>
                         </Label>
                       </div>
                     </div>
                   </RadioGroup>
-                  {mode === 'sun' && (
+                  {mode === 'autoSun' && (
                     <div className="mt-4 p-3 bg-muted rounded-lg">
                       <div className="flex items-center gap-2">
                         {activeTheme === 'light' ? (
