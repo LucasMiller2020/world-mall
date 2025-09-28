@@ -72,7 +72,11 @@ export default function GlobalSquare() {
       
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || 'Failed to send message');
+        // Include status code and error code in error for better handling
+        const err = new Error(error.message || 'Failed to send message');
+        (err as any).status = res.status;
+        (err as any).code = error.code;
+        throw err;
       }
       
       return res.json();
@@ -82,7 +86,8 @@ export default function GlobalSquare() {
       queryClient.invalidateQueries({ queryKey: ['/api/messages/global'] });
     },
     onError: (error: any) => {
-      if (error.message.includes('cooldown') || error.message.includes('Take a breath')) {
+      // Handle 429 rate limit errors
+      if (error.status === 429 || error.message.includes('cooldown') || error.message.includes('Take a breath')) {
         const match = error.message.match(/(\d+)\s*sec/);
         const seconds = match ? parseInt(match[1]) : 30;
         setCooldownSeconds(seconds);
@@ -99,9 +104,19 @@ export default function GlobalSquare() {
         }, 1000);
       }
       
+      // Handle 403 guest limit errors with user-friendly message
+      let errorMessage = error.message;
+      let errorTitle = "Error";
+      if (error.status === 403 && error.code === 'GUEST_LIMIT_EXCEEDED') {
+        errorTitle = "Character Limit";
+        // Use the server's friendly message directly
+      } else if (error.status === 429) {
+        errorTitle = "Slow Down";
+      }
+      
       toast({
-        title: "Error",
-        description: error.message,
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -174,11 +189,14 @@ export default function GlobalSquare() {
   });
 
   const handleSendMessage = async () => {
-    // Check message length for guest mode
-    if (isGuest() && message.length > limits.maxChars) {
+    // Check message length based on user role
+    const maxChars = limits?.maxChars || (isGuest() ? 60 : 240);
+    if (message.length > maxChars) {
       toast({
         title: "Message too long",
-        description: `Guest messages limited to ${limits.maxChars} characters. Verify to unlock full chat!`,
+        description: isGuest() 
+          ? `Guest messages limited to ${maxChars} characters. Verify to unlock full chat!`
+          : `Message exceeds ${maxChars} character limit`,
         variant: "destructive",
       });
       return;
@@ -249,7 +267,7 @@ export default function GlobalSquare() {
   };
 
   const characterCount = message.length;
-  const maxChars = limits?.maxChars || (isGuest() ? 10 : 240);
+  const maxChars = limits?.maxChars || (isGuest() ? 60 : 240);
   const canSend = message.trim().length > 0 && message.length <= maxChars && cooldownSeconds === 0;
 
   return (

@@ -32,23 +32,24 @@ import {
 import crypto from "crypto";
 import { automatedModeration } from "./automated-moderation";
 import { contentAnalyzer } from "./content-analyzer";
+import { POLICY } from "./config";
 
-// Rate limit constants
+// Rate limit constants - using POLICY values for verified users
 const RATE_LIMITS = {
-  MESSAGES_PER_MIN: parseInt(process.env.RATE_LIMIT_MESSAGES_PER_MIN || '5'),
-  MESSAGES_PER_HOUR: parseInt(process.env.RATE_LIMIT_MESSAGES_PER_HOUR || '60'),
-  MESSAGES_PER_DAY: parseInt(process.env.RATE_LIMIT_MESSAGES_PER_DAY || '200'),
+  MESSAGES_PER_MIN: POLICY.verifiedPerMin,
+  MESSAGES_PER_HOUR: POLICY.verifiedPerHour,
+  MESSAGES_PER_DAY: POLICY.verifiedPerDay,
   STARS_PER_MIN: parseInt(process.env.RATE_LIMIT_STARS_PER_MIN || '20'),
   WORK_LINKS_PER_10MIN: parseInt(process.env.RATE_LIMIT_WORK_LINKS_PER_10MIN || '2'),
   WORK_LINKS_PER_HOUR: parseInt(process.env.RATE_LIMIT_WORK_LINKS_PER_HOUR || '4'),
 };
 
-// Guest mode configuration
+// Guest mode configuration - using POLICY values
 const GUEST_CONFIG = {
   ENABLED: process.env.FEATURE_GUEST_MODE === 'true' || process.env.NODE_ENV === 'development',
-  MAX_CHARS: parseInt(process.env.GUEST_MAX_CHARS || '10'),
-  COOLDOWN_SEC: parseInt(process.env.GUEST_COOLDOWN_SEC || '600'),
-  MAX_PER_DAY: parseInt(process.env.GUEST_MAX_PER_DAY || '3'),
+  MAX_CHARS: POLICY.guestCharLimit,
+  COOLDOWN_SEC: POLICY.guestCooldownSec,
+  MAX_PER_DAY: POLICY.guestDaily,
 };
 
 // Simple content filter
@@ -312,19 +313,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({
       guestMode: {
         enabled: GUEST_CONFIG.ENABLED,
-        maxChars: GUEST_CONFIG.MAX_CHARS,
-        cooldownSec: GUEST_CONFIG.COOLDOWN_SEC,
-        maxPerDay: GUEST_CONFIG.MAX_PER_DAY
+        maxChars: POLICY.guestCharLimit,
+        cooldownSec: POLICY.guestCooldownSec,
+        maxPerDay: POLICY.guestDaily
       },
       verified: {
-        maxChars: 240,
+        maxChars: POLICY.verifiedCharLimit,
         features: ['star', 'report', 'work_mode', 'connect']
       },
       rateLimits: {
         messages: {
-          perMinute: RATE_LIMITS.MESSAGES_PER_MIN,
-          perHour: RATE_LIMITS.MESSAGES_PER_HOUR,
-          perDay: RATE_LIMITS.MESSAGES_PER_DAY
+          perMinute: POLICY.verifiedPerMin,
+          perHour: POLICY.verifiedPerHour,
+          perDay: POLICY.verifiedPerDay
         },
         stars: {
           perMinute: RATE_LIMITS.STARS_PER_MIN
@@ -333,6 +334,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           per10Minutes: RATE_LIMITS.WORK_LINKS_PER_10MIN,
           perHour: RATE_LIMITS.WORK_LINKS_PER_HOUR
         }
+      },
+      worldId: POLICY.worldId,
+      features: {
+        enablePermit2: POLICY.enablePermit2,
+        disableWorldId: POLICY.disableWorldId
       }
     });
   });
@@ -349,12 +355,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Get applicable limits based on role
     const limits = role === 'guest' ? {
-      maxChars: GUEST_CONFIG.MAX_CHARS,
-      cooldownSec: GUEST_CONFIG.COOLDOWN_SEC,
-      maxPerDay: GUEST_CONFIG.MAX_PER_DAY,
+      maxChars: POLICY.guestCharLimit,
+      cooldownSec: POLICY.guestCooldownSec,
+      maxPerDay: POLICY.guestDaily,
       features: ['global_room']
     } : {
-      maxChars: 240,
+      maxChars: POLICY.verifiedCharLimit,
       features: ['global_room', 'star', 'report', 'work_mode', 'connect']
     };
     
@@ -420,9 +426,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Enforce character limit
-        if (messageData.text.length > GUEST_CONFIG.MAX_CHARS) {
-          return res.status(400).json({
-            message: `Guest messages limited to ${GUEST_CONFIG.MAX_CHARS} characters`,
+        if (messageData.text.length > POLICY.guestCharLimit) {
+          console.log(`[post] role=guest blocked reason=char_limit_exceeded length=${messageData.text.length}`);
+          return res.status(403).json({
+            message: `Guest limit is ${POLICY.guestCharLimit} characters. Verify to unlock full chat.`,
             code: 'GUEST_LIMIT_EXCEEDED'
           });
         }
@@ -431,9 +438,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dayBucket = new Date().toISOString().split('T')[0];
         const messageCount = await storage.getGuestMessageCount(req.guestSessionId!, dayBucket);
         
-        if (messageCount >= GUEST_CONFIG.MAX_PER_DAY) {
+        if (messageCount >= POLICY.guestDaily) {
+          console.log(`[post] role=guest blocked reason=daily_limit_exceeded count=${messageCount}`);
           return res.status(429).json({
-            message: `Guests limited to ${GUEST_CONFIG.MAX_PER_DAY} messages per day. Verify to unlock full chat!`,
+            message: `Guests limited to ${POLICY.guestDaily} messages per day. Verify to unlock full chat!`,
             code: 'GUEST_RATE_LIMITED'
           });
         }
@@ -470,6 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
+        console.log(`[post] role=guest accepted messageId=${message.id}`);
         return res.json({ message, code: 'SUCCESS' });
       }
       
@@ -630,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: presence
       });
 
-      console.log(`Message sent: ${humanId} -> ${message.room}`);
+      console.log(`[post] role=${userRole} accepted messageId=${message.id} humanId=${humanId} room=${message.room}`);
       res.json(messageWithAuthor);
     } catch (error) {
       console.error('Error sending message:', error);

@@ -35,7 +35,7 @@ export function useAuthRole() {
     role: 'guest',
     isVerified: false,
     limits: {
-      maxChars: 10,
+      maxChars: 60, // Default guest char limit
       features: ['global_room']
     },
     joinedAt: null,
@@ -56,9 +56,38 @@ export function useAuthRole() {
 
   useEffect(() => {
     if (userInfo) {
-      setAuthState(userInfo);
+      // Merge userInfo with policy data for accurate limits
+      let updatedInfo = { ...userInfo };
+      
+      // If policy is available and user is a guest, ensure we use policy maxChars
+      if (policy && userInfo.role === 'guest') {
+        updatedInfo.limits = {
+          ...userInfo.limits,
+          maxChars: policy.guestMode.maxChars,
+          cooldownSec: policy.guestMode.cooldownSec,
+          maxPerDay: policy.guestMode.maxPerDay
+        };
+      } else if (policy && (userInfo.role === 'verified' || userInfo.role === 'admin')) {
+        updatedInfo.limits = {
+          ...userInfo.limits,
+          maxChars: policy.verified.maxChars
+        };
+      }
+      
+      setAuthState(updatedInfo);
+    } else if (policy && !userInfo) {
+      // If no user info but we have policy, update default guest limits
+      setAuthState(prev => ({
+        ...prev,
+        limits: {
+          ...prev.limits,
+          maxChars: policy.guestMode.maxChars,
+          cooldownSec: policy.guestMode.cooldownSec,
+          maxPerDay: policy.guestMode.maxPerDay
+        }
+      }));
     }
-  }, [userInfo]);
+  }, [userInfo, policy]);
 
   const isGuest = () => authState.role === 'guest';
   const isVerified = () => authState.role === 'verified' || authState.role === 'admin';
