@@ -309,6 +309,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply guest session middleware to all routes
   app.use(handleGuestSession);
 
+  // World ID diagnostic endpoint - returns public World ID configuration (no secrets)
+  app.get('/api/worldid/diag', (req, res) => {
+    res.json({
+      appId: POLICY.worldId.appId,
+      action: POLICY.worldId.action,
+      apiBase: POLICY.worldId.apiBase,
+      verificationLevel: POLICY.worldId.verificationLevel
+    });
+  });
+
+  // Session debug endpoint - returns current session information for debugging
+  app.get('/api/debug/session', async (req: AuthenticatedRequest, res) => {
+    // Parse cookies from request
+    const cookies = req.headers.cookie || '';
+    const cookieObj: { [key: string]: string } = {};
+    cookies.split(';').forEach(cookie => {
+      const [key, value] = cookie.trim().split('=');
+      if (key && value) cookieObj[key] = value;
+    });
+    
+    // Get current role and IDs from authenticated request
+    const role = req.userRole || 'guest';
+    const humanId = req.humanId || null;
+    const guestSessionId = req.guestSessionId || null;
+    const sessionId = cookieObj.wm_uid || cookieObj.wm_sid || null;
+    
+    res.json({
+      cookies: cookieObj,
+      role,
+      sessionId,
+      humanId,
+      guestSessionId
+    });
+  });
+
   // Policy endpoint - returns public policy configuration
   app.get('/api/policy', (req, res) => {
     res.json({
@@ -509,14 +544,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       features: ['global_room', 'star', 'report', 'work_mode', 'connect']
     };
     
-    res.json({
+    // Prepare response object
+    const response: any = {
       humanId: humanId || null,
       role,
       isVerified: role === 'verified' || role === 'admin',
       limits,
       joinedAt: human?.joinedAt || null,
-      capsuleSeen: human?.capsuleSeen || false
-    });
+      capsuleSeen: human?.capsuleSeen || false,
+      theme: {
+        defaultMode: POLICY.theme.defaultMode,
+        sunrise: POLICY.theme.sunrise,
+        sunset: POLICY.theme.sunset
+      }
+    };
+    
+    // Add guest stats if user is a guest
+    if (role === 'guest' && req.guestSessionId) {
+      const dayBucket = new Date().toISOString().split('T')[0];
+      const messageCount = await storage.getGuestMessageCount(req.guestSessionId, dayBucket);
+      const messagesRemaining = POLICY.guestDaily - messageCount;
+      
+      response.guestStats = {
+        messagesToday: messageCount,
+        messagesRemaining,
+        dailyLimit: POLICY.guestDaily,
+        cooldownSec: POLICY.guestCooldownSec
+      };
+    }
+    
+    res.json(response);
   });
 
   // Health check endpoint
