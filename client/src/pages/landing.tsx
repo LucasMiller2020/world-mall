@@ -4,9 +4,7 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -32,8 +30,6 @@ export default function Landing() {
   const { verify, isVerifying, isVerified } = useWorldId();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
-  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
-  const [adminKey, setAdminKey] = useState('');
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
 
   // Fetch latest messages for preview (no auth required)
@@ -51,23 +47,6 @@ export default function Landing() {
     setLocation('/room/global');
   };
 
-  const handleAdminAccess = () => {
-    if (adminKey.trim()) {
-      localStorage.setItem('admin_key', adminKey.trim());
-      setLocation('/admin');
-      setAdminDialogOpen(false);
-      toast({
-        title: t('auth.adminAccessGranted'),
-        description: t('auth.adminWelcome')
-      });
-    } else {
-      toast({
-        title: t('common.error'), 
-        description: t('auth.pleaseEnterAdminKey'),
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleVerifyWithWorldId = async () => {
     if (!isInstalled) {
@@ -237,55 +216,6 @@ export default function Landing() {
             <Shield className="h-4 w-4 mr-2" />
             {isVerifying ? 'Verifying...' : isVerified ? 'Verified ✓' : t('auth.verifyWorldId')}
           </Button>
-          
-          <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground text-xs"
-                data-testid="button-admin-access"
-              >
-                Admin Access
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('auth.adminAccess')}</DialogTitle>
-                <DialogDescription>
-                  {t('auth.adminAccessDescription')}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="admin-key">{t('auth.adminKey')}</Label>
-                  <Input
-                    id="admin-key"
-                    type="password"
-                    placeholder={t('auth.adminKeyPlaceholder')}
-                    value={adminKey}
-                    onChange={(e) => setAdminKey(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAdminAccess();
-                      }
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('auth.adminKeyDemo')}
-                </p>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAdminDialogOpen(false)}>
-                  {t('common.cancel')}
-                </Button>
-                <Button onClick={handleAdminAccess} data-testid="button-admin-login">
-                  {t('auth.accessAdmin')}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
         
         {/* Guest Access Card */}

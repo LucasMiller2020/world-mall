@@ -9,7 +9,7 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
-import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings } from "lucide-react";
+import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useAuthRole } from "@/hooks/use-auth-role";
@@ -36,9 +36,28 @@ export default function GlobalSquare() {
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
+  const [devMenuOpen, setDevMenuOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
+  
+  // Check if developer menu should be shown
+  const showDevMenu = () => {
+    const isDev = process.env.NODE_ENV !== 'production';
+    const hasDevParam = window.location.search.includes('dev=1');
+    return isDev || hasDevParam;
+  };
+  
+  // Reset guest session
+  const resetGuestSession = () => {
+    console.log('[Dev] Resetting guest session...');
+    // Clear localStorage
+    localStorage.removeItem('guest_sid');
+    // Clear session cookies
+    document.cookie = 'wm_sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    // Reload the page to reset state
+    window.location.reload();
+  };
   
   const { humanId, isVerified, verify } = useWorldId();
   const { isConnected } = useWebSocket(humanId);
@@ -449,6 +468,40 @@ export default function GlobalSquare() {
             >
               <Briefcase className="h-4 w-4" />
             </Button>
+            {showDevMenu() && (
+              <Sheet open={devMenuOpen} onOpenChange={setDevMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    data-testid="button-dev-menu"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Developer Tools</SheetTitle>
+                    <SheetDescription>
+                      Debug and test your application
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="py-4 space-y-4">
+                    <Button 
+                      onClick={resetGuestSession}
+                      variant="outline"
+                      className="w-full justify-start"
+                      data-testid="button-reset-guest-session"
+                    >
+                      Reset Guest Session
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      This will clear your guest session and reload the page, allowing you to test guest limits from scratch.
+                    </p>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
           </div>
         </div>
         <div className="text-center space-y-2">

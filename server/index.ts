@@ -56,6 +56,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Production startup guard - ensure World ID config is present
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.WORLD_ID_APP_ID || !process.env.WORLD_ID_ACTION) {
+      log('ERROR: WORLD_ID_APP_ID and WORLD_ID_ACTION are required in production');
+      process.exit(1);
+    }
+    log('Production environment: World ID configuration verified');
+  }
+  
   const server = await registerRoutes(app);
   
   // Database smoke test - verify connection on startup
