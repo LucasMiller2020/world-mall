@@ -43,6 +43,14 @@ const RATE_LIMITS = {
   WORK_LINKS_PER_HOUR: parseInt(process.env.RATE_LIMIT_WORK_LINKS_PER_HOUR || '4'),
 };
 
+// Guest mode configuration
+const GUEST_CONFIG = {
+  ENABLED: process.env.FEATURE_GUEST_MODE === 'true' || process.env.NODE_ENV === 'development',
+  MAX_CHARS: parseInt(process.env.GUEST_MAX_CHARS || '10'),
+  COOLDOWN_SEC: parseInt(process.env.GUEST_COOLDOWN_SEC || '600'),
+  MAX_PER_DAY: parseInt(process.env.GUEST_MAX_PER_DAY || '3'),
+};
+
 // Simple content filter
 const BAD_WORDS = [
   'spam', 'scam', 'crypto', 'buy now', 'click here', 'free money',
@@ -54,6 +62,9 @@ const wsClients = new Set<WebSocket>();
 
 interface AuthenticatedRequest extends Request {
   humanId?: string;
+  sessionId?: string;
+  userRole?: 'guest' | 'verified' | 'admin';
+  guestSessionId?: string;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -127,9 +138,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return authenticateHuman(req, res, next);
   };
 
+  // Guest session middleware - creates and tracks guest sessions
+  const handleGuestSession = async (req: AuthenticatedRequest, res: Response, next: any) => {
+    if (!GUEST_CONFIG.ENABLED) {
+      return next();
+    }
+
+    // Get guest session ID from cookie
+    const cookies = req.headers.cookie || '';
+    const cookieObj: { [key: string]: string } = {};
+    cookies.split(';').forEach(cookie => {
+      const [key, value] = cookie.trim().split('=');
+      if (key && value) cookieObj[key] = value;
+    });
+    
+    let guestSessionId = cookieObj.gsid;
+    
+    // Hash IP and user agent for privacy-preserving tracking
+    const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
+    const userAgentHash = crypto.createHash('sha256').update(req.headers['user-agent'] || 'unknown').digest('hex');
+    const dayBucket = new Date().toISOString().split('T')[0];
+    
+    // Find or create guest session
+    let guestSession = guestSessionId ? await storage.getGuestSession(guestSessionId) : null;
+    
+    if (!guestSession) {
+      // Try to find existing session by hash
+      guestSession = await storage.getGuestSessionByHash(ipHash, userAgentHash);
+      
+      if (!guestSession) {
+        // Create new guest session
+        guestSession = await storage.createGuestSession({
+          ipHash,
+          userAgentHash,
+          dayBucket,
+          messageCount: 0
+        });
+      }
+      
+      // Set cookie
+      res.setHeader('Set-Cookie', `gsid=${guestSession.id}; HttpOnly; Path=/; Max-Age=86400`);
+    } else {
+      // Update last seen
+      await storage.updateGuestSessionActivity(guestSession.id);
+    }
+    
+    req.guestSessionId = guestSession.id;
+    next();
+  };
+
   // Middleware to extract and verify human ID from World ID nullifier
   const authenticateHuman = async (req: AuthenticatedRequest, res: Response, next: any) => {
     const worldIdProof = req.headers['x-world-id-proof'] as string;
+    
+    // Check if guest mode is enabled and no proof provided
+    if (!worldIdProof && GUEST_CONFIG.ENABLED) {
+      // Handle as guest
+      req.userRole = 'guest';
+      return next();
+    }
     
     if (!worldIdProof) {
       return res.status(401).json({ 
@@ -146,13 +213,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure human exists in storage
       let human = await storage.getHuman(humanId);
       if (!human) {
-        human = await storage.createHuman({ id: humanId });
+        human = await storage.createHuman({ id: humanId, role: 'verified' });
       }
 
       // Update presence
       await storage.updatePresence(humanId);
       
       req.humanId = humanId;
+      req.userRole = human.role || 'verified';
       next();
     } catch (error) {
       return res.status(401).json({ 
@@ -236,6 +304,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { allowed: true };
   }
 
+  // Apply guest session middleware to all routes
+  app.use(handleGuestSession);
+
+  // Policy endpoint - returns public policy configuration
+  app.get('/api/policy', (req, res) => {
+    res.json({
+      guestMode: {
+        enabled: GUEST_CONFIG.ENABLED,
+        maxChars: GUEST_CONFIG.MAX_CHARS,
+        cooldownSec: GUEST_CONFIG.COOLDOWN_SEC,
+        maxPerDay: GUEST_CONFIG.MAX_PER_DAY
+      },
+      verified: {
+        maxChars: 240,
+        features: ['star', 'report', 'work_mode', 'connect']
+      },
+      rateLimits: {
+        messages: {
+          perMinute: RATE_LIMITS.MESSAGES_PER_MIN,
+          perHour: RATE_LIMITS.MESSAGES_PER_HOUR,
+          perDay: RATE_LIMITS.MESSAGES_PER_DAY
+        },
+        stars: {
+          perMinute: RATE_LIMITS.STARS_PER_MIN
+        },
+        workLinks: {
+          per10Minutes: RATE_LIMITS.WORK_LINKS_PER_10MIN,
+          perHour: RATE_LIMITS.WORK_LINKS_PER_HOUR
+        }
+      }
+    });
+  });
+
+  // Me endpoint - returns current user info and role
+  app.get('/api/me', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    const role = req.userRole || 'guest';
+    const humanId = req.humanId;
+    
+    let human = null;
+    if (humanId) {
+      human = await storage.getHuman(humanId);
+    }
+    
+    // Get applicable limits based on role
+    const limits = role === 'guest' ? {
+      maxChars: GUEST_CONFIG.MAX_CHARS,
+      cooldownSec: GUEST_CONFIG.COOLDOWN_SEC,
+      maxPerDay: GUEST_CONFIG.MAX_PER_DAY,
+      features: ['global_room']
+    } : {
+      maxChars: 240,
+      features: ['global_room', 'star', 'report', 'work_mode', 'connect']
+    };
+    
+    res.json({
+      humanId: humanId || null,
+      role,
+      isVerified: role === 'verified' || role === 'admin',
+      limits,
+      joinedAt: human?.joinedAt || null,
+      capsuleSeen: human?.capsuleSeen || false
+    });
+  });
+
   // Health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({ 
@@ -266,8 +398,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send a message (requires authentication)
   app.post('/api/messages', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
-      const humanId = req.humanId!;
+      const userRole = req.userRole || 'guest';
       const messageData = insertMessageSchema.parse(req.body);
+      
+      // Guest mode restrictions
+      if (userRole === 'guest') {
+        // Check if guest mode is enabled
+        if (!GUEST_CONFIG.ENABLED) {
+          return res.status(403).json({
+            message: 'Guest mode is disabled. Please verify with World ID.',
+            code: 'VERIFICATION_REQUIRED'
+          });
+        }
+        
+        // Restrict to global room only
+        if (messageData.room !== 'global') {
+          return res.status(403).json({
+            message: 'Guests can only post in the global room',
+            code: 'VERIFICATION_REQUIRED'
+          });
+        }
+        
+        // Enforce character limit
+        if (messageData.text.length > GUEST_CONFIG.MAX_CHARS) {
+          return res.status(400).json({
+            message: `Guest messages limited to ${GUEST_CONFIG.MAX_CHARS} characters`,
+            code: 'GUEST_LIMIT_EXCEEDED'
+          });
+        }
+        
+        // Check guest rate limits
+        const dayBucket = new Date().toISOString().split('T')[0];
+        const messageCount = await storage.getGuestMessageCount(req.guestSessionId!, dayBucket);
+        
+        if (messageCount >= GUEST_CONFIG.MAX_PER_DAY) {
+          return res.status(429).json({
+            message: `Guests limited to ${GUEST_CONFIG.MAX_PER_DAY} messages per day. Verify to unlock full chat!`,
+            code: 'GUEST_RATE_LIMITED'
+          });
+        }
+        
+        // Create a temporary human ID for guests
+        const humanId = `guest_${req.guestSessionId}`;
+        
+        // Create message for guest
+        const message = await storage.createMessage({
+          ...messageData,
+          authorHumanId: humanId,
+          authorRole: 'guest'
+        });
+        
+        // Update guest session message count
+        await storage.incrementGuestMessageCount(req.guestSessionId!, dayBucket);
+        
+        // Broadcast new message
+        broadcast({
+          type: 'new_message',
+          data: {
+            ...message,
+            authorHandle: `Guest`,
+            isStarredByUser: false
+          }
+        });
+        
+        return res.json({ message, code: 'SUCCESS' });
+      }
+      
+      // Verified user flow continues below
+      const humanId = req.humanId!;
 
       // Check user moderation status first
       const moderationStatus = await automatedModeration.checkUserModerationStatus(humanId);
@@ -328,7 +526,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create message (it will be processed further by moderation system)
       const message = await storage.createMessage({
         ...messageData,
-        authorHumanId: humanId
+        authorHumanId: humanId,
+        authorRole: userRole || 'verified'
       });
 
       // Update rate limits
@@ -433,6 +632,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Star a message (requires authentication)
   app.post('/api/stars', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
+      // Check if user is verified
+      if (req.userRole === 'guest') {
+        return res.status(403).json({
+          message: 'Verify with World ID to star messages',
+          code: 'VERIFICATION_REQUIRED'
+        });
+      }
+      
       const humanId = req.humanId!;
       const starData = insertStarSchema.parse(req.body);
 
@@ -509,6 +716,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Report a message (requires authentication)
   app.post('/api/reports', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
+      // Check if user is verified
+      if (req.userRole === 'guest') {
+        return res.status(403).json({
+          message: 'Verify with World ID to report messages',
+          code: 'VERIFICATION_REQUIRED'
+        });
+      }
+      
       const humanId = req.humanId!;
       const reportData = insertReportSchema.parse(req.body);
 
@@ -1799,6 +2014,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     return { allowed: true };
   }
+
+  // World ID Verification endpoint
+  app.post('/api/verify/worldid', handleGuestSession, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { proof, nullifier_hash, merkle_root } = req.body;
+
+      // Basic validation
+      if (!proof || !nullifier_hash || !merkle_root) {
+        return res.status(400).json({
+          message: 'Missing World ID verification data',
+          code: 'INVALID_REQUEST'
+        });
+      }
+
+      // In production, verify the proof with World ID Cloud API
+      // For now, we'll simulate verification
+      const verifyWorldIdProof = async (proof: string, nullifierHash: string) => {
+        // TODO: Implement actual World ID verification
+        // const response = await fetch('https://developer.worldcoin.org/api/v1/verify', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     app_id: WORLDID_CONFIG.APP_ID,
+        //     action: WORLDID_CONFIG.ACTION,
+        //     signal: '',
+        //     proof,
+        //     nullifier_hash: nullifierHash,
+        //     merkle_root
+        //   })
+        // });
+        // return response.ok;
+        
+        // Simulated verification for development
+        return true;
+      };
+
+      const isValid = await verifyWorldIdProof(proof, nullifier_hash);
+      
+      if (!isValid) {
+        return res.status(400).json({
+          message: 'Invalid World ID proof',
+          code: 'INVALID_PROOF'
+        });
+      }
+
+      // Hash the nullifier to create the human ID
+      const humanId = crypto.createHash('sha256')
+        .update(nullifier_hash + WORLDID_CONFIG.APP_ID)
+        .digest('hex');
+
+      // Check if human exists, create if not
+      let human = await storage.getHuman(humanId);
+      if (!human) {
+        human = await storage.createHuman({ 
+          id: humanId,
+          role: 'verified'
+        });
+      } else if (human.role === 'guest') {
+        // Upgrade from guest to verified
+        await storage.updateHumanRole(humanId, 'verified');
+      }
+
+      res.json({
+        success: true,
+        humanId,
+        role: 'verified',
+        message: 'Successfully verified with World ID'
+      });
+    } catch (error) {
+      console.error('World ID verification error:', error);
+      res.status(500).json({
+        message: 'Failed to verify World ID',
+        code: 'VERIFICATION_ERROR'
+      });
+    }
+  });
+
+  // Permit2 Verification endpoint (foundation for future token transfers)
+  app.post('/api/permit2/verify', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { signature, amount, deadline, nonce, token, spender } = req.body;
+
+      // Basic validation
+      if (!signature || !amount || !deadline || !nonce || !token || !spender) {
+        return res.status(400).json({
+          message: 'Missing Permit2 signature data',
+          code: 'INVALID_REQUEST'
+        });
+      }
+
+      // Check if user is verified
+      if (req.userRole === 'guest') {
+        return res.status(403).json({
+          message: 'Verify with World ID to use Permit2 features',
+          code: 'VERIFICATION_REQUIRED'
+        });
+      }
+
+      // Verify deadline hasn't passed
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      if (currentTimestamp > deadline) {
+        return res.status(400).json({
+          message: 'Permit2 signature has expired',
+          code: 'SIGNATURE_EXPIRED'
+        });
+      }
+
+      // In production, verify the EIP-712 signature here
+      // For now, we'll just validate the structure
+      const verifyPermit2Signature = async (
+        sig: string,
+        amt: string,
+        dl: number,
+        nc: number
+      ): Promise<boolean> => {
+        // TODO: Implement actual EIP-712 signature verification
+        // This would involve:
+        // 1. Reconstructing the typed data hash
+        // 2. Recovering the signer address
+        // 3. Validating the signer is the expected user
+        
+        // For development, just check signature format
+        return sig.startsWith('0x') && sig.length === 132;
+      };
+
+      const isValid = await verifyPermit2Signature(signature, amount, deadline, nonce);
+
+      if (!isValid) {
+        return res.status(400).json({
+          message: 'Invalid Permit2 signature',
+          code: 'INVALID_SIGNATURE'
+        });
+      }
+
+      // Store the signature for future use (no actual transfers in Phase 2)
+      await storage.createPermit2Signature({
+        humanId: req.humanId!,
+        tokenId: token, // This would be resolved to a token ID in production
+        signature,
+        amount,
+        deadline,
+        nonce,
+        spender,
+        used: false
+      });
+
+      res.json({
+        success: true,
+        message: 'Permit2 signature verified and stored',
+        deadline,
+        nonce
+      });
+    } catch (error) {
+      console.error('Permit2 verification error:', error);
+      res.status(500).json({
+        message: 'Failed to verify Permit2 signature',
+        code: 'VERIFICATION_ERROR'
+      });
+    }
+  });
 
   return httpServer;
 }

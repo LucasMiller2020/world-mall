@@ -1,6 +1,8 @@
 import { 
   type Human, 
   type InsertHuman,
+  type GuestSession,
+  type InsertGuestSession,
   type Message,
   type InsertMessage,
   type Star,
@@ -142,6 +144,7 @@ import {
   rateLimits,
   ledgerEntries,
   connectRequests,
+  guestSessions,
   // Invite system tables
   inviteCodes,
   referrals,
@@ -191,6 +194,15 @@ export interface IStorage {
   createHuman(human: InsertHuman): Promise<Human>;
   updateHumanCapsuleSeen(id: string): Promise<void>;
   updateHumanMuteList(id: string, muteList: string[]): Promise<void>;
+  updateHumanRole(id: string, role: 'guest' | 'verified' | 'admin'): Promise<void>;
+  
+  // Guest session operations
+  getGuestSession(id: string): Promise<GuestSession | undefined>;
+  getGuestSessionByHash(ipHash: string, userAgentHash: string): Promise<GuestSession | undefined>;
+  createGuestSession(session: InsertGuestSession): Promise<GuestSession>;
+  updateGuestSessionActivity(id: string): Promise<void>;
+  incrementGuestMessageCount(id: string, dayBucket: string): Promise<void>;
+  getGuestMessageCount(id: string, dayBucket: string): Promise<number>;
   
   // Message operations
   getMessages(room: string, limit?: number): Promise<MessageWithAuthor[]>;
@@ -632,6 +644,7 @@ export class MemStorage implements IStorage {
   private ledgerEntries: LedgerEntry[] = [];
   private connectRequests: Map<string, ConnectRequest> = new Map();
   private presenceMap: Map<string, Date> = new Map();
+  private guestSessions: Map<string, GuestSession> = new Map();
   
   // Point system data structures
   private userPointBalances: Map<string, UserPointBalance> = new Map();
@@ -789,6 +802,65 @@ export class MemStorage implements IStorage {
       human.muteList = muteList;
       this.humans.set(id, human);
     }
+  }
+
+  async updateHumanRole(id: string, role: 'guest' | 'verified' | 'admin'): Promise<void> {
+    const human = this.humans.get(id);
+    if (human) {
+      human.role = role;
+      this.humans.set(id, human);
+    }
+  }
+
+  async getGuestSession(id: string): Promise<GuestSession | undefined> {
+    return this.guestSessions.get(id);
+  }
+
+  async getGuestSessionByHash(ipHash: string, userAgentHash: string): Promise<GuestSession | undefined> {
+    return Array.from(this.guestSessions.values()).find(
+      session => session.ipHash === ipHash && session.userAgentHash === userAgentHash
+    );
+  }
+
+  async createGuestSession(session: InsertGuestSession): Promise<GuestSession> {
+    const guestSession: GuestSession = {
+      id: randomUUID(),
+      ...session,
+      createdAt: new Date(),
+      lastSeen: new Date(),
+      messageCount: session.messageCount || 0
+    };
+    this.guestSessions.set(guestSession.id, guestSession);
+    return guestSession;
+  }
+
+  async updateGuestSessionActivity(id: string): Promise<void> {
+    const session = this.guestSessions.get(id);
+    if (session) {
+      session.lastSeen = new Date();
+      this.guestSessions.set(id, session);
+    }
+  }
+
+  async incrementGuestMessageCount(id: string, dayBucket: string): Promise<void> {
+    const session = this.guestSessions.get(id);
+    if (session) {
+      if (session.dayBucket !== dayBucket) {
+        session.dayBucket = dayBucket;
+        session.messageCount = 1;
+      } else {
+        session.messageCount++;
+      }
+      this.guestSessions.set(id, session);
+    }
+  }
+
+  async getGuestMessageCount(id: string, dayBucket: string): Promise<number> {
+    const session = this.guestSessions.get(id);
+    if (session && session.dayBucket === dayBucket) {
+      return session.messageCount;
+    }
+    return 0;
   }
 
   async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {
@@ -2627,6 +2699,58 @@ export class DatabaseStorage implements IStorage {
 
   async updateHumanMuteList(id: string, muteList: string[]): Promise<void> {
     await db.update(humans).set({ muteList }).where(eq(humans.id, id));
+  }
+
+  async updateHumanRole(id: string, role: 'guest' | 'verified' | 'admin'): Promise<void> {
+    await db.update(humans).set({ role }).where(eq(humans.id, id));
+  }
+
+  async getGuestSession(id: string): Promise<GuestSession | undefined> {
+    const result = await db.select().from(guestSessions).where(eq(guestSessions.id, id)).limit(1);
+    return result[0] || undefined;
+  }
+
+  async getGuestSessionByHash(ipHash: string, userAgentHash: string): Promise<GuestSession | undefined> {
+    const result = await db.select().from(guestSessions)
+      .where(and(
+        eq(guestSessions.ipHash, ipHash),
+        eq(guestSessions.userAgentHash, userAgentHash)
+      ))
+      .limit(1);
+    return result[0] || undefined;
+  }
+
+  async createGuestSession(session: InsertGuestSession): Promise<GuestSession> {
+    const result = await db.insert(guestSessions).values(session).returning();
+    return result[0];
+  }
+
+  async updateGuestSessionActivity(id: string): Promise<void> {
+    await db.update(guestSessions).set({ lastSeen: new Date() }).where(eq(guestSessions.id, id));
+  }
+
+  async incrementGuestMessageCount(id: string, dayBucket: string): Promise<void> {
+    const session = await this.getGuestSession(id);
+    if (session) {
+      if (session.dayBucket !== dayBucket) {
+        await db.update(guestSessions).set({ 
+          dayBucket,
+          messageCount: 1 
+        }).where(eq(guestSessions.id, id));
+      } else {
+        await db.update(guestSessions)
+          .set({ messageCount: sql`${guestSessions.messageCount} + 1` })
+          .where(eq(guestSessions.id, id));
+      }
+    }
+  }
+
+  async getGuestMessageCount(id: string, dayBucket: string): Promise<number> {
+    const session = await this.getGuestSession(id);
+    if (session && session.dayBucket === dayBucket) {
+      return session.messageCount;
+    }
+    return 0;
   }
 
   async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {

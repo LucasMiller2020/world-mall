@@ -10,6 +10,7 @@ export const humans = pgTable("humans", {
   capsuleSeen: boolean("capsule_seen").default(false).notNull(),
   muteList: jsonb("mute_list").$type<string[]>().default([]).notNull(),
   preferredLanguage: varchar("preferred_language", { length: 10 }).default("en").notNull(), // User's preferred language (e.g., 'en', 'es', 'fr')
+  role: varchar("role", { enum: ["guest", "verified", "admin"] }).default("guest").notNull(), // User role for access control
 });
 
 // Message table - for both global and work rooms
@@ -26,6 +27,7 @@ export const messages = pgTable("messages", {
   link: text("link"),
   geoScope: varchar("geo_scope").default("Global"),
   isHidden: boolean("is_hidden").default(false).notNull(),
+  authorRole: varchar("author_role", { enum: ["guest", "verified", "admin"] }).default("guest").notNull(), // Role of message author
 });
 
 // Star table - tracks upvotes (1 per human per message)
@@ -123,6 +125,17 @@ export const connectRequests = pgTable("connect_requests", {
   requesterHumanId: varchar("requester_human_id").notNull().references(() => humans.id),
   targetHumanId: varchar("target_human_id").notNull().references(() => humans.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Guest sessions for tracking anonymous users
+export const guestSessions = pgTable("guest_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ipHash: varchar("ip_hash").notNull(), // SHA-256 hash of IP for privacy
+  userAgentHash: varchar("user_agent_hash").notNull(), // SHA-256 hash of user agent
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastSeen: timestamp("last_seen").defaultNow().notNull(),
+  messageCount: integer("message_count").default(0).notNull(),
+  dayBucket: varchar("day_bucket").notNull(), // YYYY-MM-DD format for daily limits
 });
 
 // Invite codes for referral system
@@ -444,6 +457,12 @@ export const insertConnectRequestSchema = createInsertSchema(connectRequests).om
   requesterHumanId: true, // This will be added by authentication middleware
 });
 
+export const insertGuestSessionSchema = createInsertSchema(guestSessions).omit({
+  id: true,
+  createdAt: true,
+  lastSeen: true,
+});
+
 // Token system insert schemas
 export const insertSupportedTokenSchema = createInsertSchema(supportedTokens).omit({
   id: true,
@@ -500,6 +519,9 @@ export type Human = typeof humans.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export type InsertGuestSession = z.infer<typeof insertGuestSessionSchema>;
+export type GuestSession = typeof guestSessions.$inferSelect;
 
 export type InsertStar = z.infer<typeof insertStarSchema>;
 export type Star = typeof stars.$inferSelect;

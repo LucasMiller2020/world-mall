@@ -12,6 +12,7 @@ import { ReportModal } from "@/components/report-modal";
 import { ArrowLeft, Briefcase, Shield, Users } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
+import { useAuthRole } from "@/hooks/use-auth-role";
 import { useToast } from "@/hooks/use-toast";
 import { filterContent } from "@/lib/content-filter";
 import type { MessageWithAuthor, OnlinePresence, Theme, Topic } from "@shared/schema";
@@ -22,11 +23,13 @@ export default function GlobalSquare() {
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   const { humanId, isVerified, verify } = useWorldId();
   const { isConnected } = useWebSocket(humanId);
+  const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
 
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery<MessageWithAuthor[]>({
@@ -171,7 +174,17 @@ export default function GlobalSquare() {
   });
 
   const handleSendMessage = async () => {
-    if (!isVerified) {
+    // Check message length for guest mode
+    if (isGuest() && message.length > limits.maxChars) {
+      toast({
+        title: "Message too long",
+        description: `Guest messages limited to ${limits.maxChars} characters. Verify to unlock full chat!`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isGuest() && !isVerified) {
       await verify();
       return;
     }
@@ -204,16 +217,26 @@ export default function GlobalSquare() {
   };
 
   const handleStarMessage = (messageId: string) => {
-    if (!isVerified) {
-      verify();
+    if (!canStar()) {
+      setShowVerifyPrompt(true);
+      toast({
+        title: "Verification Required",
+        description: "Verify with World ID to star messages",
+        variant: "destructive",
+      });
       return;
     }
     starMessageMutation.mutate(messageId);
   };
 
   const handleReportMessage = (messageId: string) => {
-    if (!isVerified) {
-      verify();
+    if (!canReport()) {
+      setShowVerifyPrompt(true);
+      toast({
+        title: "Verification Required",
+        description: "Verify with World ID to report messages",
+        variant: "destructive",
+      });
       return;
     }
     setReportingMessage(messageId);
@@ -226,7 +249,8 @@ export default function GlobalSquare() {
   };
 
   const characterCount = message.length;
-  const canSend = isVerified && message.trim().length > 0 && message.length <= 240 && cooldownSeconds === 0;
+  const maxChars = limits?.maxChars || (isGuest() ? 10 : 240);
+  const canSend = message.trim().length > 0 && message.length <= maxChars && cooldownSeconds === 0;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -335,17 +359,65 @@ export default function GlobalSquare() {
         )}
       </div>
 
+      {/* Guest Mode Banner */}
+      {isGuest() && (
+        <div className="bg-muted/50 border-t border-border px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                Guest Mode
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {limits?.maxChars} char limit • {limits?.maxPerDay} messages/day
+              </span>
+            </div>
+            <Button 
+              onClick={verify} 
+              size="sm" 
+              variant="outline"
+              data-testid="button-verify-banner"
+            >
+              <Shield className="h-3 w-3 mr-1" />
+              Verify
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Composer Section */}
       <div className="bg-background border-t border-border p-6">
-        {!isVerified ? (
+        {showVerifyPrompt ? (
           <Card className="mb-4">
             <CardContent className="pt-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3" data-testid="text-verification-gate">
-                Posting is human-only. Verify once with World ID.
+              <p className="text-sm text-muted-foreground mb-3" data-testid="text-verification-prompt">
+                Unlock full features with World ID verification
               </p>
-              <Button onClick={verify} className="w-full" data-testid="button-verify-world-id">
+              <div className="space-y-2 mb-3 text-left">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="h-3 w-3" />
+                  <span>Send messages up to 240 characters</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="h-3 w-3" />
+                  <span>Star and report messages</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="h-3 w-3" />
+                  <span>Access Work Mode for collaboration</span>
+                </div>
+              </div>
+              <Button onClick={() => { setShowVerifyPrompt(false); verify(); }} className="w-full" data-testid="button-verify-world-id">
                 <Shield className="h-4 w-4 mr-2" />
                 Verify with World ID
+              </Button>
+              <Button 
+                onClick={() => setShowVerifyPrompt(false)} 
+                variant="ghost" 
+                size="sm" 
+                className="w-full mt-2"
+                data-testid="button-continue-as-guest"
+              >
+                Continue as Guest
               </Button>
             </CardContent>
           </Card>
@@ -363,19 +435,31 @@ export default function GlobalSquare() {
 
             <div className="relative">
               <Textarea
-                placeholder="Say something useful, kind, or curious…"
+                placeholder={isGuest() ? "Say hello 👋 (verify to unlock full chat)" : "Say something useful, kind, or curious…"}
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => {
+                  if (isGuest() && e.target.value.length > maxChars) {
+                    return; // Prevent typing beyond limit for guests
+                  }
+                  setMessage(e.target.value);
+                }}
                 className="resize-none"
                 rows={3}
-                maxLength={240}
+                maxLength={maxChars}
                 disabled={cooldownSeconds > 0}
                 data-testid="input-message-composer"
               />
               <div className="flex items-center justify-between mt-2">
-                <span className={`text-xs ${characterCount > 240 ? 'text-destructive' : 'text-muted-foreground'}`} data-testid="text-character-count">
-                  {characterCount}/240
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs ${characterCount > maxChars ? 'text-destructive' : 'text-muted-foreground'}`} data-testid="text-character-count">
+                    {characterCount}/{maxChars}
+                  </span>
+                  {isGuest() && characterCount > maxChars / 2 && (
+                    <Badge variant="outline" className="text-xs">
+                      Guest limit
+                    </Badge>
+                  )}
+                </div>
                 <Button 
                   onClick={handleSendMessage}
                   disabled={!canSend || sendMessageMutation.isPending}
