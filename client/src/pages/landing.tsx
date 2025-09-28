@@ -9,6 +9,7 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Shield, Settings, Sun, Moon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMiniKitStatus, useWorldId } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeContext } from "@/theme/ThemeProvider";
@@ -234,27 +235,35 @@ export default function Landing() {
         </div>
         
         {/* CTA Buttons */}
-        <div className="space-y-3 mb-8">
-          <Button 
-            onClick={handleEnterGlobalSquare}
-            className="w-full py-4 text-lg"
-            size="lg"
-            data-testid="button-enter-global-square"
-          >
-            {t('landing.enterGlobalSquare')}
-          </Button>
-          
-          <Button 
-            variant="outline"
-            className="w-full"
-            size="sm"
-            onClick={handleVerifyWithWorldId}
-            disabled={isVerifying}
-            data-testid="button-verify-world-id"
-          >
-            <Shield className="h-4 w-4 mr-2" />
-            {isVerifying ? 'Verifying...' : isVerified ? 'Verified ✓' : t('auth.verifyWorldId')}
-          </Button>
+        <div className="mb-8">
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={handleEnterGlobalSquare}
+              className="flex-1 py-4 text-lg"
+              size="lg"
+              data-testid="button-enter-global-square"
+            >
+              {t('landing.enterGlobalSquare')}
+            </Button>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline"
+                  size="icon"
+                  onClick={handleVerifyWithWorldId}
+                  disabled={isVerifying}
+                  data-testid="button-verify-world-id-shield"
+                  className="h-auto py-3 px-3"
+                >
+                  <Shield className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isVerified ? 'Verified ✓' : 'Verify to unlock full chat'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
         
         {/* Guest Access Card */}

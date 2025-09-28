@@ -10,6 +10,7 @@ import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
 import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useAuthRole } from "@/hooks/use-auth-role";
@@ -592,35 +593,40 @@ export default function GlobalSquare() {
         )}
       </div>
 
-      {/* Guest Mode Banner */}
-      {isGuest() && role !== 'verified' && (
-        <div className="bg-muted/50 border-t border-border px-6 py-3">
+      {/* Compact Guest Mode Badge with Shield */}
+      {isGuest() && role !== 'verified' && !isVerified && (
+        <div className="bg-muted/50 border-t border-border px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">
                 Guest Mode
               </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={verify} 
+                    size="icon" 
+                    variant="ghost"
+                    className="h-6 w-6"
+                    data-testid="button-verify-shield"
+                  >
+                    <Shield className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Verify to unlock full chat</p>
+                </TooltipContent>
+              </Tooltip>
               <span className="text-xs text-muted-foreground">
                 60 chars • {guestStats?.messagesRemaining ?? 10} left today • 30s cooldown
               </span>
             </div>
-            {role !== 'verified' && (
-              <Button 
-                onClick={verify} 
-                size="sm" 
-                variant="outline"
-                data-testid="button-verify-banner"
-              >
-                <Shield className="h-3 w-3 mr-1" />
-                Verify for Full Access
-              </Button>
-            )}
           </div>
         </div>
       )}
 
-      {/* Composer Section */}
-      <div className="bg-background border-t border-border p-6">
+      {/* Composer Section - More Compact */}
+      <div className="bg-background border-t border-border p-4">
         {showVerifyPrompt ? (
           <Card className="mb-4">
             <CardContent className="pt-4 text-center">
@@ -670,7 +676,7 @@ export default function GlobalSquare() {
 
             <div className="relative">
               <Textarea
-                placeholder={isGuest() && role !== 'verified' ? "Say hello 👋 (verify to unlock full chat)" : "Say something useful, kind, or curious…"}
+                placeholder={isVerified || role === 'verified' ? "Say hello 👋..." : "Say hello 👋 (verify to unlock full chat)"}
                 value={message}
                 onChange={(e) => {
                   if (isGuest() && role !== 'verified' && e.target.value.length > maxChars) {
@@ -679,7 +685,7 @@ export default function GlobalSquare() {
                   setMessage(e.target.value);
                 }}
                 className="resize-none"
-                rows={3}
+                rows={2}
                 maxLength={maxChars}
                 disabled={cooldownSeconds > 0}
                 data-testid="input-message-composer"
@@ -689,7 +695,7 @@ export default function GlobalSquare() {
                   <span className={`text-xs ${characterCount > maxChars ? 'text-destructive' : 'text-muted-foreground'}`} data-testid="text-character-count">
                     {characterCount}/{maxChars}
                   </span>
-                  {isGuest() && role !== 'verified' && (
+                  {isGuest() && role !== 'verified' && !isVerified && (
                     <span className="text-xs text-muted-foreground" data-testid="text-messages-remaining">
                       {guestStats?.messagesRemaining ?? 10} messages left today
                     </span>
