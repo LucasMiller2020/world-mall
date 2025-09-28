@@ -31,8 +31,8 @@
   },
   "landing": {
     "enterGlobalSquare": "Enter Global Square",
-    "verificationNotice": "Posting is human-only",
-    "verificationSubtitle": "Verify once with World ID",
+    "verificationNotice": "Guests can post up to 60 characters (3/day). Verify with World ID to unlock full chat.",
+    "verificationSubtitle": "",
     "worldAppNotice": "For full functionality, please open this app in World App",
     "previewHeader": "Live from Global Square",
     "previewSubtitle": "Latest conversations (read-only preview)",

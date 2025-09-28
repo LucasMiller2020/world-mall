@@ -31,8 +31,8 @@
   },
   "landing": {
     "enterGlobalSquare": "进入全球广场",
-    "verificationNotice": "仅限人类发布",
-    "verificationSubtitle": "使用World ID验证一次",
+    "verificationNotice": "访客可发布最多60字符 (3次/天)。使用World ID验证解锁完整聊天。",
+    "verificationSubtitle": "",
     "worldAppNotice": "要获得完整功能，请在World App中打开此应用",
     "previewHeader": "全球广场直播",
     "previewSubtitle": "最新对话（只读预览）",

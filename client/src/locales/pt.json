@@ -31,8 +31,8 @@
   },
   "landing": {
     "enterGlobalSquare": "Entrar na Praça Global",
-    "verificationNotice": "Publicação é só para humanos",
-    "verificationSubtitle": "Verifique uma vez com World ID",
+    "verificationNotice": "Convidados podem postar até 60 caracteres (3/dia). Verifique com World ID para desbloquear chat completo.",
+    "verificationSubtitle": "",
     "worldAppNotice": "Para funcionalidade completa, abra este app no World App",
     "previewHeader": "Ao vivo da Praça Global",
     "previewSubtitle": "Últimas conversas (prévia somente leitura)",

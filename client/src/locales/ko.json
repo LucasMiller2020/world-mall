@@ -31,8 +31,8 @@
   },
   "landing": {
     "enterGlobalSquare": "글로벌 광장 입장",
-    "verificationNotice": "포스팅은 인간만 가능",
-    "verificationSubtitle": "World ID로 한 번 인증",
+    "verificationNotice": "게스트는 최대 60자 게시 가능 (3회/일). World ID 인증으로 전체 채팅을 잠금해제하세요.",
+    "verificationSubtitle": "",
     "worldAppNotice": "모든 기능을 사용하려면 World App에서 이 앱을 열어주세요",
     "previewHeader": "글로벌 광장 라이브",
     "previewSubtitle": "최신 대화 (읽기 전용 미리보기)",

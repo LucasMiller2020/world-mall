@@ -31,8 +31,8 @@
   },
   "landing": {
     "enterGlobalSquare": "Globalen Platz betreten",
-    "verificationNotice": "Posten ist nur für Menschen",
-    "verificationSubtitle": "Einmal mit World ID verifizieren",
+    "verificationNotice": "Gäste können bis zu 60 Zeichen posten (3/Tag). Mit World ID verifizieren für vollständigen Chat.",
+    "verificationSubtitle": "",
     "worldAppNotice": "Für volle Funktionalität öffnen Sie diese App bitte in der World App",
     "previewHeader": "Live vom Globalen Platz",
     "previewSubtitle": "Neueste Gespräche (schreibgeschützte Vorschau)",

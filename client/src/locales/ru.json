@@ -31,8 +31,8 @@
   },
   "landing": {
     "enterGlobalSquare": "Войти на Глобальную Площадь",
-    "verificationNotice": "Публикации только для людей",
-    "verificationSubtitle": "Подтвердите один раз через World ID",
+    "verificationNotice": "Гости могут публиковать до 60 символов (3/день). Подтвердите через World ID для полного чата.",
+    "verificationSubtitle": "",
     "worldAppNotice": "Для полной функциональности откройте это приложение в World App",
     "previewHeader": "Прямо с Глобальной Площади",
     "previewSubtitle": "Последние беседы (предварительный просмотр)",
