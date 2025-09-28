@@ -1,6 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Star, Flag, VolumeX } from "lucide-react";
+import { useState } from "react";
 import type { MessageWithAuthor } from "@shared/schema";
 
 interface MessageItemProps {
@@ -20,6 +22,16 @@ export function MessageItem({
   onReportClick,
   onMuteClick,
 }: MessageItemProps) {
+  const [clickedReactions, setClickedReactions] = useState<string[]>([]);
+
+  const handleReactionClick = (emoji: string) => {
+    setClickedReactions((prev) => {
+      if (prev.includes(emoji)) {
+        return prev.filter((e) => e !== emoji);
+      }
+      return [...prev, emoji];
+    });
+  };
   const formatTimeAgo = (date: Date | string) => {
     const now = new Date();
     const past = new Date(date);
@@ -116,6 +128,69 @@ export function MessageItem({
                 >
                   <VolumeX className="h-3 w-3" />
                 </Button>
+                {/* Emoji Reactions (Coming Soon) */}
+                <div className="flex items-center gap-1 border-l pl-4 ml-auto">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReactionClick('star')}
+                        className={`h-auto p-1 transition-all duration-200 ${
+                          clickedReactions.includes('star')
+                            ? 'scale-110 bg-amber-50 dark:bg-amber-900/20'
+                            : 'hover:scale-105'
+                        }`}
+                        data-testid="button-reaction-star"
+                      >
+                        <span className="text-base">⭐</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Reactions coming soon with Mall Coins</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReactionClick('heart')}
+                        className={`h-auto p-1 transition-all duration-200 ${
+                          clickedReactions.includes('heart')
+                            ? 'scale-110 bg-red-50 dark:bg-red-900/20'
+                            : 'hover:scale-105'
+                        }`}
+                        data-testid="button-reaction-heart"
+                      >
+                        <span className="text-base">❤️</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Reactions coming soon with Mall Coins</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReactionClick('laugh')}
+                        className={`h-auto p-1 transition-all duration-200 ${
+                          clickedReactions.includes('laugh')
+                            ? 'scale-110 bg-blue-50 dark:bg-blue-900/20'
+                            : 'hover:scale-105'
+                        }`}
+                        data-testid="button-reaction-laugh"
+                      >
+                        <span className="text-base">😂</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Reactions coming soon with Mall Coins</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
             )}
             {isPreview && (

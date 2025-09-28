@@ -9,7 +9,7 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
-import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical } from "lucide-react";
+import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useAuthRole } from "@/hooks/use-auth-role";
@@ -25,6 +25,13 @@ import {
 } from "@/components/ui/sheet";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { filterContent } from "@/lib/content-filter";
 import type { MessageWithAuthor, OnlinePresence, Theme, Topic } from "@shared/schema";
 
@@ -37,6 +44,7 @@ export default function GlobalSquare() {
   const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const [devMenuOpen, setDevMenuOpen] = useState(false);
+  const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
@@ -460,6 +468,17 @@ export default function GlobalSquare() {
             >
               <Users className="h-4 w-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFriendsDialogOpen(true)}
+              className="relative"
+              data-testid="button-friends"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className="sr-only">Friends (coming soon)</span>
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-muted-foreground/30" />
+            </Button>
             <Button 
               variant="ghost" 
               size="sm"
@@ -706,6 +725,37 @@ export default function GlobalSquare() {
           isLoading={reportMessageMutation.isPending}
         />
       )}
+
+      {/* Friends Coming Soon Dialog */}
+      <Dialog open={friendsDialogOpen} onOpenChange={setFriendsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Friends (Coming Soon)
+            </DialogTitle>
+            <DialogDescription className="pt-4 space-y-3">
+              <p>
+                World Chat DM integration planned—add friends and DM via World App.
+              </p>
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Soon you'll be able to:
+                </p>
+                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <li>• Add friends from the World Mall community</li>
+                  <li>• Send direct messages through World App</li>
+                  <li>• Share Mall Coins with your friends</li>
+                  <li>• Create private group chats</li>
+                </ul>
+              </div>
+              <p className="text-xs text-muted-foreground italic">
+                This feature is part of our roadmap for enhanced social features.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
