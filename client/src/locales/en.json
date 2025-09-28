@@ -17,7 +17,7 @@
     "global": "Global"
   },
   "app": {
-    "name": "Humans Square",
+    "name": "World Mall",
     "tagline": "A global square for verified humans.",
     "description": "Talk. Learn. Build. One human, one voice."
   },
@@ -153,6 +153,6 @@
   "notifications": {
     "newMessage": "New message in {{room}}",
     "topicChange": "Today's topic has changed",
-    "welcome": "Welcome to Humans Square!"
+    "welcome": "Welcome to World Mall!"
   }
 }

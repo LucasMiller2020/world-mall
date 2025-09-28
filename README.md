@@ -1,4 +1,4 @@
-# Humans Square - World Mini App
+# World Mall - World Mini App
 
 A bot-proof global square for verified humans to talk, learn, and build. Built with World ID verification and real-time messaging.
 

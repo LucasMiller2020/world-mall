@@ -163,8 +163,8 @@ function InviteCodeCard({ invite }: { invite: InviteCodeWithStats }) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join Humans Square",
-          text: `${invite.customMessage || "Join me on Humans Square - the bot-proof global chat!"}\n\nUse my invite code: ${invite.code}`,
+          title: "Join World Mall",
+          text: `${invite.customMessage || "Join me on World Mall - the bot-proof global chat!"}\n\nUse my invite code: ${invite.code}`,
           url: inviteUrl
         });
       } catch (error) {
@@ -530,7 +530,7 @@ export default function ReferralDashboard() {
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-bold">Referral Dashboard</h1>
         <p className="text-muted-foreground">
-          Share Humans Square and earn rewards for growing our community
+          Share World Mall and earn rewards for growing our community
         </p>
       </div>
 

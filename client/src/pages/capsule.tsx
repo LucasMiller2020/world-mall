@@ -172,7 +172,7 @@ export default function Capsule() {
   const steps = [
     {
       icon: Users,
-      title: "Welcome to Humans Square",
+      title: "Welcome to World Mall",
       description: "You're entering a real-human space.",
       color: "text-primary",
       bgColor: "bg-primary/10",

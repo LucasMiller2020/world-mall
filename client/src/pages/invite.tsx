@@ -41,7 +41,7 @@ function InviteValidation({ code }: { code: string }) {
       queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
       
       toast({
-        title: "Welcome to Humans Square! 🎉",
+        title: "Welcome to World Mall! 🎉",
         description: `You've successfully joined via ${data.inviteCode || 'invite'}. Enjoy your rewards!`,
       });
 
@@ -157,7 +157,7 @@ function InviteValidation({ code }: { code: string }) {
         <div className="text-6xl">🎉</div>
         <h1 className="text-2xl font-bold">You're Invited!</h1>
         <p className="text-muted-foreground">
-          Join Humans Square, the bot-proof global chat platform
+          Join World Mall, the bot-proof global chat platform
         </p>
       </div>
 
