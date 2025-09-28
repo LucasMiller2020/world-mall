@@ -418,6 +418,64 @@ export const participationMetrics = pgTable("participation_metrics", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// DM Tables (Direct Messaging) - Stubs for future implementation
+
+// Connections table - For friend/connection relationships between users
+export const connections = pgTable("connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requesterId: varchar("requester_id").notNull().references(() => humans.id),
+  targetId: varchar("target_id").notNull().references(() => humans.id),
+  status: varchar("status", { enum: ["pending", "accepted", "blocked"] }).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Unique constraint to prevent duplicate connections
+  requesterTargetUnique: uniqueIndex("connections_requester_target_unique_idx").on(table.requesterId, table.targetId),
+  // Index for querying connections by target
+  targetIdIdx: index("connections_target_id_idx").on(table.targetId),
+  // Index for querying connections by status
+  statusIdx: index("connections_status_idx").on(table.status),
+}));
+
+// DM threads table - For DM conversation threads
+export const dmThreads = pgTable("dm_threads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastMessageAt: timestamp("last_message_at"),
+  title: text("title"), // Optional title for the thread
+}, (table) => ({
+  // Index for sorting threads by last message
+  lastMessageAtIdx: index("dm_threads_last_message_at_idx").on(table.lastMessageAt),
+}));
+
+// DM members table - For participants in each DM thread
+export const dmMembers = pgTable("dm_members", {
+  threadId: varchar("thread_id").notNull().references(() => dmThreads.id),
+  humanId: varchar("human_id").notNull().references(() => humans.id),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  lastReadAt: timestamp("last_read_at"),
+}, (table) => ({
+  // Composite primary key
+  compoundKey: uniqueIndex("dm_members_thread_human_unique_idx").on(table.threadId, table.humanId),
+  // Index for querying threads by human
+  humanIdIdx: index("dm_members_human_id_idx").on(table.humanId),
+  // Index for querying members by thread
+  threadIdIdx: index("dm_members_thread_id_idx").on(table.threadId),
+}));
+
+// DM messages table - For messages within DM threads
+export const dmMessages = pgTable("dm_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  threadId: varchar("thread_id").notNull().references(() => dmThreads.id),
+  authorHumanId: varchar("author_human_id").notNull().references(() => humans.id),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Index for querying messages by thread ordered by time
+  threadCreatedAtIdx: index("dm_messages_thread_created_at_idx").on(table.threadId, table.createdAt),
+  // Index for querying messages by author
+  authorIdx: index("dm_messages_author_idx").on(table.authorHumanId),
+}));
+
 // Insert schemas
 export const insertHumanSchema = createInsertSchema(humans).omit({
   joinedAt: true,
@@ -540,6 +598,27 @@ export const insertParticipationMetricSchema = createInsertSchema(participationM
   updatedAt: true,
 });
 
+// DM table insert schemas
+export const insertConnectionSchema = createInsertSchema(connections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDmThreadSchema = createInsertSchema(dmThreads).omit({
+  id: true,
+  createdAt: true,
+  lastMessageAt: true,
+});
+
+export const insertDmMemberSchema = createInsertSchema(dmMembers).omit({
+  joinedAt: true,
+});
+
+export const insertDmMessageSchema = createInsertSchema(dmMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertHuman = z.infer<typeof insertHumanSchema>;
 export type Human = typeof humans.$inferSelect;
@@ -607,6 +686,19 @@ export type DistributionEvent = typeof distributionEvents.$inferSelect;
 
 export type InsertParticipationMetric = z.infer<typeof insertParticipationMetricSchema>;
 export type ParticipationMetric = typeof participationMetrics.$inferSelect;
+
+// DM table types
+export type InsertConnection = z.infer<typeof insertConnectionSchema>;
+export type Connection = typeof connections.$inferSelect;
+
+export type InsertDmThread = z.infer<typeof insertDmThreadSchema>;
+export type DmThread = typeof dmThreads.$inferSelect;
+
+export type InsertDmMember = z.infer<typeof insertDmMemberSchema>;
+export type DmMember = typeof dmMembers.$inferSelect;
+
+export type InsertDmMessage = z.infer<typeof insertDmMessageSchema>;
+export type DmMessage = typeof dmMessages.$inferSelect;
 
 // Extended types for frontend
 export type MessageWithAuthor = Message & {
