@@ -11,7 +11,7 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Shield, Settings, Sun, Moon } from "lucide-react";
-import { useMiniKitStatus } from "@/hooks/use-world-id";
+import { useMiniKitStatus, useWorldId } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeContext } from "@/theme/ThemeProvider";
 import {
@@ -29,6 +29,7 @@ export default function Landing() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { isInstalled } = useMiniKitStatus();
+  const { verify, isVerifying, isVerified } = useWorldId();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
@@ -68,6 +69,39 @@ export default function Landing() {
         title: t('common.error'), 
         description: t('auth.pleaseEnterAdminKey'),
         variant: "destructive"
+      });
+    }
+  };
+
+  const handleVerifyWithWorldId = async () => {
+    if (!isInstalled) {
+      toast({
+        title: t('common.error'),
+        description: 'Please open this app in World App to verify',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (isVerified) {
+      setLocation('/room/global');
+      return;
+    }
+
+    try {
+      await verify();
+      // On successful verification, redirect to global square
+      toast({
+        title: 'Verification Successful',
+        description: 'Welcome! You now have full access to World Mall.',
+      });
+      setLocation('/room/global');
+    } catch (error) {
+      console.error('Verification failed:', error);
+      toast({
+        title: t('common.error'),
+        description: 'Verification failed. Please try again.',
+        variant: 'destructive'
       });
     }
   };
@@ -196,16 +230,27 @@ export default function Landing() {
             {t('landing.enterGlobalSquare')}
           </Button>
           
+          <Button 
+            variant="outline"
+            className="w-full"
+            size="sm"
+            onClick={handleVerifyWithWorldId}
+            disabled={isVerifying}
+            data-testid="button-verify-world-id"
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            {isVerifying ? 'Verifying...' : isVerified ? 'Verified ✓' : t('auth.verifyWorldId')}
+          </Button>
+          
           <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
             <DialogTrigger asChild>
               <Button 
-                variant="outline"
-                className="w-full"
+                variant="ghost"
                 size="sm"
+                className="text-muted-foreground text-xs"
                 data-testid="button-admin-access"
               >
-                <Shield className="h-4 w-4 mr-2" />
-                {t('auth.verifyWorldId')}
+                Admin Access
               </Button>
             </DialogTrigger>
             <DialogContent>

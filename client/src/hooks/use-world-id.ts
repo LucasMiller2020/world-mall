@@ -1,18 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMiniKit } from "@worldcoin/minikit-js/minikit-provider";
 import { VerificationLevel, VerifyCommandInput, MiniKit } from "@worldcoin/minikit-js";
-import crypto from "crypto";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useWorldId() {
   const [humanId, setHumanId] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const { isInstalled } = useMiniKit();
+  const queryClient = useQueryClient();
 
   // Load saved verification state from localStorage
   useEffect(() => {
-    const savedHumanId = localStorage.getItem('humans_square_human_id');
-    const savedVerification = localStorage.getItem('humans_square_verified');
+    const savedHumanId = localStorage.getItem('wm_human_id');
+    const savedVerification = localStorage.getItem('wm_verified');
     
     if (savedHumanId && savedVerification === 'true') {
       setHumanId(savedHumanId);
@@ -32,31 +33,65 @@ export function useWorldId() {
     setIsVerifying(true);
 
     try {
+      // Generate a random signal for this verification session
+      const signal = crypto.randomUUID();
+      
+      // Use WORLD_ID_ACTION from environment or fallback
+      const action = import.meta.env.VITE_WORLD_ID_ACTION || 'world-mall/verify';
+      
       const verifyPayload: VerifyCommandInput = {
-        action: 'verify_human',
+        action: action,
         verification_level: VerificationLevel.Orb,
-        signal: crypto.randomUUID(), // Random signal for this verification
+        signal: signal,
       };
 
       const result = await MiniKit.commandsAsync.verify(verifyPayload);
       
       if (result.finalPayload.status === 'success') {
-        // Create deterministic human ID from nullifier hash
-        const nullifierHash = result.finalPayload.nullifier_hash;
-        const generatedHumanId = crypto
-          .createHash('sha256')
-          .update(nullifierHash + 'humans_square_salt')
-          .digest('hex');
+        // POST the proof to our backend
+        const verificationData = {
+          nullifier_hash: result.finalPayload.nullifier_hash,
+          proof: result.finalPayload.proof,
+          merkle_root: result.finalPayload.merkle_root,
+          verification_level: result.finalPayload.verification_level || 'orb',
+          action: action,
+          signal: signal,
+        };
+        
+        const response = await fetch('/api/verify/worldid', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Include cookies for session
+          body: JSON.stringify(verificationData),
+        });
 
-        setHumanId(generatedHumanId);
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Verification failed on server');
+        }
+
+        const serverResult = await response.json();
+        
+        // Update local state with server response
+        const verifiedHumanId = serverResult.humanId;
+        setHumanId(verifiedHumanId);
         setIsVerified(true);
 
-        // Persist verification state
-        localStorage.setItem('humans_square_human_id', generatedHumanId);
-        localStorage.setItem('humans_square_verified', 'true');
+        // Persist verification state with new naming convention
+        localStorage.setItem('wm_human_id', verifiedHumanId);
+        localStorage.setItem('wm_verified', 'true');
+        localStorage.setItem('wm_role', serverResult.role || 'verified');
+
+        // Refetch user data and policy to get updated permissions
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/me'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/policy'] }),
+        ]);
 
         console.log('World ID verification successful');
-        return generatedHumanId;
+        return verifiedHumanId;
       } else {
         throw new Error('Verification failed');
       }
@@ -66,13 +101,14 @@ export function useWorldId() {
     } finally {
       setIsVerifying(false);
     }
-  }, [isInstalled, isVerifying]);
+  }, [isInstalled, isVerifying, queryClient]);
 
   const clearVerification = useCallback(() => {
     setHumanId(null);
     setIsVerified(false);
-    localStorage.removeItem('humans_square_human_id');
-    localStorage.removeItem('humans_square_verified');
+    localStorage.removeItem('wm_human_id');
+    localStorage.removeItem('wm_verified');
+    localStorage.removeItem('wm_role');
   }, []);
 
   return {

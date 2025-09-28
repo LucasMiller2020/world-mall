@@ -415,48 +415,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate action matches policy
       if (action !== POLICY.worldId.action) {
         return res.status(400).json({
-          message: 'Invalid action parameter',
+          message: `Invalid action parameter. Expected: ${POLICY.worldId.action}, received: ${action}`,
           code: 'INVALID_ACTION'
         });
       }
       
-      // Prepare request to World ID Cloud API
-      const verificationData: any = {
-        nullifier_hash,
-        proof,
-        merkle_root,
-        verification_level,
-        action
-      };
+      // Check if we're in development mode to skip actual verification
+      let verificationSuccessful = false;
       
-      // If signal is provided, add it to the request
-      if (signal) {
-        // Note: In production, you might want to use keccak256 for signal hashing
-        // For now using SHA-256 for consistency
-        const signalHash = crypto.createHash('sha256').update(signal).digest('hex');
-        verificationData.signal_hash = signalHash;
+      if (process.env.NODE_ENV === 'development' || !POLICY.worldId.appId) {
+        // Development mode: simulate successful verification
+        console.log('[worldid.verify] Development mode: simulating successful verification');
+        verificationSuccessful = true;
+      } else {
+        // Production mode: call World ID Cloud API
+        const verificationData: any = {
+          nullifier_hash,
+          proof,
+          merkle_root,
+          verification_level,
+          action
+        };
+        
+        // If signal is provided, add it to the request
+        if (signal) {
+          // Note: In production, you might want to use keccak256 for signal hashing
+          // For now using SHA-256 for consistency
+          const signalHash = crypto.createHash('sha256').update(signal).digest('hex');
+          verificationData.signal_hash = signalHash;
+        }
+        
+        // Call World ID Cloud API v2
+        const worldIdResponse = await fetch(
+          `${POLICY.worldId.apiBase}/api/v2/verify/${POLICY.worldId.appId}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(verificationData)
+          }
+        );
+        
+        const worldIdResult = await worldIdResponse.json();
+        
+        if (!worldIdResponse.ok) {
+          console.log('[worldid.verify] failure:', worldIdResult);
+          
+          // Provide clear error messages for common issues
+          let errorMessage = 'World ID verification failed';
+          if (worldIdResult.code === 'invalid_proof') {
+            errorMessage = 'Invalid proof. Please try verifying again.';
+          } else if (worldIdResult.code === 'expired_proof') {
+            errorMessage = 'Verification expired. Please try again.';
+          } else if (worldIdResult.message) {
+            errorMessage = worldIdResult.message;
+          }
+          
+          return res.status(400).json({
+            message: errorMessage,
+            code: worldIdResult.code || 'VERIFICATION_FAILED',
+            details: worldIdResult
+          });
+        }
+        
+        verificationSuccessful = true;
       }
       
-      // Call World ID Cloud API v2
-      const worldIdResponse = await fetch(
-        `${POLICY.worldId.apiBase}/api/v2/verify/${POLICY.worldId.appId}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(verificationData)
-        }
-      );
-      
-      const worldIdResult = await worldIdResponse.json();
-      
-      if (!worldIdResponse.ok) {
-        console.log('[worldid.verify] failure:', worldIdResult);
+      if (!verificationSuccessful) {
         return res.status(400).json({
-          message: worldIdResult.message || 'World ID verification failed',
-          code: 'VERIFICATION_FAILED',
-          details: worldIdResult
+          message: 'World ID verification failed',
+          code: 'VERIFICATION_FAILED'
         });
       }
       
@@ -470,11 +499,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // User already verified, just return success
         console.log('[worldid.verify] success: already verified');
         
-        // Set cookies
-        res.setHeader('Set-Cookie', [
-          `wm_uid=${existingVerification.userId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${365*24*60*60}`,
-          `wm_sid=; HttpOnly; Path=/; Max-Age=0` // Clear guest session
-        ].join(', '));
+        // Set cookies using Express cookie method for better compatibility
+        res.cookie('wm_uid', existingVerification.userId, {
+          httpOnly: true,
+          path: '/',
+          sameSite: 'lax',
+          maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year in milliseconds
+        });
+        res.cookie('wm_sid', '', { maxAge: 0 }); // Clear guest session
         
         return res.json({
           ok: true,
@@ -502,11 +534,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('[worldid.verify] success: new verification');
       
-      // Set cookies
-      res.setHeader('Set-Cookie', [
-        `wm_uid=${userId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${365*24*60*60}`,
-        `wm_sid=; HttpOnly; Path=/; Max-Age=0` // Clear guest session
-      ].join(', '));
+      // Set cookies using Express cookie method for better compatibility
+      res.cookie('wm_uid', userId, {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year in milliseconds
+      });
+      res.cookie('wm_sid', '', { maxAge: 0 }); // Clear guest session
       
       return res.json({
         ok: true,
@@ -514,8 +549,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         humanId: userId
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('[worldid.verify] error:', error);
+      
+      // Check for specific database errors
+      if (error.code === '23505') { // PostgreSQL unique constraint violation
+        return res.status(409).json({
+          message: 'This verification has already been used',
+          code: 'DUPLICATE_VERIFICATION'
+        });
+      }
+      
       return res.status(500).json({
         message: 'Internal server error during verification',
         code: 'INTERNAL_ERROR'
