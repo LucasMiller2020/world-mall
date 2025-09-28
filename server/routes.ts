@@ -2252,21 +2252,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Permit2 Verification endpoint (foundation for future token transfers)
   app.post('/api/permit2/verify', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
+      // Check if Permit2 feature is enabled
+      if (!POLICY.enablePermit2) {
+        return res.status(503).json({ 
+          ok: false, 
+          error: 'Permit2 verification is temporarily unavailable' 
+        });
+      }
+
       const { signature, amount, deadline, nonce, token, spender } = req.body;
 
       // Basic validation
       if (!signature || !amount || !deadline || !nonce || !token || !spender) {
         return res.status(400).json({
-          message: 'Missing Permit2 signature data',
-          code: 'INVALID_REQUEST'
+          ok: false,
+          error: 'Missing Permit2 signature data'
         });
       }
 
       // Check if user is verified
       if (req.userRole === 'guest') {
         return res.status(403).json({
-          message: 'Verify with World ID to use Permit2 features',
-          code: 'VERIFICATION_REQUIRED'
+          ok: false,
+          error: 'Verify with World ID to use Permit2 features'
         });
       }
 
@@ -2274,8 +2282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentTimestamp = Math.floor(Date.now() / 1000);
       if (currentTimestamp > deadline) {
         return res.status(400).json({
-          message: 'Permit2 signature has expired',
-          code: 'SIGNATURE_EXPIRED'
+          ok: false,
+          error: 'Permit2 signature has expired'
         });
       }
 
@@ -2301,12 +2309,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!isValid) {
         return res.status(400).json({
-          message: 'Invalid Permit2 signature',
-          code: 'INVALID_SIGNATURE'
+          ok: false,
+          error: 'Invalid signature'
         });
       }
 
-      // Store the signature for future use (no actual transfers in Phase 2)
+      // Store the signature for future use (no actual transfers - just verification)
       await storage.createPermit2Signature({
         humanId: req.humanId!,
         tokenId: token, // This would be resolved to a token ID in production
@@ -2318,17 +2326,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         used: false
       });
 
+      // Return success - no actual token transfers, just signature verification
       res.json({
-        success: true,
-        message: 'Permit2 signature verified and stored',
-        deadline,
-        nonce
+        ok: true
       });
     } catch (error) {
       console.error('Permit2 verification error:', error);
       res.status(500).json({
-        message: 'Failed to verify Permit2 signature',
-        code: 'VERIFICATION_ERROR'
+        ok: false,
+        error: 'Failed to verify Permit2 signature'
       });
     }
   });
