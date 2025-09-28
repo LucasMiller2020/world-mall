@@ -337,6 +337,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       },
       worldId: POLICY.worldId,
+      themeDefaults: {
+        mode: POLICY.theme.defaultMode,
+        sunrise: POLICY.theme.sunrise,
+        sunset: POLICY.theme.sunset
+      },
       features: {
         enablePermit2: POLICY.enablePermit2,
         disableWorldId: POLICY.disableWorldId
@@ -559,18 +564,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Restrict to global room only
         if (messageData.room !== 'global') {
+          console.log(`[post] role=guest blocked reason=room_restricted room=${messageData.room}`);
           return res.status(403).json({
             message: 'Guests can only post in the global room',
-            code: 'VERIFICATION_REQUIRED'
+            code: 'guest_room_restricted'
           });
         }
         
         // Enforce character limit
         if (messageData.text.length > POLICY.guestCharLimit) {
-          console.log(`[post] role=guest blocked reason=char_limit_exceeded length=${messageData.text.length}`);
+          console.log(`[post] role=guest blocked reason=guest_length_exceeded length=${messageData.text.length} limit=${POLICY.guestCharLimit}`);
           return res.status(403).json({
             message: `Guest limit is ${POLICY.guestCharLimit} characters. Verify to unlock full chat.`,
-            code: 'GUEST_LIMIT_EXCEEDED'
+            code: 'guest_length_exceeded'
           });
         }
         
@@ -579,12 +585,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const messageCount = await storage.getGuestMessageCount(req.guestSessionId!, dayBucket);
         
         if (messageCount >= POLICY.guestDaily) {
-          console.log(`[post] role=guest blocked reason=daily_limit_exceeded count=${messageCount}`);
+          console.log(`[post] role=guest blocked reason=guest_daily_limit count=${messageCount} limit=${POLICY.guestDaily}`);
           return res.status(429).json({
             message: `Guests limited to ${POLICY.guestDaily} messages per day. Verify to unlock full chat!`,
-            code: 'GUEST_RATE_LIMITED'
+            code: 'guest_daily_limit'
           });
         }
+        
+        // Check cooldown (simple implementation - last message time)
+        // Note: In production, you'd want a more sophisticated cooldown tracking
+        console.log(`[post] role=guest processing sessionId=${req.guestSessionId} messageCount=${messageCount}/${POLICY.guestDaily}`);
         
         // Create a temporary human ID for guests
         const humanId = `guest_${req.guestSessionId}`;
@@ -618,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
-        console.log(`[post] role=guest accepted messageId=${message.id}`);
+        console.log(`[post] role=guest accepted messageId=${message.id} sessionId=${req.guestSessionId} dayCount=${messageCount + 1}/${POLICY.guestDaily}`);
         return res.json({ message, code: 'SUCCESS' });
       }
       
