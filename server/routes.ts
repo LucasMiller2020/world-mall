@@ -669,6 +669,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(response);
   });
 
+  // GET /api/profile/:handle - Get user profile by handle
+  app.get('/api/profile/:handle', async (req: Request, res: Response) => {
+    try {
+      const { handle } = req.params;
+      
+      if (!handle) {
+        return res.status(400).json({ 
+          message: 'Handle is required',
+          code: 'HANDLE_REQUIRED'
+        });
+      }
+      
+      // Get human by handle
+      const human = await storage.getHumanByHandle(handle);
+      
+      if (!human) {
+        return res.status(404).json({ 
+          message: 'Profile not found',
+          code: 'PROFILE_NOT_FOUND'
+        });
+      }
+      
+      // Get message and star counts
+      const messageCount = await storage.getUserMessageCount(human.id);
+      const starCount = await storage.getUserStarCount(human.id);
+      
+      // Prepare public profile data
+      const profile = {
+        handle: human.handle,
+        avatarUrl: human.avatarUrl,
+        mbti: human.mbti,
+        zodiac: human.zodiac,
+        age: human.age,
+        joinedAt: human.joinedAt,
+        messageCount,
+        starCount,
+        role: human.role,
+      };
+      
+      res.json(profile);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch profile',
+        code: 'PROFILE_FETCH_FAILED'
+      });
+    }
+  });
+
+  // PUT /api/me/profile - Update current user's profile
+  app.put('/api/me/profile', authenticateHuman, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      // Check if user is verified
+      if (!req.humanId || req.userRole !== 'verified') {
+        return res.status(403).json({ 
+          message: 'Only verified users can update their profile',
+          code: 'VERIFICATION_REQUIRED'
+        });
+      }
+      
+      const { avatarUrl, mbti, zodiac, age } = req.body;
+      
+      // Validate MBTI if provided
+      const validMbtiTypes = [
+        'INTJ', 'INTP', 'ENTJ', 'ENTP',
+        'INFJ', 'INFP', 'ENFJ', 'ENFP',
+        'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
+        'ISTP', 'ISFP', 'ESTP', 'ESFP'
+      ];
+      
+      if (mbti && !validMbtiTypes.includes(mbti)) {
+        return res.status(400).json({ 
+          message: 'Invalid MBTI type',
+          code: 'INVALID_MBTI'
+        });
+      }
+      
+      // Validate zodiac if provided
+      const validZodiacs = [
+        'Aries', 'Taurus', 'Gemini', 'Cancer',
+        'Leo', 'Virgo', 'Libra', 'Scorpio',
+        'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+      ];
+      
+      if (zodiac && !validZodiacs.includes(zodiac)) {
+        return res.status(400).json({ 
+          message: 'Invalid zodiac sign',
+          code: 'INVALID_ZODIAC'
+        });
+      }
+      
+      // Validate age if provided
+      if (age !== undefined && age !== null) {
+        if (age < 18 || age > 100) {
+          return res.status(400).json({ 
+            message: 'Age must be between 18 and 100',
+            code: 'INVALID_AGE'
+          });
+        }
+      }
+      
+      // Validate avatar URL if provided
+      if (avatarUrl) {
+        // Basic URL validation
+        try {
+          new URL(avatarUrl);
+        } catch {
+          return res.status(400).json({ 
+            message: 'Invalid avatar URL',
+            code: 'INVALID_AVATAR_URL'
+          });
+        }
+        
+        // Ensure it's HTTPS
+        if (!avatarUrl.startsWith('https://')) {
+          return res.status(400).json({ 
+            message: 'Avatar URL must use HTTPS',
+            code: 'AVATAR_HTTPS_REQUIRED'
+          });
+        }
+        
+        // Length check (DB column is 255)
+        if (avatarUrl.length > 255) {
+          return res.status(400).json({ 
+            message: 'Avatar URL is too long',
+            code: 'AVATAR_URL_TOO_LONG'
+          });
+        }
+      }
+      
+      // Update profile
+      const updatedHuman = await storage.updateHumanProfile(req.humanId, {
+        avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
+        mbti: mbti !== undefined ? mbti : undefined,
+        zodiac: zodiac !== undefined ? zodiac : undefined,
+        age: age !== undefined ? age : undefined,
+      });
+      
+      // Return updated profile
+      res.json({
+        handle: updatedHuman.handle,
+        avatarUrl: updatedHuman.avatarUrl,
+        mbti: updatedHuman.mbti,
+        zodiac: updatedHuman.zodiac,
+        age: updatedHuman.age,
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      res.status(500).json({ 
+        message: 'Failed to update profile',
+        code: 'PROFILE_UPDATE_FAILED'
+      });
+    }
+  });
+
   // Health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({ 

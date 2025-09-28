@@ -198,6 +198,8 @@ export interface IStorage {
   updateHumanCapsuleSeen(id: string): Promise<void>;
   updateHumanMuteList(id: string, muteList: string[]): Promise<void>;
   updateHumanRole(id: string, role: 'guest' | 'verified' | 'admin'): Promise<void>;
+  updateHumanProfile(id: string, profile: { handle?: string; avatarUrl?: string | null; mbti?: string | null; zodiac?: string | null; age?: number | null }): Promise<Human>;
+  getHumanByHandle(handle: string): Promise<Human | undefined>;
   
   // Guest session operations
   getGuestSession(id: string): Promise<GuestSession | undefined>;
@@ -217,10 +219,12 @@ export interface IStorage {
   incrementMessageStars(messageId: string): Promise<void>;
   incrementMessageReports(messageId: string): Promise<void>;
   hideMessage(messageId: string): Promise<void>;
+  getUserMessageCount(humanId: string): Promise<number>;
   
   // Star operations
   getUserStarForMessage(messageId: string, humanId: string): Promise<Star | undefined>;
   createStar(star: InsertStar): Promise<Star>;
+  getUserStarCount(humanId: string): Promise<number>;
   
   // Report operations
   createReport(report: InsertReport): Promise<Report>;
@@ -833,6 +837,24 @@ export class MemStorage implements IStorage {
     }
   }
 
+  async updateHumanProfile(id: string, profile: { handle?: string; avatarUrl?: string | null; mbti?: string | null; zodiac?: string | null; age?: number | null }): Promise<Human> {
+    const human = this.humans.get(id);
+    if (!human) {
+      throw new Error('Human not found');
+    }
+    
+    const updated = {
+      ...human,
+      ...profile
+    };
+    this.humans.set(id, updated);
+    return updated;
+  }
+
+  async getHumanByHandle(handle: string): Promise<Human | undefined> {
+    return Array.from(this.humans.values()).find(human => human.handle === handle);
+  }
+
   async getGuestSession(id: string): Promise<GuestSession | undefined> {
     return this.guestSessions.get(id);
   }
@@ -967,6 +989,12 @@ export class MemStorage implements IStorage {
     }
   }
 
+  async getUserMessageCount(humanId: string): Promise<number> {
+    return Array.from(this.messages.values())
+      .filter(msg => msg.authorHumanId === humanId && !msg.isHidden)
+      .length;
+  }
+
   async getUserStarForMessage(messageId: string, humanId: string): Promise<Star | undefined> {
     return Array.from(this.stars.values())
       .find(star => star.messageId === messageId && star.humanId === humanId);
@@ -981,6 +1009,17 @@ export class MemStorage implements IStorage {
     this.stars.set(key, star);
     await this.incrementMessageStars(star.messageId);
     return star;
+  }
+
+  async getUserStarCount(humanId: string): Promise<number> {
+    // Count total stars received on all messages by this user
+    const userMessages = Array.from(this.messages.values())
+      .filter(msg => msg.authorHumanId === humanId)
+      .map(msg => msg.id);
+    
+    return Array.from(this.stars.values())
+      .filter(star => userMessages.includes(star.messageId))
+      .length;
   }
 
   async createReport(insertReport: InsertReport): Promise<Report> {
@@ -2238,6 +2277,10 @@ export class MemStorage implements IStorage {
     
     const totalStars = userMessages.reduce((sum, m) => sum + m.starsCount, 0);
     
+    // Get stars given by user
+    const starsGiven = Array.from(this.stars.values())
+      .filter(s => s.humanId === humanId).length;
+    
     // Get point balance
     const pointBalance = await this.getUserPointBalance(humanId);
     
@@ -2254,15 +2297,21 @@ export class MemStorage implements IStorage {
     
     return {
       id: humanId,
-      handle: this.generateHandle(humanId),
+      handle: human.handle || this.generateHandle(humanId),
       initials: this.generateInitials(humanId),
       firstSeen: human.joinedAt.toLocaleDateString(),
       totalPosts: userMessages.length,
       starsReceived: totalStars,
+      starsGiven,
       pointBalance: pointBalance?.totalPoints || 0,
       lifetimePointsEarned: pointBalance?.lifetimeEarned || 0,
       pointsEarnedToday,
-      leaderboardRank: rank > 0 ? rank : undefined
+      leaderboardRank: rank > 0 ? rank : undefined,
+      // Profile fields
+      avatarUrl: human.avatarUrl,
+      mbti: human.mbti,
+      zodiac: human.zodiac,
+      age: human.age
     };
   }
 
@@ -2907,6 +2956,22 @@ export class DatabaseStorage implements IStorage {
     await db.update(humans).set({ role }).where(eq(humans.id, id));
   }
 
+  async updateHumanProfile(id: string, profile: { handle?: string; avatarUrl?: string | null; mbti?: string | null; zodiac?: string | null; age?: number | null }): Promise<Human> {
+    const result = await db.update(humans)
+      .set(profile)
+      .where(eq(humans.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getHumanByHandle(handle: string): Promise<Human | undefined> {
+    const result = await db.select()
+      .from(humans)
+      .where(eq(humans.handle, handle))
+      .limit(1);
+    return result[0] || undefined;
+  }
+
   async getGuestSession(id: string): Promise<GuestSession | undefined> {
     const result = await db.select().from(guestSessions).where(eq(guestSessions.id, id)).limit(1);
     return result[0] || undefined;
@@ -3017,6 +3082,17 @@ export class DatabaseStorage implements IStorage {
     await db.update(messages).set({ isHidden: true }).where(eq(messages.id, messageId));
   }
 
+  async getUserMessageCount(humanId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(messages)
+      .where(and(
+        eq(messages.authorHumanId, humanId),
+        eq(messages.isHidden, false)
+      ));
+    return result[0]?.count || 0;
+  }
+
   async getUserStarForMessage(messageId: string, humanId: string): Promise<Star | undefined> {
     const result = await db
       .select()
@@ -3030,6 +3106,16 @@ export class DatabaseStorage implements IStorage {
     const result = await db.insert(stars).values(insertStar).returning();
     await this.incrementMessageStars(insertStar.messageId);
     return result[0];
+  }
+
+  async getUserStarCount(humanId: string): Promise<number> {
+    // Count total stars received on all messages by this user
+    const result = await db
+      .select({ count: count() })
+      .from(stars)
+      .innerJoin(messages, eq(messages.id, stars.messageId))
+      .where(eq(messages.authorHumanId, humanId));
+    return result[0]?.count || 0;
   }
 
   async createReport(insertReport: InsertReport): Promise<Report> {
@@ -3163,13 +3249,50 @@ export class DatabaseStorage implements IStorage {
     
     const stats = messageStats[0] || { totalPosts: 0, starsReceived: 0 };
     
+    // Get stars given by user
+    const starsGivenCount = await db
+      .select({ count: count() })
+      .from(stars)
+      .where(eq(stars.humanId, humanId));
+    const starsGiven = starsGivenCount[0]?.count || 0;
+    
+    // Get point balance
+    const pointBalance = await this.getUserPointBalance(humanId);
+    
+    // Get today's points
+    const today = new Date().toISOString().split('T')[0];
+    const todayTransactions = await db
+      .select({
+        points: sql<number>`sum(${pointTransactions.points})`
+      })
+      .from(pointTransactions)
+      .where(and(
+        eq(pointTransactions.humanId, humanId),
+        eq(pointTransactions.type, 'earn'),
+        sql`DATE(${pointTransactions.createdAt}) = ${today}`
+      ));
+    const pointsEarnedToday = Number(todayTransactions[0]?.points) || 0;
+    
+    // Get user rank
+    const rank = await this.getUserRank(humanId, 'all');
+    
     return {
       id: humanId,
-      handle: this.generateHandle(humanId),
+      handle: human.handle || this.generateHandle(humanId),
       initials: this.generateInitials(humanId),
       firstSeen: human.joinedAt.toLocaleDateString(),
       totalPosts: stats.totalPosts,
-      starsReceived: Number(stats.starsReceived) || 0
+      starsReceived: Number(stats.starsReceived) || 0,
+      starsGiven,
+      pointBalance: pointBalance?.totalPoints || 0,
+      lifetimePointsEarned: pointBalance?.lifetimeEarned || 0,
+      pointsEarnedToday,
+      leaderboardRank: rank > 0 ? rank : undefined,
+      // Profile fields
+      avatarUrl: human.avatarUrl,
+      mbti: human.mbti,
+      zodiac: human.zodiac,
+      age: human.age
     };
   }
 

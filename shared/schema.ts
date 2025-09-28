@@ -11,7 +11,16 @@ export const humans = pgTable("humans", {
   muteList: jsonb("mute_list").$type<string[]>().default([]).notNull(),
   preferredLanguage: varchar("preferred_language", { length: 10 }).default("en").notNull(), // User's preferred language (e.g., 'en', 'es', 'fr')
   role: varchar("role", { enum: ["guest", "verified", "admin"] }).default("guest").notNull(), // User role for access control
-});
+  // Profile fields
+  handle: varchar("handle", { length: 20 }), // Username/handle for profile
+  avatarUrl: varchar("avatar_url", { length: 255 }), // Profile avatar URL
+  mbti: varchar("mbti", { length: 4 }), // MBTI personality type (e.g., "INTJ", "ENFP")
+  zodiac: varchar("zodiac", { length: 12 }), // Zodiac sign (e.g., "Aries", "Pisces")
+  age: integer("age"), // User age
+}, (table) => ({
+  // Index on handle for fast profile lookups
+  handleIdx: index("humans_handle_idx").on(table.handle),
+}));
 
 // Message table - for both global and work rooms
 export const messages = pgTable("messages", {
@@ -713,10 +722,16 @@ export type HumanProfile = {
   firstSeen: string;
   totalPosts: number;
   starsReceived: number;
+  starsGiven: number;
   pointBalance: number;
   lifetimePointsEarned: number;
   pointsEarnedToday: number;
   leaderboardRank?: number;
+  // Profile fields
+  avatarUrl?: string | null;
+  mbti?: string | null;
+  zodiac?: string | null;
+  age?: number | null;
 };
 
 export type OnlinePresence = {

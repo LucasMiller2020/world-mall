@@ -40,7 +40,7 @@ import type { MessageWithAuthor, OnlinePresence, Theme, Topic } from "@shared/sc
 export default function GlobalSquare() {
   const [, setLocation] = useLocation();
   const [message, setMessage] = useState("");
-  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
+  const [selectedProfileHandle, setSelectedProfileHandle] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
@@ -575,7 +575,7 @@ export default function GlobalSquare() {
             <MessageItem
               key={msg.id}
               message={msg}
-              onProfileClick={() => setSelectedProfile(msg.authorHumanId)}
+              onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
               onStarClick={() => handleStarMessage(msg.id)}
               onReportClick={() => handleReportMessage(msg.id)}
               onMuteClick={() => {}}
@@ -716,10 +716,10 @@ export default function GlobalSquare() {
       </div>
 
       {/* Modals */}
-      {selectedProfile && (
+      {selectedProfileHandle && (
         <ProfileModal
-          humanId={selectedProfile}
-          onClose={() => setSelectedProfile(null)}
+          handle={selectedProfileHandle}
+          onClose={() => setSelectedProfileHandle(null)}
         />
       )}
 
