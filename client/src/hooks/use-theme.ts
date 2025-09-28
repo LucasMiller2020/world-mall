@@ -9,7 +9,7 @@ interface UseThemeReturn {
   activeTheme: ActiveTheme;
 }
 
-const STORAGE_KEY = 'theme';
+const STORAGE_KEY = 'wm_theme';
 
 export function useTheme(): UseThemeReturn {
   const [mode, setModeState] = useState<ThemeMode>(() => {

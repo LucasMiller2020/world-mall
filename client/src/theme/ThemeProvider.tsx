@@ -13,7 +13,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'theme';
+const STORAGE_KEY = 'wm_theme';
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -21,11 +21,20 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [mode, setModeState] = useState<ThemeMode>(() => {
+    // First try to read from localStorage
     const stored = localStorage.getItem(STORAGE_KEY);
-    return (stored as ThemeMode) || 'light';
+    if (stored && ['light', 'dark', 'system', 'autoSun'].includes(stored)) {
+      return stored as ThemeMode;
+    }
+    // Default to 'light' if no stored preference
+    return 'light';
   });
 
-  const [activeTheme, setActiveTheme] = useState<ActiveTheme>('light');
+  const [activeTheme, setActiveTheme] = useState<ActiveTheme>(() => {
+    // Read initial theme from HTML data-theme attribute
+    const htmlTheme = document.documentElement.dataset.theme;
+    return (htmlTheme === 'dark' ? 'dark' : 'light') as ActiveTheme;
+  });
   const [sunTimes, setSunTimes] = useState<{ sunrise: Date | null; sunset: Date | null }>({
     sunrise: null,
     sunset: null
@@ -199,7 +208,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
     
     // Set theme color based on active theme
-    const themeColor = activeTheme === 'dark' ? '#000000' : '#E5E8D3';
+    const themeColor = activeTheme === 'dark' ? '#000000' : '#ffffff';
     metaThemeColor.setAttribute('content', themeColor);
   }, [activeTheme]);
 

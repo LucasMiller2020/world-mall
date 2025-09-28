@@ -41,6 +41,38 @@ function Router() {
 }
 
 function App() {
+  // Initialize theme on app load
+  useEffect(() => {
+    // Read stored theme preference
+    const storedTheme = localStorage.getItem('wm_theme');
+    let activeTheme: 'light' | 'dark' = 'light'; // Default to light
+    
+    if (storedTheme) {
+      // Determine active theme based on stored mode
+      if (storedTheme === 'dark') {
+        activeTheme = 'dark';
+      } else if (storedTheme === 'system') {
+        activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      } else if (storedTheme === 'autoSun') {
+        const hours = new Date().getHours();
+        activeTheme = hours >= 7 && hours < 19 ? 'light' : 'dark';
+      }
+    }
+    
+    // Set data-theme attribute
+    document.documentElement.dataset.theme = activeTheme;
+    
+    // Update meta theme-color
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaThemeColor);
+    }
+    const themeColor = activeTheme === 'dark' ? '#000000' : '#ffffff';
+    metaThemeColor.setAttribute('content', themeColor);
+  }, []);
+
   // Ping /api/me on app load to establish session and debug role issues
   useEffect(() => {
     fetch('/api/me', {
