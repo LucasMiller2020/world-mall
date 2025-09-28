@@ -156,7 +156,7 @@ export class TopicRotationScheduler {
       const currentTopic = await storage.getCurrentTopic();
       
       if (!currentTopic || !currentTopic.isActive) {
-        console.log(`No active topic found for ${date}, creating fallback`);
+        // Removed verbose logging - silently create fallback when needed
         
         // Try to find a scheduled topic for today
         let todaySchedule = await storage.getTopicScheduleByDate(date);

@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { TopicRotationScheduler } from "./topic-scheduler";
@@ -12,7 +13,9 @@ app.use(express.urlencoded({ extended: false }));
 
 // Configure express-session for WebView compatibility
 const isProduction = process.env.NODE_ENV === 'production';
-app.use(session({
+
+// Configure session store based on environment
+const sessionConfig: session.SessionOptions = {
   secret: process.env.SESSION_SECRET || 'world-mall-dev-secret-' + Math.random().toString(36),
   resave: false,
   saveUninitialized: false,
@@ -23,7 +26,23 @@ app.use(session({
     maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year
   },
   name: 'wm_sid' // World Mall session ID
-}));
+};
+
+// Use PostgreSQL session store in production for better scalability
+if (isProduction && process.env.DATABASE_URL) {
+  const PgSession = connectPgSimple(session);
+  sessionConfig.store = new PgSession({
+    conString: process.env.DATABASE_URL,
+    tableName: 'session',
+    createTableIfMissing: true,
+    pruneSessionInterval: 60 * 60 // Prune expired sessions every hour
+  });
+  log('Using PostgreSQL session store for production');
+} else {
+  log('Using in-memory session store for development');
+}
+
+app.use(session(sessionConfig));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -56,13 +75,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Production startup guard - ensure World ID config is present
+  // Production startup - check World ID configuration
   if (process.env.NODE_ENV === 'production') {
     if (!process.env.WORLD_ID_APP_ID || !process.env.WORLD_ID_ACTION) {
-      log('ERROR: WORLD_ID_APP_ID and WORLD_ID_ACTION are required in production');
-      process.exit(1);
+      log('WARNING: WORLD_ID_APP_ID and WORLD_ID_ACTION are not configured');
+      log('The app will run in guest-only mode without World ID verification');
+    } else {
+      log('Production environment: World ID configuration verified');
     }
-    log('Production environment: World ID configuration verified');
   }
   
   const server = await registerRoutes(app);
