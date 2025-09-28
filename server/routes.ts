@@ -7,6 +7,7 @@ import {
   insertStarSchema, 
   insertReportSchema,
   insertConnectRequestSchema,
+  insertVerificationSchema,
   insertTopicSchema,
   insertTopicScheduleSchema,
   insertTopicEngagementSchema,
@@ -153,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (key && value) cookieObj[key] = value;
     });
     
-    let guestSessionId = cookieObj.gsid;
+    let guestSessionId = cookieObj.wm_sid;
     
     // Hash IP and user agent for privacy-preserving tracking
     const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
@@ -177,8 +178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Set cookie
-      res.setHeader('Set-Cookie', `gsid=${guestSession.id}; HttpOnly; Path=/; Max-Age=86400`);
+      // Set cookie with new name and 1 year expiry
+      res.setHeader('Set-Cookie', `wm_sid=${guestSession.id}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${365*24*60*60}`);
     } else {
       // Update last seen
       await storage.updateGuestSessionActivity(guestSession.id);
@@ -341,6 +342,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
         disableWorldId: POLICY.disableWorldId
       }
     });
+  });
+
+  // World ID verification endpoint
+  app.post('/api/verify/worldid', async (req, res) => {
+    try {
+      // Check if World ID is disabled
+      if (POLICY.disableWorldId) {
+        return res.status(503).json({
+          message: 'World ID verification is temporarily unavailable. Please try again later.',
+          code: 'SERVICE_UNAVAILABLE'
+        });
+      }
+      
+      const { 
+        nullifier_hash,
+        proof, 
+        merkle_root, 
+        verification_level, 
+        action, 
+        signal 
+      } = req.body;
+      
+      // Validate required fields
+      if (!nullifier_hash || !proof || !merkle_root || !verification_level || !action) {
+        return res.status(400).json({
+          message: 'Missing required verification parameters',
+          code: 'INVALID_REQUEST'
+        });
+      }
+      
+      // Validate action matches policy
+      if (action !== POLICY.worldId.action) {
+        return res.status(400).json({
+          message: 'Invalid action parameter',
+          code: 'INVALID_ACTION'
+        });
+      }
+      
+      // Prepare request to World ID Cloud API
+      const verificationData: any = {
+        nullifier_hash,
+        proof,
+        merkle_root,
+        verification_level,
+        action
+      };
+      
+      // If signal is provided, add it to the request
+      if (signal) {
+        // Note: In production, you might want to use keccak256 for signal hashing
+        // For now using SHA-256 for consistency
+        const signalHash = crypto.createHash('sha256').update(signal).digest('hex');
+        verificationData.signal_hash = signalHash;
+      }
+      
+      // Call World ID Cloud API v2
+      const worldIdResponse = await fetch(
+        `${POLICY.worldId.apiBase}/api/v2/verify/${POLICY.worldId.appId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(verificationData)
+        }
+      );
+      
+      const worldIdResult = await worldIdResponse.json();
+      
+      if (!worldIdResponse.ok) {
+        console.log('[worldid.verify] failure:', worldIdResult);
+        return res.status(400).json({
+          message: worldIdResult.message || 'World ID verification failed',
+          code: 'VERIFICATION_FAILED',
+          details: worldIdResult
+        });
+      }
+      
+      // Verification successful - compute SHA-256 hash of nullifier
+      const nullifierHashHashed = crypto.createHash('sha256').update(nullifier_hash).digest('hex');
+      
+      // Check if this nullifier has already been verified
+      const existingVerification = await storage.getVerificationByNullifierHash(nullifierHashHashed);
+      
+      if (existingVerification) {
+        // User already verified, just return success
+        console.log('[worldid.verify] success: already verified');
+        
+        // Set cookies
+        res.setHeader('Set-Cookie', [
+          `wm_uid=${existingVerification.userId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${365*24*60*60}`,
+          `wm_sid=; HttpOnly; Path=/; Max-Age=0` // Clear guest session
+        ].join(', '));
+        
+        return res.json({
+          ok: true,
+          role: 'verified',
+          humanId: existingVerification.userId
+        });
+      }
+      
+      // New verification - create user and verification record
+      const userId = crypto.createHash('sha256').update(nullifier_hash + 'user').digest('hex');
+      
+      // Create or update human
+      let human = await storage.getHuman(userId);
+      if (!human) {
+        human = await storage.createHuman({ id: userId, role: 'verified' });
+      } else {
+        await storage.updateHumanRole(userId, 'verified');
+      }
+      
+      // Create verification record
+      await storage.createVerification({
+        userId,
+        nullifierHashHashed
+      });
+      
+      console.log('[worldid.verify] success: new verification');
+      
+      // Set cookies
+      res.setHeader('Set-Cookie', [
+        `wm_uid=${userId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${365*24*60*60}`,
+        `wm_sid=; HttpOnly; Path=/; Max-Age=0` // Clear guest session
+      ].join(', '));
+      
+      return res.json({
+        ok: true,
+        role: 'verified',
+        humanId: userId
+      });
+      
+    } catch (error) {
+      console.error('[worldid.verify] error:', error);
+      return res.status(500).json({
+        message: 'Internal server error during verification',
+        code: 'INTERNAL_ERROR'
+      });
+    }
   });
 
   // Me endpoint - returns current user info and role

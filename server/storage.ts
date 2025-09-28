@@ -25,6 +25,8 @@ import {
   type InsertLedgerEntry,
   type ConnectRequest,
   type InsertConnectRequest,
+  type Verification,
+  type InsertVerification,
   // Invite system types
   type InviteCode,
   type InsertInviteCode,
@@ -144,6 +146,7 @@ import {
   rateLimits,
   ledgerEntries,
   connectRequests,
+  verifications,
   guestSessions,
   // Invite system tables
   inviteCodes,
@@ -271,6 +274,10 @@ export interface IStorage {
   
   // Connect requests
   createConnectRequest(request: InsertConnectRequest): Promise<ConnectRequest>;
+  
+  // Verification operations
+  getVerificationByNullifierHash(nullifierHashHashed: string): Promise<Verification | undefined>;
+  createVerification(verification: InsertVerification): Promise<Verification>;
   
   // Profile operations
   getHumanProfile(humanId: string): Promise<HumanProfile | undefined>;
@@ -643,6 +650,7 @@ export class MemStorage implements IStorage {
   private rateLimits: Map<string, { count: number; windowStart: Date }> = new Map();
   private ledgerEntries: LedgerEntry[] = [];
   private connectRequests: Map<string, ConnectRequest> = new Map();
+  private verifications: Map<string, Verification> = new Map();
   private presenceMap: Map<string, Date> = new Map();
   private guestSessions: Map<string, GuestSession> = new Map();
   
@@ -2182,6 +2190,20 @@ export class MemStorage implements IStorage {
     return request;
   }
 
+  async getVerificationByNullifierHash(nullifierHashHashed: string): Promise<Verification | undefined> {
+    return Array.from(this.verifications.values()).find(v => v.nullifierHashHashed === nullifierHashHashed);
+  }
+
+  async createVerification(insertVerification: InsertVerification): Promise<Verification> {
+    const verification: Verification = {
+      id: randomUUID(),
+      ...insertVerification,
+      createdAt: new Date()
+    };
+    this.verifications.set(verification.id, verification);
+    return verification;
+  }
+
   async getHumanProfile(humanId: string): Promise<HumanProfile | undefined> {
     const human = this.humans.get(humanId);
     if (!human) return undefined;
@@ -3068,6 +3090,20 @@ export class DatabaseStorage implements IStorage {
 
   async createConnectRequest(insertRequest: InsertConnectRequest): Promise<ConnectRequest> {
     const result = await db.insert(connectRequests).values(insertRequest).returning();
+    return result[0];
+  }
+
+  async getVerificationByNullifierHash(nullifierHashHashed: string): Promise<Verification | undefined> {
+    const result = await db
+      .select()
+      .from(verifications)
+      .where(eq(verifications.nullifierHashHashed, nullifierHashHashed))
+      .limit(1);
+    return result[0];
+  }
+
+  async createVerification(insertVerification: InsertVerification): Promise<Verification> {
+    const result = await db.insert(verifications).values(insertVerification).returning();
     return result[0];
   }
 

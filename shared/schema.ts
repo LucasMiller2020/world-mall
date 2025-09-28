@@ -127,6 +127,14 @@ export const connectRequests = pgTable("connect_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Verifications table - stores SHA-256 hashed nullifiers from World ID
+export const verifications = pgTable("verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => humans.id),
+  nullifierHashHashed: varchar("nullifier_hash_hashed", { length: 64 }).notNull().unique(), // SHA-256 hash of the nullifier
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Guest sessions for tracking anonymous users
 export const guestSessions = pgTable("guest_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -457,6 +465,11 @@ export const insertConnectRequestSchema = createInsertSchema(connectRequests).om
   requesterHumanId: true, // This will be added by authentication middleware
 });
 
+export const insertVerificationSchema = createInsertSchema(verifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertGuestSessionSchema = createInsertSchema(guestSessions).omit({
   id: true,
   createdAt: true,
@@ -548,6 +561,9 @@ export type LedgerEntry = typeof ledgerEntries.$inferSelect;
 
 export type InsertConnectRequest = z.infer<typeof insertConnectRequestSchema>;
 export type ConnectRequest = typeof connectRequests.$inferSelect;
+
+export type InsertVerification = z.infer<typeof insertVerificationSchema>;
+export type Verification = typeof verifications.$inferSelect;
 
 // Token system types
 export type InsertSupportedToken = z.infer<typeof insertSupportedTokenSchema>;
