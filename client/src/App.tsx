@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -40,6 +41,23 @@ function Router() {
 }
 
 function App() {
+  // Ping /api/me on app load to establish session and debug role issues
+  useEffect(() => {
+    fetch('/api/me', {
+      credentials: 'include',
+      headers: {
+        'X-Session': localStorage.getItem('guest_sid') || ''
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log('[App Load] /api/me response:', data);
+    })
+    .catch(err => {
+      console.error('[App Load] /api/me error:', err);
+    });
+  }, []);
+
   return (
     <MiniKitProvider
       props={{

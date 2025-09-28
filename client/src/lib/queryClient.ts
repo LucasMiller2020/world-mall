@@ -7,14 +7,30 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Get or create guest session ID for fallback when cookies are blocked
+function getGuestSessionId(): string {
+  let sid = localStorage.getItem('guest_sid');
+  if (!sid) {
+    // Generate a random session ID if none exists
+    sid = 'guest_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('guest_sid', sid);
+  }
+  return sid;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const headers: HeadersInit = data ? { "Content-Type": "application/json" } : {};
+  
+  // Add X-Session header for World App WebView fallback
+  headers['X-Session'] = getGuestSessionId();
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -31,6 +47,9 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers: {
+        'X-Session': getGuestSessionId()
+      }
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

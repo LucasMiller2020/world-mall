@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { TopicRotationScheduler } from "./topic-scheduler";
@@ -8,6 +9,21 @@ import { humans } from "@shared/schema";
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Configure express-session for WebView compatibility
+const isProduction = process.env.NODE_ENV === 'production';
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'world-mall-dev-secret-' + Math.random().toString(36),
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: isProduction, // Secure in production (HTTPS)
+    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin WebView in production
+    maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year
+  },
+  name: 'wm_sid' // World Mall session ID
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();

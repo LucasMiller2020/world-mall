@@ -43,6 +43,7 @@ export default function GlobalSquare() {
   const { humanId, isVerified, verify } = useWorldId();
   const { isConnected } = useWebSocket(humanId);
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
+  const [guestStats, setGuestStats] = useState<{ messagesRemaining: number; nextMessageIn: number } | null>(null);
 
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery<MessageWithAuthor[]>({
@@ -71,6 +72,22 @@ export default function GlobalSquare() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  // Fetch user info including guest stats
+  const { data: userInfo } = useQuery<any>({
+    queryKey: ['/api/me'],
+    refetchInterval: 60000, // Refresh every minute to get updated guest stats
+  });
+
+  // Update guest stats from userInfo
+  useEffect(() => {
+    if (userInfo?.guestStats) {
+      setGuestStats({
+        messagesRemaining: userInfo.guestStats.messagesRemaining,
+        nextMessageIn: 0 // Will be set on cooldown
+      });
+    }
+  }, [userInfo]);
+
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: { text: string; room: string }) => {
@@ -81,7 +98,16 @@ export default function GlobalSquare() {
           'X-World-ID-Proof': humanId || '',
         },
         body: JSON.stringify(messageData),
+        credentials: 'include',
       });
+      
+      // Add X-Session header for World App WebView fallback
+      if (!res.headers['x-world-id-proof']) {
+        const guestSessionId = localStorage.getItem('guest_sid');
+        if (guestSessionId) {
+          res.headers['x-session'] = guestSessionId;
+        }
+      }
       
       if (!res.ok) {
         const error = await res.json();
@@ -94,9 +120,26 @@ export default function GlobalSquare() {
       
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setMessage("");
       queryClient.invalidateQueries({ queryKey: ['/api/messages/global'] });
+      
+      // If guest, update stats and start cooldown
+      if (data.guestStats) {
+        setGuestStats(data.guestStats);
+        setCooldownSeconds(data.guestStats.nextMessageIn);
+        
+        // Start countdown
+        const interval = setInterval(() => {
+          setCooldownSeconds(prev => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
     },
     onError: (error: any) => {
       // Handle 429 rate limit errors
@@ -489,7 +532,7 @@ export default function GlobalSquare() {
                 Guest Mode
               </Badge>
               <span className="text-xs text-muted-foreground">
-                60 chars • 10/day • 30s cooldown
+                60 chars • {guestStats?.messagesRemaining ?? 10} left today • 30s cooldown
               </span>
             </div>
             <Button 
@@ -499,7 +542,7 @@ export default function GlobalSquare() {
               data-testid="button-verify-banner"
             >
               <Shield className="h-3 w-3 mr-1" />
-              Verify
+              Verify for Full Access
             </Button>
           </div>
         </div>
@@ -545,10 +588,10 @@ export default function GlobalSquare() {
         ) : (
           <div className="space-y-4">
             {cooldownSeconds > 0 && (
-              <Card className="bg-destructive/10 border-destructive/20">
+              <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
                 <CardContent className="pt-4 text-center">
-                  <p className="text-sm text-destructive" data-testid="text-cooldown-notice">
-                    You're sending messages fast. Take a breath—back in {cooldownSeconds} sec.
+                  <p className="text-sm text-amber-800 dark:text-amber-200" data-testid="text-cooldown-notice">
+                    {isGuest() ? `Wait ${cooldownSeconds}s before sending another message` : `Take a breath—back in ${cooldownSeconds}s`}
                   </p>
                 </CardContent>
               </Card>
@@ -575,10 +618,10 @@ export default function GlobalSquare() {
                   <span className={`text-xs ${characterCount > maxChars ? 'text-destructive' : 'text-muted-foreground'}`} data-testid="text-character-count">
                     {characterCount}/{maxChars}
                   </span>
-                  {isGuest() && characterCount > maxChars / 2 && (
-                    <Badge variant="outline" className="text-xs">
-                      Guest limit
-                    </Badge>
+                  {isGuest() && (
+                    <span className="text-xs text-muted-foreground" data-testid="text-messages-remaining">
+                      {guestStats?.messagesRemaining ?? 10} messages left today
+                    </span>
                   )}
                 </div>
                 <Button 
@@ -587,7 +630,7 @@ export default function GlobalSquare() {
                   size="sm"
                   data-testid="button-send-message"
                 >
-                  {sendMessageMutation.isPending ? 'Sending...' : 'Send'}
+                  {sendMessageMutation.isPending ? 'Sending...' : cooldownSeconds > 0 ? `Wait ${cooldownSeconds}s` : 'Send'}
                 </Button>
               </div>
             </div>

@@ -206,6 +206,8 @@ export interface IStorage {
   updateGuestSessionActivity(id: string): Promise<void>;
   incrementGuestMessageCount(id: string, dayBucket: string): Promise<void>;
   getGuestMessageCount(id: string, dayBucket: string): Promise<number>;
+  getGuestLastMessageTime(id: string): Promise<Date | undefined>;
+  updateGuestLastMessageTime(id: string): Promise<void>;
   
   // Message operations
   getMessages(room: string, limit?: number): Promise<MessageWithAuthor[]>;
@@ -879,6 +881,19 @@ export class MemStorage implements IStorage {
       return session.messageCount;
     }
     return 0;
+  }
+
+  async getGuestLastMessageTime(id: string): Promise<Date | undefined> {
+    const session = this.guestSessions.get(id);
+    return session?.lastMessageTime;
+  }
+
+  async updateGuestLastMessageTime(id: string): Promise<void> {
+    const session = this.guestSessions.get(id);
+    if (session) {
+      session.lastMessageTime = new Date();
+      this.guestSessions.set(id, session);
+    }
   }
 
   async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {
@@ -2928,6 +2943,15 @@ export class DatabaseStorage implements IStorage {
       return session.messageCount;
     }
     return 0;
+  }
+
+  async getGuestLastMessageTime(id: string): Promise<Date | undefined> {
+    const session = await this.getGuestSession(id);
+    return session?.lastMessageTime;
+  }
+
+  async updateGuestLastMessageTime(id: string): Promise<void> {
+    await db.update(guestSessions).set({ lastMessageTime: new Date() }).where(eq(guestSessions.id, id));
   }
 
   async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {

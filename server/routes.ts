@@ -146,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
 
-    // Get guest session ID from cookie
+    // Get guest session ID from cookie first, then X-Session header as fallback (for World App WebView)
     const cookies = req.headers.cookie || '';
     const cookieObj: { [key: string]: string } = {};
     cookies.split(';').forEach(cookie => {
@@ -154,7 +154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (key && value) cookieObj[key] = value;
     });
     
-    let guestSessionId = cookieObj.wm_sid;
+    // Priority: 1. Cookie (wm_sid), 2. X-Session header (for WebView when cookies blocked)
+    let guestSessionId = cookieObj.wm_sid || req.headers['x-session'] as string;
     
     // Hash IP and user agent for privacy-preserving tracking
     const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
@@ -178,8 +179,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Set cookie with new name and 1 year expiry
-      res.setHeader('Set-Cookie', `wm_sid=${guestSession.id}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${365*24*60*60}`);
+      // Set cookie with cross-origin support for World App
+      const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
+      res.setHeader('Set-Cookie', `wm_sid=${guestSession.id}; HttpOnly; Path=/; SameSite=${isSecure ? 'None' : 'Lax'}; ${isSecure ? 'Secure; ' : ''}Max-Age=${365*24*60*60}`);
     } else {
       // Update last seen
       await storage.updateGuestSessionActivity(guestSession.id);
@@ -500,10 +502,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[worldid.verify] success: already verified');
         
         // Set cookies using Express cookie method for better compatibility
+        const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
         res.cookie('wm_uid', existingVerification.userId, {
           httpOnly: true,
           path: '/',
-          sameSite: 'lax',
+          sameSite: isSecure ? 'none' : 'lax',
+          secure: isSecure,
           maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year in milliseconds
         });
         res.cookie('wm_sid', '', { maxAge: 0 }); // Clear guest session
@@ -535,10 +539,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[worldid.verify] success: new verification');
       
       // Set cookies using Express cookie method for better compatibility
+      const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
       res.cookie('wm_uid', userId, {
         httpOnly: true,
         path: '/',
-        sameSite: 'lax',
+        sameSite: isSecure ? 'none' : 'lax',
+        secure: isSecure,
         maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year in milliseconds
       });
       res.cookie('wm_sid', '', { maxAge: 0 }); // Clear guest session
@@ -639,7 +645,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid room' });
       }
 
-      const messages = await storage.getMessages(room, limit);
+      // For global room, fetch more messages to ensure we have recent activity for landing page
+      // The storage.getMessages already returns the most recent messages
+      const fetchLimit = room === 'global' ? Math.min(limit, 10) : limit;
+      const messages = await storage.getMessages(room, fetchLimit);
+      
       res.json(messages);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -657,6 +667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userRole === 'guest') {
         // Check if guest mode is enabled
         if (!GUEST_CONFIG.ENABLED) {
+          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "guest_mode_disabled" }`);
           return res.status(403).json({
             message: 'Guest mode is disabled. Please verify with World ID.',
             code: 'VERIFICATION_REQUIRED'
@@ -665,19 +676,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Restrict to global room only
         if (messageData.room !== 'global') {
-          console.log(`[post] role=guest blocked reason=room_restricted room=${messageData.room}`);
+          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "room_restricted" }`);
           return res.status(403).json({
             message: 'Guests can only post in the global room',
             code: 'guest_room_restricted'
           });
         }
         
-        // Enforce character limit
+        // Allow guests to post messages ≤ 60 chars without verification
         if (messageData.text.length > POLICY.guestCharLimit) {
-          console.log(`[post] role=guest blocked reason=guest_length_exceeded length=${messageData.text.length} limit=${POLICY.guestCharLimit}`);
+          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "length_exceeded" }`);
           return res.status(403).json({
-            message: `Guest limit is ${POLICY.guestCharLimit} characters. Verify to unlock full chat.`,
-            code: 'guest_length_exceeded'
+            message: `Guest messages limited to ${POLICY.guestCharLimit} characters. Verify to unlock full chat!`,
+            code: 'GUEST_LIMIT_EXCEEDED'
           });
         }
         
@@ -686,16 +697,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const messageCount = await storage.getGuestMessageCount(req.guestSessionId!, dayBucket);
         
         if (messageCount >= POLICY.guestDaily) {
-          console.log(`[post] role=guest blocked reason=guest_daily_limit count=${messageCount} limit=${POLICY.guestDaily}`);
+          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "daily_limit" }`);
           return res.status(429).json({
-            message: `Guests limited to ${POLICY.guestDaily} messages per day. Verify to unlock full chat!`,
+            message: `Daily limit reached (${POLICY.guestDaily} messages). Verify to unlock full chat!`,
             code: 'guest_daily_limit'
           });
         }
         
-        // Check cooldown (simple implementation - last message time)
-        // Note: In production, you'd want a more sophisticated cooldown tracking
-        console.log(`[post] role=guest processing sessionId=${req.guestSessionId} messageCount=${messageCount}/${POLICY.guestDaily}`);
+        // Check cooldown - get last message time
+        const lastMessageTime = await storage.getGuestLastMessageTime(req.guestSessionId!);
+        if (lastMessageTime) {
+          const timeSinceLastMessage = Date.now() - lastMessageTime.getTime();
+          const cooldownMs = POLICY.guestCooldownSec * 1000;
+          
+          if (timeSinceLastMessage < cooldownMs) {
+            const remainingSeconds = Math.ceil((cooldownMs - timeSinceLastMessage) / 1000);
+            console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "cooldown" }`);
+            return res.status(429).json({
+              message: `Please wait ${remainingSeconds} seconds before sending another message`,
+              code: 'COOLDOWN_ACTIVE',
+              cooldownSeconds: remainingSeconds
+            });
+          }
+        }
         
         // Create a temporary human ID for guests
         const humanId = `guest_${req.guestSessionId}`;
@@ -716,8 +740,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           authorRole: 'guest'
         });
         
-        // Update guest session message count
+        // Update guest session message count and last message time
         await storage.incrementGuestMessageCount(req.guestSessionId!, dayBucket);
+        await storage.updateGuestLastMessageTime(req.guestSessionId!);
         
         // Broadcast new message
         broadcast({
@@ -729,8 +754,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
-        console.log(`[post] role=guest accepted messageId=${message.id} sessionId=${req.guestSessionId} dayCount=${messageCount + 1}/${POLICY.guestDaily}`);
-        return res.json({ message, code: 'SUCCESS' });
+        // Structured logging for accepted guest post
+        console.log(`guest_post.accepted: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length} }`);
+        
+        return res.json({ 
+          message, 
+          code: 'SUCCESS',
+          guestStats: {
+            messagesRemaining: POLICY.guestDaily - messageCount - 1,
+            nextMessageIn: POLICY.guestCooldownSec
+          }
+        });
       }
       
       // Verified user flow continues below

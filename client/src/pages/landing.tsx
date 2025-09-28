@@ -47,11 +47,7 @@ export default function Landing() {
   });
 
   const handleEnterGlobalSquare = () => {
-    if (!isInstalled) {
-      // Show instructions to open in World App
-      alert(t('landing.worldAppNotice'));
-      return;
-    }
+    // Always allow access - guest mode is available
     setLocation('/room/global');
   };
 
@@ -320,10 +316,10 @@ export default function Landing() {
         </Card>
 
         {!isInstalled && (
-          <Card className="mb-6 border-amber-200 bg-amber-50">
+          <Card className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
             <CardContent className="pt-4">
-              <p className="text-sm text-amber-800" data-testid="text-world-app-notice">
-                {t('landing.worldAppNotice')}
+              <p className="text-sm text-amber-800 dark:text-amber-200" data-testid="text-world-app-notice">
+                💡 Tip: Open in World App to unlock full features like unlimited messages and special privileges!
               </p>
             </CardContent>
           </Card>
