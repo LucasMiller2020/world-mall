@@ -83,9 +83,9 @@ const SPAM_PATTERNS = [
   /\b(promo|discount|coupon)\s+code\b/i,
   /\b(limited|exclusive)\s+(time|offer)\b/i,
   
-  // Repetitive patterns
-  /(.)\1{4,}/g, // 5+ repeated characters
-  /(\b\w+\b)\s+\1\s+\1/i, // Triple word repetition
+  // Repetitive patterns (relaxed - entropy check will handle real spam)
+  // Removed simple character repetition check - now handled by entropy analysis
+  /(\b\w+\b)\s+\1\s+\1\s+\1/i, // Quadruple word repetition (was triple)
   
   // Excessive emoji/symbols
   /[🎉🔥💰💎🚀📈]{3,}/g,
@@ -605,24 +605,134 @@ export class AdvancedContentAnalyzer {
   }
   
   /**
-   * Checks for excessive repetition
+   * Calculate Shannon entropy to detect low-diversity spam
+   */
+  private calculateEntropy(text: string): number {
+    if (!text || text.length === 0) return 0;
+    
+    const charCounts = new Map<string, number>();
+    for (const char of text) {
+      charCounts.set(char, (charCounts.get(char) || 0) + 1);
+    }
+    
+    let entropy = 0;
+    const textLength = text.length;
+    
+    for (const count of charCounts.values()) {
+      const probability = count / textLength;
+      entropy -= probability * Math.log2(probability);
+    }
+    
+    return entropy;
+  }
+  
+  /**
+   * Check if text is emoji-heavy
+   */
+  private isEmojiHeavy(text: string): boolean {
+    // Regex to match emojis - covers most common emoji ranges
+    const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]|[\u{1F1E0}-\u{1F1FF}]/gu;
+    const emojis = text.match(emojiRegex) || [];
+    const emojiCount = emojis.length;
+    
+    // If more than 30% of the visible characters are emojis, consider it emoji-heavy
+    const visibleChars = text.replace(/\s/g, '').length;
+    return visibleChars > 0 && (emojiCount / visibleChars) > 0.3;
+  }
+  
+  /**
+   * Enhanced repetition check with entropy analysis
    */
   private hasExcessiveRepetition(content: string): boolean {
-    // Check for repeated characters
-    if (/(.)\1{4,}/.test(content)) return true;
+    // Allow emoji runs - they're expressive communication
+    if (this.isEmojiHeavy(content)) {
+      console.log('[content-analyzer] Allowing emoji-heavy content');
+      return false;
+    }
     
-    // Check for repeated words
-    const words = content.toLowerCase().split(/\s+/);
-    const wordCounts = new Map<string, number>();
+    // Common natural expressions that should be allowed
+    const naturalExpressions = /^(a+h+|h+m+|z+z+|y+e+s+|n+o+|w+o+w+|o+h+|u+h+|e+h+)/i;
+    if (naturalExpressions.test(content.replace(/[^a-z]/gi, '').toLowerCase())) {
+      console.log('[content-analyzer] Allowing natural expression');
+      return false;
+    }
     
-    for (const word of words) {
-      if (word.length > 2) {
-        const count = wordCounts.get(word) || 0;
-        wordCounts.set(word, count + 1);
-        if (count >= 3) return true; // Same word 4+ times
+    // Calculate text entropy
+    const entropy = this.calculateEntropy(content.toLowerCase());
+    
+    // Check for single character repetition
+    const singleCharRepeat = /(.)\1{5,}/.exec(content);
+    if (singleCharRepeat) {
+      // Found 6+ repeated characters
+      const repeatedChar = singleCharRepeat[0];
+      const charRatio = repeatedChar.length / content.length;
+      
+      // For short messages (< 12 chars), be more lenient
+      if (content.length < 12) {
+        // Only block if it's almost all the same character AND entropy is very low
+        if (charRatio > 0.75 && entropy < 1.5) {
+          console.log(`[content-analyzer] Blocked: content_filter_low_entropy (entropy: ${entropy.toFixed(2)}, char_ratio: ${charRatio.toFixed(2)})`);
+          return true;
+        }
+      } else {
+        // For longer messages, use original thresholds
+        if (charRatio > 0.5 && entropy < 2.0) {
+          console.log(`[content-analyzer] Blocked: content_filter_low_entropy (entropy: ${entropy.toFixed(2)}, char_ratio: ${charRatio.toFixed(2)})`);
+          return true;
+        }
+      }
+      
+      // For very low entropy with long repetitions, always block
+      if (entropy < 0.5 && singleCharRepeat[0].length > 10) {
+        console.log(`[content-analyzer] Blocked: content_filter_low_entropy - very low diversity (entropy: ${entropy.toFixed(2)})`);
+        return true;
       }
     }
     
+    // Allow natural elongations like "Howdyyyyy" or "Hellooooo"
+    // These have reasonable entropy despite repetition
+    if (entropy > 2.5) {
+      // High entropy means diverse characters - likely natural language
+      console.log(`[content-analyzer] Allowing content with good entropy: ${entropy.toFixed(2)}`);
+      return false;
+    }
+    
+    // Check for repeated words (less strict now)
+    const words = content.toLowerCase().split(/\s+/);
+    const wordCounts = new Map<string, number>();
+    let totalWords = 0;
+    
+    for (const word of words) {
+      if (word.length > 2) {
+        totalWords++;
+        const count = wordCounts.get(word) || 0;
+        wordCounts.set(word, count + 1);
+        
+        // Same word appears 5+ times and is majority of message
+        if (count >= 4 && (count + 1) / totalWords > 0.6) {
+          console.log(`[content-analyzer] Blocked: excessive word repetition`);
+          return true;
+        }
+      }
+    }
+    
+    // Check for patterns like "ababababab"
+    if (content.length >= 8) {
+      const pattern2 = /(..)(..)?\1{3,}/; // Pattern repeats 4+ times
+      const pattern3 = /(...)(...)?(...)??\1{2,}/; // Pattern repeats 3+ times
+      
+      if (pattern2.test(content) && entropy < 2.0) {
+        console.log(`[content-analyzer] Blocked: content_filter_low_entropy - repetitive pattern`);
+        return true;
+      }
+      
+      if (pattern3.test(content) && entropy < 1.5) {
+        console.log(`[content-analyzer] Blocked: content_filter_low_entropy - very repetitive pattern`);
+        return true;
+      }
+    }
+    
+    console.log(`[content-analyzer] Allowing content (entropy: ${entropy.toFixed(2)})`);
     return false;
   }
   

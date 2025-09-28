@@ -146,27 +146,135 @@ function isUrlAllowed(url: string): boolean {
   }
 }
 
-function hasExcessiveRepetition(text: string): boolean {
-  // Check for repeated characters (more than 3 consecutive)
-  if (/(.)\1{3,}/.test(text)) {
-    return true;
+/**
+ * Calculate Shannon entropy to detect low-diversity spam
+ */
+function calculateEntropy(text: string): number {
+  if (!text || text.length === 0) return 0;
+  
+  const charCounts = new Map<string, number>();
+  for (const char of text) {
+    charCounts.set(char, (charCounts.get(char) || 0) + 1);
   }
+  
+  let entropy = 0;
+  const textLength = text.length;
+  
+  for (const count of charCounts.values()) {
+    const probability = count / textLength;
+    entropy -= probability * Math.log2(probability);
+  }
+  
+  return entropy;
+}
 
-  // Check for repeated words
+/**
+ * Check if text is an emoji or contains primarily emojis
+ */
+function isEmojiHeavy(text: string): boolean {
+  // Regex to match emojis - covers most common emoji ranges
+  const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]|[\u{1F1E0}-\u{1F1FF}]/gu;
+  const emojis = text.match(emojiRegex) || [];
+  const emojiCount = emojis.length;
+  
+  // If more than 30% of the visible characters are emojis, consider it emoji-heavy
+  const visibleChars = text.replace(/\s/g, '').length;
+  return visibleChars > 0 && (emojiCount / visibleChars) > 0.3;
+}
+
+/**
+ * Enhanced repetition check that reduces false positives
+ */
+function hasExcessiveRepetition(text: string): boolean {
+  // Allow emoji runs - they're expressive, not spam
+  if (isEmojiHeavy(text)) {
+    console.log('[content-filter] Allowing emoji-heavy text');
+    return false;
+  }
+  
+  // Common natural expressions that should be allowed
+  const naturalExpressions = /^(a+h+|h+m+|z+z+|y+e+s+|n+o+|w+o+w+|o+h+|u+h+|e+h+)/i;
+  if (naturalExpressions.test(text.replace(/[^a-z]/gi, '').toLowerCase())) {
+    console.log('[content-filter] Allowing natural expression');
+    return false;
+  }
+  
+  // Calculate text entropy
+  const entropy = calculateEntropy(text.toLowerCase());
+  
+  // Check for single character repetition
+  const singleCharRepeat = /(.)\1{5,}/.exec(text);
+  if (singleCharRepeat) {
+    // Found 6+ repeated characters
+    const repeatedChar = singleCharRepeat[0];
+    const charRatio = repeatedChar.length / text.length;
+    
+    // For short messages (< 12 chars), be more lenient
+    if (text.length < 12) {
+      // Only block if it's almost all the same character AND entropy is very low
+      if (charRatio > 0.75 && entropy < 1.5) {
+        console.log(`[content-filter] Blocked: low_entropy spam detected (entropy: ${entropy.toFixed(2)}, char_ratio: ${charRatio.toFixed(2)})`);
+        return true;
+      }
+    } else {
+      // For longer messages, use original thresholds
+      if (charRatio > 0.5 && entropy < 2.0) {
+        console.log(`[content-filter] Blocked: low_entropy spam detected (entropy: ${entropy.toFixed(2)}, char_ratio: ${charRatio.toFixed(2)})`);
+        return true;
+      }
+    }
+    
+    // For very low entropy with long repetitions, always block
+    if (entropy < 0.5 && singleCharRepeat[0].length > 10) {
+      console.log(`[content-filter] Blocked: very_low_entropy spam (entropy: ${entropy.toFixed(2)})`);
+      return true;
+    }
+  }
+  
+  // Allow natural elongations like "Howdyyyyy" or "Hellooooo"
+  // These have reasonable entropy despite repetition
+  if (entropy > 2.5) {
+    // High entropy means diverse characters - likely natural language
+    console.log(`[content-filter] Allowing text with good entropy: ${entropy.toFixed(2)}`);
+    return false;
+  }
+  
+  // Check for repeated words (less strict now)
   const words = text.toLowerCase().split(/\s+/);
   const wordCounts = new Map<string, number>();
+  let totalWords = 0;
   
   for (const word of words) {
     if (word.length > 2) { // Only check words longer than 2 characters
+      totalWords++;
       const count = wordCounts.get(word) || 0;
       wordCounts.set(word, count + 1);
       
-      if (count >= 3) { // Same word appears 4+ times
+      // Same word appears 5+ times and is majority of the message
+      if (count >= 4 && (count + 1) / totalWords > 0.6) {
+        console.log(`[content-filter] Blocked: excessive word repetition`);
         return true;
       }
     }
   }
-
+  
+  // Check for patterns like "ababababab"
+  if (text.length >= 8) {
+    const pattern2 = /(..)(..)?\1{3,}/; // Pattern repeats 4+ times
+    const pattern3 = /(...)(...)?(...)??\1{2,}/; // Pattern repeats 3+ times
+    
+    if (pattern2.test(text) && entropy < 2.0) {
+      console.log(`[content-filter] Blocked: repetitive pattern with low entropy`);
+      return true;
+    }
+    
+    if (pattern3.test(text) && entropy < 1.5) {
+      console.log(`[content-filter] Blocked: repetitive pattern with very low entropy`);
+      return true;
+    }
+  }
+  
+  console.log(`[content-filter] Allowing text (entropy: ${entropy.toFixed(2)})`);
   return false;
 }
 
