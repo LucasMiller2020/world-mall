@@ -408,6 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate required fields
       if (!nullifier_hash || !proof || !merkle_root || !verification_level || !action) {
+        console.log('verify.failure:', JSON.stringify({ error: 'INVALID_REQUEST', reason: 'Missing required verification parameters' }));
         return res.status(400).json({
           message: 'Missing required verification parameters',
           code: 'INVALID_REQUEST'
@@ -416,6 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate action matches policy
       if (action !== POLICY.worldId.action) {
+        console.log('verify.failure:', JSON.stringify({ error: 'INVALID_ACTION', reason: `Invalid action parameter. Expected: ${POLICY.worldId.action}, received: ${action}` }));
         return res.status(400).json({
           message: `Invalid action parameter. Expected: ${POLICY.worldId.action}, received: ${action}`,
           code: 'INVALID_ACTION'
@@ -462,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const worldIdResult = await worldIdResponse.json();
         
         if (!worldIdResponse.ok) {
-          console.log('[worldid.verify] failure:', worldIdResult);
+          console.log('verify.failure:', JSON.stringify({ error: worldIdResult.code || 'VERIFICATION_FAILED', reason: worldIdResult.message || 'World ID verification failed' }));
           
           // Provide clear error messages for common issues
           let errorMessage = 'World ID verification failed';
@@ -485,6 +487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!verificationSuccessful) {
+        console.log('verify.failure:', JSON.stringify({ error: 'VERIFICATION_FAILED', reason: 'World ID verification failed' }));
         return res.status(400).json({
           message: 'World ID verification failed',
           code: 'VERIFICATION_FAILED'
@@ -499,7 +502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingVerification) {
         // User already verified, just return success
-        console.log('[worldid.verify] success: already verified');
+        console.log('verify.success:', JSON.stringify({ humanId: existingVerification.userId }));
         
         // Set cookies using Express cookie method for better compatibility
         const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
@@ -536,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nullifierHashHashed
       });
       
-      console.log('[worldid.verify] success: new verification');
+      console.log('verify.success:', JSON.stringify({ humanId: userId }));
       
       // Set cookies using Express cookie method for better compatibility
       const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
@@ -556,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error: any) {
-      console.error('[worldid.verify] error:', error);
+      console.log('verify.failure:', JSON.stringify({ error: error.code || 'INTERNAL_ERROR', reason: error.message || 'Internal server error during verification' }));
       
       // Check for specific database errors
       if (error.code === '23505') { // PostgreSQL unique constraint violation
