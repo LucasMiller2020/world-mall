@@ -31,8 +31,11 @@
   },
   "landing": {
     "enterGlobalSquare": "Enter Global Square",
-    "verificationNotice": "Guests can post up to 60 characters (3/day). Verify with World ID to unlock full chat.",
+    "verificationNotice": "Guests can say hi (60 chars, 10/day). Verify with World ID to unlock full chat and features.",
     "verificationSubtitle": "",
+    "guestAccessTitle": "Guest access available",
+    "guestBenefits": "✓ Guest Mode: Send up to 10 messages per day (60 chars max, 30s cooldown)",
+    "verifiedBenefits": "✓ Verified: Unlimited 240-char messages, star & report features, Work Mode access",
     "worldAppNotice": "For full functionality, please open this app in World App",
     "previewHeader": "Live from Global Square",
     "previewSubtitle": "Latest conversations (read-only preview)",
@@ -42,6 +45,7 @@
   "auth": {
     "adminKey": "Admin Key",
     "adminKeyPlaceholder": "Enter admin key...",
+    "adminAccess": "Admin Access",
     "adminAccessDescription": "Enter the admin key to access the administration panel.",
     "adminKeyDemo": "For demo purposes, use any non-empty value as the admin key.",
     "adminAccessGranted": "Admin Access Granted",

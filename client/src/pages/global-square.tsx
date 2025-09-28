@@ -386,7 +386,7 @@ export default function GlobalSquare() {
                 Guest Mode
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {limits?.maxChars} char limit • {limits?.maxPerDay} messages/day
+                60 chars • 10/day • 30s cooldown
               </span>
             </div>
             <Button 

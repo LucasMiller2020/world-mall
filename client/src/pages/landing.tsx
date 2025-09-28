@@ -100,13 +100,13 @@ export default function Landing() {
                 size="sm"
                 data-testid="button-admin-access"
               >
-                <Settings className="h-4 w-4 mr-2" />
-                {t('navigation.adminAccess')}
+                <Shield className="h-4 w-4 mr-2" />
+                {t('auth.verifyWorldId')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{t('navigation.adminAccess')}</DialogTitle>
+                <DialogTitle>{t('auth.adminAccess')}</DialogTitle>
                 <DialogDescription>
                   {t('auth.adminAccessDescription')}
                 </DialogDescription>
@@ -143,18 +143,28 @@ export default function Landing() {
           </Dialog>
         </div>
         
-        {/* Verification Gate Notice */}
+        {/* Guest Access Card */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-primary" />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground" data-testid="text-guest-access-title">
+                  {t('landing.guestAccessTitle')}
+                </h3>
+              </div>
               <div className="text-left">
-                <p className="text-sm font-medium text-foreground" data-testid="text-verification-notice">
+                <p className="text-sm font-medium text-foreground mb-2" data-testid="text-verification-notice">
                   {t('landing.verificationNotice')}
                 </p>
-                <p className="text-xs text-muted-foreground" data-testid="text-verification-subtitle">
-                  {t('landing.verificationSubtitle')}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground" data-testid="text-guest-benefits">
+                    {t('landing.guestBenefits')}
+                  </p>
+                  <p className="text-xs text-muted-foreground" data-testid="text-verified-benefits">
+                    {t('landing.verifiedBenefits')}
+                  </p>
+                </div>
               </div>
             </div>
           </CardContent>
