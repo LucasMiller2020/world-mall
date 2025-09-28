@@ -1,0 +1,161 @@
+World Mall — Final polish + verification + guest/web parity (ship-ready)
+Context for agent
+App name World Mall 
+Stack: React/TS (Vite), Express/WS, PostgreSQL (Drizzle).
+Production runs on Replit Autoscale (single port 80).
+DB is already live; do not reset data.
+World ID “Cloud Verify” v2 endpoint and /api/verify/worldid exist; we must ensure the Mini App “Verify” command → proof → server verify → role=verified works end‑to‑end.
+Guest mode should work both on web and inside the World App with server-enforced limits.
+
+0) Copy & content polish (landing hero)
+Change landing copy:
+Replace the subheadline under World Mall with:
+“Talk. Learn. Build. Connect.”
+Remove “One human, one voice.” everywhere.
+Keep the big Enter Global Square button.
+The secondary CTA on the landing should be “Verify with World ID” (not “Admin Access”). We’ll keep the admin page reachable only via a hidden /admin route (no visible button).
+Files to touch (search & replace carefully):
+client/src/pages/landing.tsx
+any client/src/locales/* and hardcoded strings
+Acceptance: Landing shows the new subheadline above the buttons; no “one voice” text remains.
+
+1) Theme system: default light, toggle in header, system follow, optional “sunrise→sunset”
+Goal: Fix the preview defaulting to dark and ship a reliable toggle.
+Implementation plan
+Create a small ThemeProvider with these rules:
+If localStorage.theme is set ('light'|'dark'|'system'|'autoSun'), use it.
+Else default to 'light'.
+'system' mirrors prefers-color-scheme.
+'autoSun' = light between local sunrise/sunset, dark otherwise (approx: 7:00–19:00 local time; no geolocation needed).
+Provider applies a data-theme="light|dark" attribute on <html> and exposes useTheme() hook.
+Add a ThemeToggle control in the top‑right app chrome (same place the language globe sits). Menu items:
+Light (default)
+Dark
+Match System
+Auto (Sunrise → Sunset)
+Persist selection in localStorage.theme.
+Remove any code that pre-applies .dark class at build time.
+Files:
+client/src/providers/ThemeProvider.tsx (new)
+client/src/hooks/use-theme.ts (new lightweight hook)
+client/src/index.css (ensure CSS vars read from [data-theme])
+client/src/components/ThemeToggle.tsx (new)
+Wire ThemeProvider at the root (client/src/App.tsx), and render ThemeToggle in the landing and in-room headers.
+Acceptance:
+Fresh load on both web + World App = light theme.
+Toggling works immediately and persists on refresh.
+“Match System” responds to OS appearance changes.
+“Auto (Sunrise → Sunset)” flips appropriately using the simple 7–19h heuristic.
+
+2) Fix the Verify with World ID flow (Mini App → server → role=verified)
+What to change
+The “Verify with World ID” button must open the World Mini App “verify” command and on success POST the proof to /api/verify/worldid.
+Do not route to any “Admin Access” page. Remove/rename that button on landing.
+Client details
+In client/src/hooks/use-world-id.ts (or wherever the verify UI lives), ensure:
+It invokes the Mini App Verify command (incognito action) using the configured WORLD_ID_ACTION.
+On success, POST the proof payload to /api/verify/worldid.
+On 200 OK, promote local role → verified without a full page reload and refetch /api/policy + /api/me.
+In client/src/pages/landing.tsx, wire the button to that hook.
+Server details
+In server/routes.ts:
+Confirm that /api/verify/worldid uses the Cloud Verify v2 endpoint with WORLD_ID_APP_ID, secret/key, and WORLD_ID_ACTION.
+On success, store SHA‑256 of the nullifier (unique constraint enforced) and set role=verified for that user, create/update wm_uid cookie.
+Harden with clear error messages for expired/invalid proofs.
+Acceptance:
+From World App → tap Verify → iOS sheet opens, completes, server returns success, role becomes verified in UI.
+Subsequent long posts (200+ chars), star/report, Work Mode all enabled.
+
+3) Guest mode parity (web + World App) and gentler gating
+Current issues to fix
+Web shows a modal “open in World App” that blocks; remove hard block. Show soft banner only.
+Some guest posts show “World ID verification required” even when within limits.
+Policy (server‑returned via /api/policy):
+guestCharLimit = 60
+guestDaily = 10
+guestCooldownSec = 30
+Verified: 240 chars; rate limits unchanged (5/min, 60/hr, 200/day).
+Server changes
+In message create route, do not require verification for guest posts that meet the above limits. Only enforce verification for:
+messages > 60 chars,
+starring / reporting,
+Work Mode posts.
+Log structured events: guest_post.accepted & guest_post.blocked with reason.
+Ensure CORS + cookies are not the reason posts fail inside the World App:
+Set cookies wm_sid/wm_uid with SameSite=None; Secure.
+Also accept a header fallback X-Session (client stores a UUID in localStorage) to avoid third‑party cookie problems in WebViews.
+Client changes
+Remove the blocking modal on web; keep a soft banner suggesting “Open in World App to unlock full features.”
+Composer shows a live 60/60 counter, messages left today, and a small cooldown timer after posting.
+Acceptance:
+As guest on web: can send ≤60 chars, up to 10/day, 30s cooldown between posts.
+As guest inside World App: same behavior; no red “verification required” for allowed posts.
+
+4) Make messages show inside the World App (data & transport fixes)
+Likely cause to cover proactively
+Cookies blocked in WebView / different domain → sessions not shared → posts rejected.
+Another common pitfall: dev DB vs prod DB mismatch, or day boundary filter.
+Do this:
+Confirm DB connection string used by World App and by web preview is the same (we’re in prod; do not change DB). Add a startup smoke log with DB URL host (masked).
+On the client, add a transport fallback: WS → SSE → polling (already mostly there). Make sure World App path uses SSE/poll if WS fails (some webviews block WS).
+Relax the landing preview query to show the latest 10 across the last 7 days (not “today only”) so judges always see activity.
+Add /api/me ping on load and log the resolved role + session id, so we can debug quickly.
+Acceptance:
+Inside World App, the global feed populates and updates.
+Landing “Live from Global Square” shows the latest 10 even if posted “yesterday”.
+
+5) Landing buttons & routing cleanup
+Replace the current secondary landing button with “Verify with World ID” (wired to the verify flow).
+Hide/remove the visible Admin Access button from landing. Keep /admin route accessible manually (not linked).
+Ensure Enter Global Square always routes to the global room page.
+Acceptance:
+No “Admin Access” button on landing.
+“Verify with World ID” triggers in‑app verification, not navigation to an admin page.
+
+6) Small developer/QA affordances (non‑judge visible)
+Overflow menu: “Reset guest session” (dev only, hidden behind NODE_ENV!=='production' check OR only rendered if ?dev=1 present). It clears localStorage guest_sid and deletes wm_sid cookie to help the owner test limits.
+/api/policy and /api/me are called on app boot and results are logged (only in dev & console).
+Acceptance: Owner can clear guest session locally and immediately re‑test limits.
+
+7) Observability & guards
+Minimal counters:
+verify.success, verify.failure
+guest_post.accepted, guest_post.blocked.{reason}
+Structured logs include { room, role, length, reason } for blocks.
+Fail the server at boot if WORLD_ID_APP_ID or WORLD_ID_ACTION is missing in production.
+
+8) Update docs & config
+Verify .env.example includes:
+WORLD_ID_APP_ID=...
+WORLD_ID_ACTION=world-mall/verify
+WORLD_ID_CLOUD_SECRET=... (or whatever the Cloud verify key is named)
+ENABLE_PERMIT2=false (keep off)
+Update README.md “How verification works” section with the final flow + testing notes (web vs World App).
+Ensure .replit stays single‑port autoscale; no dev/HMR in prod.
+
+9) Acceptance test script (please run in this order)
+Landing polish: See “Talk. Learn. Build. Connect.” subheadline. No “one voice” anywhere.
+Theme: Confirm default is light on fresh load; use header toggle to switch to dark, system, auto; refresh persists.
+Guest (web): Post “Hello World Mall!” (≤60 chars). Success → cooldown 30s starts. Try 11th post of the day → blocked with friendly message.
+Guest (World App): Same guest flow succeeds and is rate‑limited; no “verify required” banner for allowed posts.
+Verify: Tap Verify with World ID in World App → complete flow → role becomes verified in UI without full reload.
+Verified posting: Post 200‑char message; star/report buttons appear; Work Mode tab accessible.
+Landing preview: Top 10 messages appear even if they’re from prior day; Global feed updates in place.
+
+10) Notes on why this fixes the problems Lucas reported
+Dark shows by default → We now force default light unless a stored preference says otherwise.
+Verify button opened Admin → Rewired to Mini App Verify command + /api/verify/worldid.
+Web guests blocked by “open in World App” → That modal is now a soft banner; web guests can post with server limits.
+Messages not appearing in World App → Cookie SameSite=None; Secure + X‑Session header fallback + SSE/poll fallback ensure the WebView can maintain a session and receive live updates.
+Landing preview empty → Preview now pulls last 7 days, so judges always see chatter.
+
+Please implement everything above, keep changes small and targeted, and do not drop production data. When done, reply with:
+A summary of files changed,
+The final /api/policy payload,
+Screenshots (or DOM snapshot) proving: light default, theme toggle present, soft banner (not blocking), and the verify flow.
+
+Tiny extras
+Add a subtle “Friends (coming soon)” button in profile that opens a modal with a short blurb: “World Chat DM integration planned—add friends and DM via World App.” (no backend needed yet).
+Add an Emoji / Reaction stub (⭐, ❤️, 😂) as non‑persisted UI to hint at future “Mall Coins” reactions.
+
+
