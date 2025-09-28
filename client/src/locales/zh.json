@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "cancel": "取消",
+    "close": "关闭",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "back": "返回",
+    "next": "下一步",
+    "continue": "继续",
+    "submit": "提交",
+    "confirm": "确认",
+    "success": "成功",
+    "warning": "警告",
+    "global": "全球"
+  },
+  "app": {
+    "name": "人类广场",
+    "tagline": "经过验证的人类全球广场。",
+    "description": "交谈。学习。建造。一个人类，一个声音。"
+  },
+  "navigation": {
+    "globalSquare": "全球广场",
+    "workMode": "工作模式",
+    "capsule": "胶囊",
+    "ledger": "账本",
+    "admin": "管理员",
+    "adminAccess": "管理员访问"
+  },
+  "landing": {
+    "enterGlobalSquare": "进入全球广场",
+    "verificationNotice": "仅限人类发布",
+    "verificationSubtitle": "使用World ID验证一次",
+    "worldAppNotice": "要获得完整功能，请在World App中打开此应用",
+    "previewHeader": "全球广场直播",
+    "previewSubtitle": "最新对话（只读预览）",
+    "emptyPreview": "今天第一个打招呼吧 👋",
+    "joinConversation": "加入对话以查看更多"
+  },
+  "auth": {
+    "adminKey": "管理员密钥",
+    "adminKeyPlaceholder": "输入管理员密钥...",
+    "adminAccessDescription": "输入管理员密钥以访问管理面板。",
+    "adminKeyDemo": "出于演示目的，使用任何非空值作为管理员密钥。",
+    "adminAccessGranted": "管理员访问已授予",
+    "adminWelcome": "欢迎来到管理员仪表板",
+    "pleaseEnterAdminKey": "请输入管理员密钥",
+    "accessAdmin": "访问管理员",
+    "verifyWorldId": "使用World ID验证",
+    "verificationGate": "仅限人类发布。使用World ID验证一次。"
+  },
+  "globalSquare": {
+    "title": "全球广场",
+    "onlineNow": "{{count}} 人在线",
+    "messagePlaceholder": "你在想什么？",
+    "characterCount": "{{count}}/240",
+    "send": "发送",
+    "sending": "发送中...",
+    "cooldownActive": "冷却时间激活",
+    "cooldownMessage": "请等待{{seconds}}秒后再发送另一条消息",
+    "messageFiltered": "消息已过滤",
+    "reportSubmitted": "报告已提交",
+    "emptyState": "今天第一个打招呼吧 👋"
+  },
+  "workMode": {
+    "title": "工作模式",
+    "subtitle": "短期工作机会、请求和协作",
+    "categories": {
+      "help": "寻求帮助",
+      "advice": "建议",
+      "collab": "合作"
+    },
+    "messagePlaceholder": "描述您的请求或提议...",
+    "linkPlaceholder": "链接（可选）",
+    "locationPlaceholder": "位置",
+    "locations": {
+      "global": "全球",
+      "unitedStates": "美国",
+      "sanFrancisco": "旧金山",
+      "newYork": "纽约",
+      "london": "伦敦",
+      "berlin": "柏林",
+      "tokyo": "东京"
+    },
+    "postRequest": "发布请求",
+    "posting": "发布中...",
+    "workPostSent": "工作帖子已发送",
+    "workPostSentDescription": "您的请求已成功发布",
+    "invalidLink": "无效链接",
+    "invalidLinkDescription": "请输入有效的URL",
+    "postFiltered": "帖子已过滤",
+    "rateLimitNotice": "链接帖子：每10分钟2个，每小时4个限制",
+    "emptyState": "还没有请求。寻求帮助或提供您的技能。"
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "刚刚",
+      "minutesAgo": "{{count}}分钟前",
+      "hoursAgo": "{{count}}小时前",
+      "daysAgo": "{{count}}天前",
+      "weeksAgo": "{{count}}周前"
+    },
+    "stars": "{{count}} 星",
+    "star": "星标",
+    "unstar": "取消星标",
+    "report": "报告",
+    "mute": "静音",
+    "viewProfile": "查看资料",
+    "visitLink": "访问链接"
+  },
+  "topics": {
+    "dailyTopic": "今日话题",
+    "topicEndsIn": "话题在{{time}}后结束",
+    "categories": {
+      "general": "一般",
+      "tech": "技术",
+      "collaboration": "协作",
+      "inspiration": "灵感",
+      "creativity": "创造力",
+      "learning": "学习",
+      "community": "社区",
+      "wellness": "健康"
+    },
+    "special": "特别"
+  },
+  "admin": {
+    "dashboard": "管理员仪表板",
+    "topics": "话题",
+    "schedules": "计划",
+    "analytics": "分析",
+    "users": "用户",
+    "reports": "报告",
+    "settings": "设置"
+  },
+  "errors": {
+    "generic": "出了些问题。请重试。",
+    "network": "网络错误。请检查您的连接。",
+    "unauthorized": "您无权执行此操作。",
+    "notFound": "未找到请求的资源。",
+    "rateLimit": "您操作太频繁了。请放慢速度。",
+    "validation": "请检查您的输入并重试。",
+    "cooldown": "深呼吸！您可以在{{seconds}}秒后再次发布。"
+  },
+  "language": {
+    "switchLanguage": "切换语言",
+    "currentLanguage": "当前语言",
+    "detectBrowserLanguage": "从浏览器检测",
+    "languageChanged": "语言已更改为{{language}}",
+    "autoDetected": "自动检测到语言：{{language}}"
+  },
+  "notifications": {
+    "newMessage": "{{room}}中有新消息",
+    "topicChange": "今日话题已更改",
+    "welcome": "欢迎来到人类广场！"
+  }
+}

@@ -4,12 +4,19 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MiniKitProvider } from "@worldcoin/minikit-js/minikit-provider";
+import '@/lib/i18n'; // Initialize i18n
 
 import Landing from "@/pages/landing";
 import GlobalSquare from "@/pages/global-square";
 import WorkMode from "@/pages/work-mode";
 import Capsule from "@/pages/capsule";
 import Ledger from "@/pages/ledger";
+import InvitePage from "@/pages/invite";
+import ReferralDashboard from "@/pages/referral-dashboard";
+import AdminDashboard from "@/pages/admin-dashboard";
+import AdminTopics from "@/pages/admin-topics";
+import AdminSchedules from "@/pages/admin-schedules";
+import AdminModeration from "@/pages/admin-moderation";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -20,6 +27,12 @@ function Router() {
       <Route path="/room/work" component={WorkMode} />
       <Route path="/capsule" component={Capsule} />
       <Route path="/ledger" component={Ledger} />
+      <Route path="/invite/:code" component={InvitePage} />
+      <Route path="/referrals" component={ReferralDashboard} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/topics" component={AdminTopics} />
+      <Route path="/admin/schedules" component={AdminSchedules} />
+      <Route path="/admin/moderation" component={AdminModeration} />
       <Route component={NotFound} />
     </Switch>
   );

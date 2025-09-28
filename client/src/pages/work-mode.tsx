@@ -10,7 +10,7 @@ import { WorkPostItem } from "@/components/work-post-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Users } from "lucide-react";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
 import { filterContent } from "@/lib/content-filter";
@@ -238,14 +238,24 @@ export default function WorkMode() {
           <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">
             Work Mode
           </h1>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => setLocation('/room/global')}
-            data-testid="button-toggle-global-mode"
-          >
-            <MessageCircle className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center space-x-1">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setLocation('/referrals')}
+              data-testid="button-referrals"
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setLocation('/room/global')}
+              data-testid="button-toggle-global-mode"
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground text-center" data-testid="text-page-subtitle">
           Short job offers, requests & collaboration

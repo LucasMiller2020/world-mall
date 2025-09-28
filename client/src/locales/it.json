@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "Caricamento...",
+    "error": "Errore",
+    "cancel": "Annulla",
+    "close": "Chiudi",
+    "save": "Salva",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "back": "Indietro",
+    "next": "Avanti",
+    "continue": "Continua",
+    "submit": "Invia",
+    "confirm": "Conferma",
+    "success": "Successo",
+    "warning": "Avviso",
+    "global": "Globale"
+  },
+  "app": {
+    "name": "Piazza Umana",
+    "tagline": "Una piazza globale per umani verificati.",
+    "description": "Parlare. Imparare. Costruire. Un umano, una voce."
+  },
+  "navigation": {
+    "globalSquare": "Piazza Globale",
+    "workMode": "Modalità Lavoro",
+    "capsule": "Capsula",
+    "ledger": "Registro",
+    "admin": "Admin",
+    "adminAccess": "Accesso Admin"
+  },
+  "landing": {
+    "enterGlobalSquare": "Entra nella Piazza Globale",
+    "verificationNotice": "I post sono solo per umani",
+    "verificationSubtitle": "Verifica una volta con World ID",
+    "worldAppNotice": "Per la piena funzionalità, apri questa app in World App",
+    "previewHeader": "Dal vivo dalla Piazza Globale",
+    "previewSubtitle": "Ultime conversazioni (anteprima in sola lettura)",
+    "emptyPreview": "Sii il primo a salutare oggi 👋",
+    "joinConversation": "Unisciti alla conversazione per vedere di più"
+  },
+  "auth": {
+    "adminKey": "Chiave Admin",
+    "adminKeyPlaceholder": "Inserisci la chiave admin...",
+    "adminAccessDescription": "Inserisci la chiave admin per accedere al pannello di amministrazione.",
+    "adminKeyDemo": "A scopo dimostrativo, usa qualsiasi valore non vuoto come chiave admin.",
+    "adminAccessGranted": "Accesso Admin Concesso",
+    "adminWelcome": "Benvenuto nel pannello amministrativo",
+    "pleaseEnterAdminKey": "Per favore inserisci una chiave admin",
+    "accessAdmin": "Accedi come Admin",
+    "verifyWorldId": "Verifica con World ID",
+    "verificationGate": "I post sono solo per umani. Verifica una volta con World ID."
+  },
+  "globalSquare": {
+    "title": "Piazza Globale",
+    "onlineNow": "{{count}} online ora",
+    "messagePlaceholder": "A cosa stai pensando?",
+    "characterCount": "{{count}}/240",
+    "send": "Invia",
+    "sending": "Invio...",
+    "cooldownActive": "Cooldown Attivo",
+    "cooldownMessage": "Aspetta {{seconds}} secondi prima di inviare un altro messaggio",
+    "messageFiltered": "Messaggio Filtrato",
+    "reportSubmitted": "Segnalazione Inviata",
+    "emptyState": "Sii il primo a salutare oggi 👋"
+  },
+  "workMode": {
+    "title": "Modalità Lavoro",
+    "subtitle": "Offerte di lavoro brevi, richieste e collaborazione",
+    "categories": {
+      "help": "Cerco Aiuto",
+      "advice": "Consiglio",
+      "collab": "Collaborazione"
+    },
+    "messagePlaceholder": "Descrivi la tua richiesta o offerta...",
+    "linkPlaceholder": "Link (opzionale)",
+    "locationPlaceholder": "Posizione",
+    "locations": {
+      "global": "Globale",
+      "unitedStates": "Stati Uniti",
+      "sanFrancisco": "San Francisco",
+      "newYork": "New York",
+      "london": "Londra",
+      "berlin": "Berlino",
+      "tokyo": "Tokyo"
+    },
+    "postRequest": "Pubblica Richiesta",
+    "posting": "Pubblicando...",
+    "workPostSent": "Post di Lavoro Inviato",
+    "workPostSentDescription": "La tua richiesta è stata pubblicata con successo",
+    "invalidLink": "Link Non Valido",
+    "invalidLinkDescription": "Per favore inserisci un URL valido",
+    "postFiltered": "Post Filtrato",
+    "rateLimitNotice": "Post con link: limite di 2 ogni 10min, 4 ogni ora",
+    "emptyState": "Nessuna richiesta ancora. Chiedi aiuto o offri le tue competenze."
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "proprio ora",
+      "minutesAgo": "{{count}}min fa",
+      "hoursAgo": "{{count}}h fa",
+      "daysAgo": "{{count}}g fa",
+      "weeksAgo": "{{count}}sett fa"
+    },
+    "stars": "{{count}} stelle",
+    "star": "Stella",
+    "unstar": "Rimuovi Stella",
+    "report": "Segnala",
+    "mute": "Silenzia",
+    "viewProfile": "Vedi Profilo",
+    "visitLink": "Visita Link"
+  },
+  "topics": {
+    "dailyTopic": "Argomento del Giorno",
+    "topicEndsIn": "L'argomento finisce tra {{time}}",
+    "categories": {
+      "general": "Generale",
+      "tech": "Tecnologia",
+      "collaboration": "Collaborazione",
+      "inspiration": "Ispirazione",
+      "creativity": "Creatività",
+      "learning": "Apprendimento",
+      "community": "Comunità",
+      "wellness": "Benessere"
+    },
+    "special": "Speciale"
+  },
+  "admin": {
+    "dashboard": "Pannello Admin",
+    "topics": "Argomenti",
+    "schedules": "Programmi",
+    "analytics": "Analytics",
+    "users": "Utenti",
+    "reports": "Segnalazioni",
+    "settings": "Impostazioni"
+  },
+  "errors": {
+    "generic": "Qualcosa è andato storto. Riprova.",
+    "network": "Errore di rete. Controlla la tua connessione.",
+    "unauthorized": "Non sei autorizzato a eseguire questa azione.",
+    "notFound": "La risorsa richiesta non è stata trovata.",
+    "rateLimit": "Lo stai facendo troppo spesso. Rallenta.",
+    "validation": "Controlla il tuo input e riprova.",
+    "cooldown": "Fai un respiro! Puoi postare di nuovo tra {{seconds}} secondi."
+  },
+  "language": {
+    "switchLanguage": "Cambia Lingua",
+    "currentLanguage": "Lingua Attuale",
+    "detectBrowserLanguage": "Rileva dal browser",
+    "languageChanged": "Lingua cambiata in {{language}}",
+    "autoDetected": "Lingua auto-rilevata: {{language}}"
+  },
+  "notifications": {
+    "newMessage": "Nuovo messaggio in {{room}}",
+    "topicChange": "L'argomento di oggi è cambiato",
+    "welcome": "Benvenuto nella Piazza Umana!"
+  }
+}

@@ -1,7 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserPlus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { UserPlus, X, Coins, Award, TrendingUp } from "lucide-react";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
 import type { HumanProfile } from "@shared/schema";
@@ -128,6 +129,14 @@ export function ProfileModal({ humanId, onClose }: ProfileModalProps) {
             <h2 className="text-lg font-semibold text-foreground" data-testid="text-profile-handle">
               {profile.handle}
             </h2>
+            {profile.leaderboardRank && (
+              <div className="mt-2">
+                <Badge variant="secondary" className="text-xs">
+                  <Award className="h-3 w-3 mr-1" />
+                  Rank #{profile.leaderboardRank}
+                </Badge>
+              </div>
+            )}
           </div>
 
           {/* Profile Stats */}
@@ -149,6 +158,34 @@ export function ProfileModal({ humanId, onClose }: ProfileModalProps) {
               <span className="text-sm text-green-600" data-testid="text-profile-stars-received">
                 {profile.starsReceived}
               </span>
+            </div>
+            
+            {/* Point Information */}
+            <div className="border-t pt-3 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Coins className="h-3 w-3" />
+                  Point balance
+                </span>
+                <span className="text-sm font-semibold text-yellow-600" data-testid="text-profile-point-balance">
+                  {profile.pointBalance.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />
+                  Lifetime earned
+                </span>
+                <span className="text-sm text-green-600" data-testid="text-profile-lifetime-earned">
+                  {profile.lifetimePointsEarned.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Today's points</span>
+                <span className="text-sm text-blue-600" data-testid="text-profile-points-today">
+                  +{profile.pointsEarnedToday.toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
 

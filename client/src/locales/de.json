@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "Laden...",
+    "error": "Fehler",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück",
+    "next": "Weiter",
+    "continue": "Fortfahren",
+    "submit": "Absenden",
+    "confirm": "Bestätigen",
+    "success": "Erfolg",
+    "warning": "Warnung",
+    "global": "Global"
+  },
+  "app": {
+    "name": "Menschen Platz",
+    "tagline": "Ein globaler Platz für verifizierte Menschen.",
+    "description": "Reden. Lernen. Bauen. Ein Mensch, eine Stimme."
+  },
+  "navigation": {
+    "globalSquare": "Globaler Platz",
+    "workMode": "Arbeitsmodus",
+    "capsule": "Kapsel",
+    "ledger": "Hauptbuch",
+    "admin": "Admin",
+    "adminAccess": "Admin-Zugang"
+  },
+  "landing": {
+    "enterGlobalSquare": "Globalen Platz betreten",
+    "verificationNotice": "Posten ist nur für Menschen",
+    "verificationSubtitle": "Einmal mit World ID verifizieren",
+    "worldAppNotice": "Für volle Funktionalität öffnen Sie diese App bitte in der World App",
+    "previewHeader": "Live vom Globalen Platz",
+    "previewSubtitle": "Neueste Gespräche (schreibgeschützte Vorschau)",
+    "emptyPreview": "Seien Sie der Erste, der heute Hallo sagt 👋",
+    "joinConversation": "Treten Sie der Unterhaltung bei, um mehr zu sehen"
+  },
+  "auth": {
+    "adminKey": "Admin-Schlüssel",
+    "adminKeyPlaceholder": "Admin-Schlüssel eingeben...",
+    "adminAccessDescription": "Geben Sie den Admin-Schlüssel ein, um auf das Verwaltungspanel zuzugreifen.",
+    "adminKeyDemo": "Zu Demonstrationszwecken verwenden Sie einen beliebigen nicht-leeren Wert als Admin-Schlüssel.",
+    "adminAccessGranted": "Admin-Zugang Gewährt",
+    "adminWelcome": "Willkommen im Admin-Dashboard",
+    "pleaseEnterAdminKey": "Bitte geben Sie einen Admin-Schlüssel ein",
+    "accessAdmin": "Admin-Zugang",
+    "verifyWorldId": "Mit World ID verifizieren",
+    "verificationGate": "Posten ist nur für Menschen. Einmal mit World ID verifizieren."
+  },
+  "globalSquare": {
+    "title": "Globaler Platz",
+    "onlineNow": "{{count}} jetzt online",
+    "messagePlaceholder": "Was beschäftigt Sie?",
+    "characterCount": "{{count}}/240",
+    "send": "Senden",
+    "sending": "Sende...",
+    "cooldownActive": "Abkühlung Aktiv",
+    "cooldownMessage": "Bitte warten Sie {{seconds}} Sekunden bevor Sie eine weitere Nachricht senden",
+    "messageFiltered": "Nachricht Gefiltert",
+    "reportSubmitted": "Bericht Eingereicht",
+    "emptyState": "Seien Sie der Erste, der heute Hallo sagt 👋"
+  },
+  "workMode": {
+    "title": "Arbeitsmodus",
+    "subtitle": "Kurze Jobangebote, Anfragen und Zusammenarbeit",
+    "categories": {
+      "help": "Hilfe Gesucht",
+      "advice": "Beratung",
+      "collab": "Zusammenarbeit"
+    },
+    "messagePlaceholder": "Beschreiben Sie Ihre Anfrage oder Ihr Angebot...",
+    "linkPlaceholder": "Link (optional)",
+    "locationPlaceholder": "Standort",
+    "locations": {
+      "global": "Global",
+      "unitedStates": "Vereinigte Staaten",
+      "sanFrancisco": "San Francisco",
+      "newYork": "New York",
+      "london": "London",
+      "berlin": "Berlin",
+      "tokyo": "Tokio"
+    },
+    "postRequest": "Anfrage Posten",
+    "posting": "Poste...",
+    "workPostSent": "Arbeitspost Gesendet",
+    "workPostSentDescription": "Ihre Anfrage wurde erfolgreich gepostet",
+    "invalidLink": "Ungültiger Link",
+    "invalidLinkDescription": "Bitte geben Sie eine gültige URL ein",
+    "postFiltered": "Post Gefiltert",
+    "rateLimitNotice": "Link-Posts: 2 pro 10min, 4 pro Stunde Limit",
+    "emptyState": "Noch keine Anfragen. Bitten Sie um Hilfe oder bieten Sie Ihre Fähigkeiten an."
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "gerade eben",
+      "minutesAgo": "vor {{count}}m",
+      "hoursAgo": "vor {{count}}h",
+      "daysAgo": "vor {{count}}t",
+      "weeksAgo": "vor {{count}}w"
+    },
+    "stars": "{{count}} Sterne",
+    "star": "Stern",
+    "unstar": "Stern Entfernen",
+    "report": "Melden",
+    "mute": "Stumm",
+    "viewProfile": "Profil Anzeigen",
+    "visitLink": "Link Besuchen"
+  },
+  "topics": {
+    "dailyTopic": "Heutiges Thema",
+    "topicEndsIn": "Thema endet in {{time}}",
+    "categories": {
+      "general": "Allgemein",
+      "tech": "Technik",
+      "collaboration": "Zusammenarbeit",
+      "inspiration": "Inspiration",
+      "creativity": "Kreativität",
+      "learning": "Lernen",
+      "community": "Gemeinschaft",
+      "wellness": "Wohlbefinden"
+    },
+    "special": "Speziell"
+  },
+  "admin": {
+    "dashboard": "Admin-Dashboard",
+    "topics": "Themen",
+    "schedules": "Zeitpläne",
+    "analytics": "Analytik",
+    "users": "Benutzer",
+    "reports": "Berichte",
+    "settings": "Einstellungen"
+  },
+  "errors": {
+    "generic": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
+    "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
+    "unauthorized": "Sie sind nicht berechtigt, diese Aktion auszuführen.",
+    "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+    "rateLimit": "Sie machen das zu oft. Bitte verlangsamen Sie.",
+    "validation": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
+    "cooldown": "Atmen Sie durch! Sie können in {{seconds}} Sekunden wieder posten."
+  },
+  "language": {
+    "switchLanguage": "Sprache Wechseln",
+    "currentLanguage": "Aktuelle Sprache",
+    "detectBrowserLanguage": "Vom Browser erkennen",
+    "languageChanged": "Sprache geändert zu {{language}}",
+    "autoDetected": "Sprache automatisch erkannt: {{language}}"
+  },
+  "notifications": {
+    "newMessage": "Neue Nachricht in {{room}}",
+    "topicChange": "Das heutige Thema hat sich geändert",
+    "welcome": "Willkommen bei Menschen Platz!"
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "Carregando...",
+    "error": "Erro",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "continue": "Continuar",
+    "submit": "Enviar",
+    "confirm": "Confirmar",
+    "success": "Sucesso",
+    "warning": "Aviso",
+    "global": "Global"
+  },
+  "app": {
+    "name": "Praça Humana",
+    "tagline": "Uma praça global para humanos verificados.",
+    "description": "Conversar. Aprender. Construir. Um humano, uma voz."
+  },
+  "navigation": {
+    "globalSquare": "Praça Global",
+    "workMode": "Modo Trabalho",
+    "capsule": "Cápsula",
+    "ledger": "Livro-razão",
+    "admin": "Admin",
+    "adminAccess": "Acesso Admin"
+  },
+  "landing": {
+    "enterGlobalSquare": "Entrar na Praça Global",
+    "verificationNotice": "Publicação é só para humanos",
+    "verificationSubtitle": "Verifique uma vez com World ID",
+    "worldAppNotice": "Para funcionalidade completa, abra este app no World App",
+    "previewHeader": "Ao vivo da Praça Global",
+    "previewSubtitle": "Últimas conversas (prévia somente leitura)",
+    "emptyPreview": "Seja o primeiro a dizer oi hoje 👋",
+    "joinConversation": "Junte-se à conversa para ver mais"
+  },
+  "auth": {
+    "adminKey": "Chave Admin",
+    "adminKeyPlaceholder": "Digite a chave admin...",
+    "adminAccessDescription": "Digite a chave admin para acessar o painel de administração.",
+    "adminKeyDemo": "Para fins de demonstração, use qualquer valor não vazio como chave admin.",
+    "adminAccessGranted": "Acesso Admin Concedido",
+    "adminWelcome": "Bem-vindo ao painel administrativo",
+    "pleaseEnterAdminKey": "Por favor digite uma chave admin",
+    "accessAdmin": "Acessar Admin",
+    "verifyWorldId": "Verificar com World ID",
+    "verificationGate": "Publicação é só para humanos. Verifique uma vez com World ID."
+  },
+  "globalSquare": {
+    "title": "Praça Global",
+    "onlineNow": "{{count}} online agora",
+    "messagePlaceholder": "O que você está pensando?",
+    "characterCount": "{{count}}/240",
+    "send": "Enviar",
+    "sending": "Enviando...",
+    "cooldownActive": "Cooldown Ativo",
+    "cooldownMessage": "Por favor aguarde {{seconds}} segundos antes de enviar outra mensagem",
+    "messageFiltered": "Mensagem Filtrada",
+    "reportSubmitted": "Relatório Enviado",
+    "emptyState": "Seja o primeiro a dizer oi hoje 👋"
+  },
+  "workMode": {
+    "title": "Modo Trabalho",
+    "subtitle": "Ofertas de trabalho rápidas, solicitações e colaboração",
+    "categories": {
+      "help": "Preciso de Ajuda",
+      "advice": "Conselho",
+      "collab": "Colaboração"
+    },
+    "messagePlaceholder": "Descreva sua solicitação ou oferta...",
+    "linkPlaceholder": "Link (opcional)",
+    "locationPlaceholder": "Localização",
+    "locations": {
+      "global": "Global",
+      "unitedStates": "Estados Unidos",
+      "sanFrancisco": "São Francisco",
+      "newYork": "Nova York",
+      "london": "Londres",
+      "berlin": "Berlim",
+      "tokyo": "Tóquio"
+    },
+    "postRequest": "Postar Solicitação",
+    "posting": "Postando...",
+    "workPostSent": "Post de Trabalho Enviado",
+    "workPostSentDescription": "Sua solicitação foi postada com sucesso",
+    "invalidLink": "Link Inválido",
+    "invalidLinkDescription": "Por favor digite uma URL válida",
+    "postFiltered": "Post Filtrado",
+    "rateLimitNotice": "Posts com link: limite de 2 por 10min, 4 por hora",
+    "emptyState": "Nenhuma solicitação ainda. Peça ajuda ou ofereça suas habilidades."
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "agora mesmo",
+      "minutesAgo": "{{count}}min atrás",
+      "hoursAgo": "{{count}}h atrás",
+      "daysAgo": "{{count}}d atrás",
+      "weeksAgo": "{{count}}sem atrás"
+    },
+    "stars": "{{count}} estrelas",
+    "star": "Estrela",
+    "unstar": "Remover Estrela",
+    "report": "Reportar",
+    "mute": "Silenciar",
+    "viewProfile": "Ver Perfil",
+    "visitLink": "Visitar Link"
+  },
+  "topics": {
+    "dailyTopic": "Tópico do Dia",
+    "topicEndsIn": "Tópico termina em {{time}}",
+    "categories": {
+      "general": "Geral",
+      "tech": "Tecnologia",
+      "collaboration": "Colaboração",
+      "inspiration": "Inspiração",
+      "creativity": "Criatividade",
+      "learning": "Aprendizado",
+      "community": "Comunidade",
+      "wellness": "Bem-estar"
+    },
+    "special": "Especial"
+  },
+  "admin": {
+    "dashboard": "Painel Admin",
+    "topics": "Tópicos",
+    "schedules": "Agendamentos",
+    "analytics": "Analytics",
+    "users": "Usuários",
+    "reports": "Relatórios",
+    "settings": "Configurações"
+  },
+  "errors": {
+    "generic": "Algo deu errado. Por favor tente novamente.",
+    "network": "Erro de rede. Por favor verifique sua conexão.",
+    "unauthorized": "Você não está autorizado a realizar esta ação.",
+    "notFound": "O recurso solicitado não foi encontrado.",
+    "rateLimit": "Você está fazendo isso muito frequentemente. Por favor vá mais devagar.",
+    "validation": "Por favor verifique sua entrada e tente novamente.",
+    "cooldown": "Respire fundo! Você pode postar novamente em {{seconds}} segundos."
+  },
+  "language": {
+    "switchLanguage": "Trocar Idioma",
+    "currentLanguage": "Idioma Atual",
+    "detectBrowserLanguage": "Detectar do navegador",
+    "languageChanged": "Idioma alterado para {{language}}",
+    "autoDetected": "Idioma auto-detectado: {{language}}"
+  },
+  "notifications": {
+    "newMessage": "Nova mensagem em {{room}}",
+    "topicChange": "O tópico de hoje mudou",
+    "welcome": "Bem-vindo à Praça Humana!"
+  }
+}

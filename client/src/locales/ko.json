@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "로딩 중...",
+    "error": "오류",
+    "cancel": "취소",
+    "close": "닫기",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "편집",
+    "back": "뒤로",
+    "next": "다음",
+    "continue": "계속",
+    "submit": "제출",
+    "confirm": "확인",
+    "success": "성공",
+    "warning": "경고",
+    "global": "글로벌"
+  },
+  "app": {
+    "name": "인간 광장",
+    "tagline": "검증된 인간을 위한 글로벌 광장.",
+    "description": "대화하고. 배우고. 만들어가세요. 한 사람, 하나의 목소리."
+  },
+  "navigation": {
+    "globalSquare": "글로벌 광장",
+    "workMode": "업무 모드",
+    "capsule": "캡슐",
+    "ledger": "장부",
+    "admin": "관리자",
+    "adminAccess": "관리자 접근"
+  },
+  "landing": {
+    "enterGlobalSquare": "글로벌 광장 입장",
+    "verificationNotice": "포스팅은 인간만 가능",
+    "verificationSubtitle": "World ID로 한 번 인증",
+    "worldAppNotice": "모든 기능을 사용하려면 World App에서 이 앱을 열어주세요",
+    "previewHeader": "글로벌 광장 라이브",
+    "previewSubtitle": "최신 대화 (읽기 전용 미리보기)",
+    "emptyPreview": "오늘 첫 인사를 해보세요 👋",
+    "joinConversation": "더 보려면 대화에 참여하세요"
+  },
+  "auth": {
+    "adminKey": "관리자 키",
+    "adminKeyPlaceholder": "관리자 키 입력...",
+    "adminAccessDescription": "관리 패널에 접근하려면 관리자 키를 입력하세요.",
+    "adminKeyDemo": "데모 목적으로 비어있지 않은 아무 값이나 관리자 키로 사용하세요.",
+    "adminAccessGranted": "관리자 접근 승인",
+    "adminWelcome": "관리자 대시보드에 오신 것을 환영합니다",
+    "pleaseEnterAdminKey": "관리자 키를 입력해주세요",
+    "accessAdmin": "관리자 접근",
+    "verifyWorldId": "World ID로 인증",
+    "verificationGate": "포스팅은 인간만 가능합니다. World ID로 한 번 인증하세요."
+  },
+  "globalSquare": {
+    "title": "글로벌 광장",
+    "onlineNow": "현재 {{count}}명 온라인",
+    "messagePlaceholder": "무슨 생각을 하고 계신가요?",
+    "characterCount": "{{count}}/240",
+    "send": "전송",
+    "sending": "전송 중...",
+    "cooldownActive": "쿨다운 활성화",
+    "cooldownMessage": "다음 메시지를 보내기 전에 {{seconds}}초 기다려주세요",
+    "messageFiltered": "메시지 필터링됨",
+    "reportSubmitted": "신고 제출됨",
+    "emptyState": "오늘 첫 인사를 해보세요 👋"
+  },
+  "workMode": {
+    "title": "업무 모드",
+    "subtitle": "단기 구인, 요청 및 협업",
+    "categories": {
+      "help": "도움 필요",
+      "advice": "조언",
+      "collab": "협업"
+    },
+    "messagePlaceholder": "요청이나 제안을 설명해주세요...",
+    "linkPlaceholder": "링크 (선택사항)",
+    "locationPlaceholder": "위치",
+    "locations": {
+      "global": "글로벌",
+      "unitedStates": "미국",
+      "sanFrancisco": "샌프란시스코",
+      "newYork": "뉴욕",
+      "london": "런던",
+      "berlin": "베를린",
+      "tokyo": "도쿄"
+    },
+    "postRequest": "요청 게시",
+    "posting": "게시 중...",
+    "workPostSent": "업무 포스트 전송됨",
+    "workPostSentDescription": "요청이 성공적으로 게시되었습니다",
+    "invalidLink": "유효하지 않은 링크",
+    "invalidLinkDescription": "유효한 URL을 입력해주세요",
+    "postFiltered": "포스트 필터링됨",
+    "rateLimitNotice": "링크 포스트: 10분에 2개, 1시간에 4개 제한",
+    "emptyState": "아직 요청이 없습니다. 도움을 요청하거나 기술을 제공해보세요."
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "방금 전",
+      "minutesAgo": "{{count}}분 전",
+      "hoursAgo": "{{count}}시간 전",
+      "daysAgo": "{{count}}일 전",
+      "weeksAgo": "{{count}}주 전"
+    },
+    "stars": "{{count}} 별",
+    "star": "별",
+    "unstar": "별 제거",
+    "report": "신고",
+    "mute": "음소거",
+    "viewProfile": "프로필 보기",
+    "visitLink": "링크 방문"
+  },
+  "topics": {
+    "dailyTopic": "오늘의 주제",
+    "topicEndsIn": "주제가 {{time}} 후 종료됩니다",
+    "categories": {
+      "general": "일반",
+      "tech": "기술",
+      "collaboration": "협업",
+      "inspiration": "영감",
+      "creativity": "창의성",
+      "learning": "학습",
+      "community": "커뮤니티",
+      "wellness": "웰니스"
+    },
+    "special": "특별"
+  },
+  "admin": {
+    "dashboard": "관리자 대시보드",
+    "topics": "주제",
+    "schedules": "일정",
+    "analytics": "분석",
+    "users": "사용자",
+    "reports": "신고",
+    "settings": "설정"
+  },
+  "errors": {
+    "generic": "문제가 발생했습니다. 다시 시도해주세요.",
+    "network": "네트워크 오류. 연결을 확인해주세요.",
+    "unauthorized": "이 작업을 수행할 권한이 없습니다.",
+    "notFound": "요청한 리소스를 찾을 수 없습니다.",
+    "rateLimit": "너무 자주 하고 있습니다. 속도를 줄여주세요.",
+    "validation": "입력을 확인하고 다시 시도해주세요.",
+    "cooldown": "숨을 고르세요! {{seconds}}초 후에 다시 게시할 수 있습니다."
+  },
+  "language": {
+    "switchLanguage": "언어 변경",
+    "currentLanguage": "현재 언어",
+    "detectBrowserLanguage": "브라우저에서 감지",
+    "languageChanged": "언어가 {{language}}(으)로 변경되었습니다",
+    "autoDetected": "언어 자동 감지: {{language}}"
+  },
+  "notifications": {
+    "newMessage": "{{room}}에 새 메시지",
+    "topicChange": "오늘의 주제가 변경되었습니다",
+    "welcome": "인간 광장에 오신 것을 환영합니다!"
+  }
+}

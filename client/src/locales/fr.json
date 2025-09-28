@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "back": "Retour",
+    "next": "Suivant",
+    "continue": "Continuer",
+    "submit": "Soumettre",
+    "confirm": "Confirmer",
+    "success": "Succès",
+    "warning": "Avertissement",
+    "global": "Global"
+  },
+  "app": {
+    "name": "Place Humaine",
+    "tagline": "Une place mondiale pour les humains vérifiés.",
+    "description": "Parler. Apprendre. Construire. Un humain, une voix."
+  },
+  "navigation": {
+    "globalSquare": "Place Mondiale",
+    "workMode": "Mode Travail",
+    "capsule": "Capsule",
+    "ledger": "Grand Livre",
+    "admin": "Admin",
+    "adminAccess": "Accès Admin"
+  },
+  "landing": {
+    "enterGlobalSquare": "Entrer sur la Place Mondiale",
+    "verificationNotice": "Les publications sont réservées aux humains",
+    "verificationSubtitle": "Vérifiez une fois avec World ID",
+    "worldAppNotice": "Pour toutes les fonctionnalités, veuillez ouvrir cette app dans World App",
+    "previewHeader": "En direct de la Place Mondiale",
+    "previewSubtitle": "Dernières conversations (aperçu en lecture seule)",
+    "emptyPreview": "Soyez le premier à dire bonjour aujourd'hui 👋",
+    "joinConversation": "Rejoignez la conversation pour voir plus"
+  },
+  "auth": {
+    "adminKey": "Clé Admin",
+    "adminKeyPlaceholder": "Entrez la clé admin...",
+    "adminAccessDescription": "Entrez la clé admin pour accéder au panneau d'administration.",
+    "adminKeyDemo": "À des fins de démonstration, utilisez n'importe quelle valeur non vide comme clé admin.",
+    "adminAccessGranted": "Accès Admin Accordé",
+    "adminWelcome": "Bienvenue dans le tableau de bord admin",
+    "pleaseEnterAdminKey": "Veuillez entrer une clé admin",
+    "accessAdmin": "Accès Admin",
+    "verifyWorldId": "Vérifier avec World ID",
+    "verificationGate": "Les publications sont réservées aux humains. Vérifiez une fois avec World ID."
+  },
+  "globalSquare": {
+    "title": "Place Mondiale",
+    "onlineNow": "{{count}} en ligne maintenant",
+    "messagePlaceholder": "À quoi pensez-vous ?",
+    "characterCount": "{{count}}/240",
+    "send": "Envoyer",
+    "sending": "Envoi...",
+    "cooldownActive": "Délai d'Attente Actif",
+    "cooldownMessage": "Veuillez attendre {{seconds}} secondes avant d'envoyer un autre message",
+    "messageFiltered": "Message Filtré",
+    "reportSubmitted": "Rapport Soumis",
+    "emptyState": "Soyez le premier à dire bonjour aujourd'hui 👋"
+  },
+  "workMode": {
+    "title": "Mode Travail",
+    "subtitle": "Offres d'emploi courtes, demandes et collaboration",
+    "categories": {
+      "help": "Aide Recherchée",
+      "advice": "Conseil",
+      "collab": "Collaboration"
+    },
+    "messagePlaceholder": "Décrivez votre demande ou offre...",
+    "linkPlaceholder": "Lien (optionnel)",
+    "locationPlaceholder": "Localisation",
+    "locations": {
+      "global": "Global",
+      "unitedStates": "États-Unis",
+      "sanFrancisco": "San Francisco",
+      "newYork": "New York",
+      "london": "Londres",
+      "berlin": "Berlin",
+      "tokyo": "Tokyo"
+    },
+    "postRequest": "Publier la Demande",
+    "posting": "Publication...",
+    "workPostSent": "Publication de Travail Envoyée",
+    "workPostSentDescription": "Votre demande a été publiée avec succès",
+    "invalidLink": "Lien Invalide",
+    "invalidLinkDescription": "Veuillez entrer une URL valide",
+    "postFiltered": "Publication Filtrée",
+    "rateLimitNotice": "Publications avec lien : limite de 2 par 10min, 4 par heure",
+    "emptyState": "Aucune demande pour le moment. Demandez de l'aide ou offrez vos compétences."
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "à l'instant",
+      "minutesAgo": "il y a {{count}}m",
+      "hoursAgo": "il y a {{count}}h",
+      "daysAgo": "il y a {{count}}j",
+      "weeksAgo": "il y a {{count}}s"
+    },
+    "stars": "{{count}} étoiles",
+    "star": "Étoile",
+    "unstar": "Retirer l'Étoile",
+    "report": "Signaler",
+    "mute": "Muet",
+    "viewProfile": "Voir le Profil",
+    "visitLink": "Visiter le Lien"
+  },
+  "topics": {
+    "dailyTopic": "Sujet du Jour",
+    "topicEndsIn": "Le sujet se termine dans {{time}}",
+    "categories": {
+      "general": "Général",
+      "tech": "Tech",
+      "collaboration": "Collaboration",
+      "inspiration": "Inspiration",
+      "creativity": "Créativité",
+      "learning": "Apprentissage",
+      "community": "Communauté",
+      "wellness": "Bien-être"
+    },
+    "special": "Spécial"
+  },
+  "admin": {
+    "dashboard": "Tableau de Bord Admin",
+    "topics": "Sujets",
+    "schedules": "Horaires",
+    "analytics": "Analytiques",
+    "users": "Utilisateurs",
+    "reports": "Rapports",
+    "settings": "Paramètres"
+  },
+  "errors": {
+    "generic": "Quelque chose s'est mal passé. Veuillez réessayer.",
+    "network": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action.",
+    "notFound": "La ressource demandée n'a pas été trouvée.",
+    "rateLimit": "Vous faites cela trop souvent. Veuillez ralentir.",
+    "validation": "Veuillez vérifier votre saisie et réessayer.",
+    "cooldown": "Respirez ! Vous pouvez poster à nouveau dans {{seconds}} secondes."
+  },
+  "language": {
+    "switchLanguage": "Changer de Langue",
+    "currentLanguage": "Langue Actuelle",
+    "detectBrowserLanguage": "Détecter du navigateur",
+    "languageChanged": "Langue changée en {{language}}",
+    "autoDetected": "Langue auto-détectée : {{language}}"
+  },
+  "notifications": {
+    "newMessage": "Nouveau message dans {{room}}",
+    "topicChange": "Le sujet d'aujourd'hui a changé",
+    "welcome": "Bienvenue sur Place Humaine !"
+  }
+}

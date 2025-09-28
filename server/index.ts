@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { TopicRotationScheduler } from "./topic-scheduler";
 
 const app = express();
 app.use(express.json());
@@ -38,6 +39,24 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Initialize topic rotation scheduler
+  const topicScheduler = new TopicRotationScheduler();
+  await topicScheduler.start();
+  log('Topic rotation scheduler started');
+  
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    log('SIGTERM received, shutting down gracefully');
+    await topicScheduler.stop();
+    process.exit(0);
+  });
+  
+  process.on('SIGINT', async () => {
+    log('SIGINT received, shutting down gracefully');
+    await topicScheduler.stop();
+    process.exit(0);
+  });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -9,12 +9,12 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
-import { ArrowLeft, Briefcase, Shield } from "lucide-react";
+import { ArrowLeft, Briefcase, Shield, Users } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
 import { filterContent } from "@/lib/content-filter";
-import type { MessageWithAuthor, OnlinePresence, Theme } from "@shared/schema";
+import type { MessageWithAuthor, OnlinePresence, Theme, Topic } from "@shared/schema";
 
 export default function GlobalSquare() {
   const [, setLocation] = useLocation();
@@ -41,6 +41,12 @@ export default function GlobalSquare() {
   // Fetch today's topic
   const { data: theme } = useQuery<Theme>({
     queryKey: ['/api/theme'],
+  });
+
+  // Fetch current active topic with enhanced details
+  const { data: currentTopic } = useQuery<Topic>({
+    queryKey: ['/api/topics/current'],
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   });
 
   // Fetch online presence
@@ -238,19 +244,59 @@ export default function GlobalSquare() {
           <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">
             Global Square
           </h1>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => setLocation('/room/work')}
-            data-testid="button-toggle-work-mode"
-          >
-            <Briefcase className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center space-x-1">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setLocation('/referrals')}
+              data-testid="button-referrals"
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setLocation('/room/work')}
+              data-testid="button-toggle-work-mode"
+            >
+              <Briefcase className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground" data-testid="text-todays-topic">
-            {theme?.topicText || "What are you building today?"}
-          </p>
+        <div className="text-center space-y-2">
+          {currentTopic ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="text-base font-semibold text-foreground" data-testid="text-topic-title">
+                  {currentTopic.title}
+                </h2>
+                {currentTopic.isSpecial && (
+                  <Badge variant="destructive" className="text-xs">
+                    Special
+                  </Badge>
+                )}
+              </div>
+              {currentTopic.description && (
+                <p className="text-sm text-muted-foreground" data-testid="text-topic-description">
+                  {currentTopic.description}
+                </p>
+              )}
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-xs">
+                  {currentTopic.category}
+                </Badge>
+                {currentTopic.authorName && (
+                  <span className="text-xs text-muted-foreground">
+                    by {currentTopic.authorName}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground" data-testid="text-todays-topic">
+              {theme?.topicText || "What are you building today?"}
+            </p>
+          )}
         </div>
         <div className="flex items-center justify-center gap-2 mt-2">
           <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'} ${isConnected ? 'animate-pulse' : ''}`} />

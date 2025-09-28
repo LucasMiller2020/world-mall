@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "back": "戻る",
+    "next": "次へ",
+    "continue": "続行",
+    "submit": "送信",
+    "confirm": "確認",
+    "success": "成功",
+    "warning": "警告",
+    "global": "グローバル"
+  },
+  "app": {
+    "name": "ヒューマンズスクエア",
+    "tagline": "認証済みの人間のためのグローバル広場。",
+    "description": "話す。学ぶ。作る。一人の人間、一つの声。"
+  },
+  "navigation": {
+    "globalSquare": "グローバル広場",
+    "workMode": "ワークモード",
+    "capsule": "カプセル",
+    "ledger": "台帳",
+    "admin": "管理者",
+    "adminAccess": "管理者アクセス"
+  },
+  "landing": {
+    "enterGlobalSquare": "グローバル広場に入る",
+    "verificationNotice": "投稿は人間のみ",
+    "verificationSubtitle": "World IDで一度認証",
+    "worldAppNotice": "全機能を利用するには、World Appでこのアプリを開いてください",
+    "previewHeader": "グローバル広場からライブ",
+    "previewSubtitle": "最新の会話（読み取り専用プレビュー）",
+    "emptyPreview": "今日最初に挨拶してみませんか 👋",
+    "joinConversation": "もっと見るには会話に参加してください"
+  },
+  "auth": {
+    "adminKey": "管理者キー",
+    "adminKeyPlaceholder": "管理者キーを入力...",
+    "adminAccessDescription": "管理パネルにアクセスするには管理者キーを入力してください。",
+    "adminKeyDemo": "デモ目的で、空でない任意の値を管理者キーとして使用してください。",
+    "adminAccessGranted": "管理者アクセス許可",
+    "adminWelcome": "管理者ダッシュボードへようこそ",
+    "pleaseEnterAdminKey": "管理者キーを入力してください",
+    "accessAdmin": "管理者アクセス",
+    "verifyWorldId": "World IDで認証",
+    "verificationGate": "投稿は人間のみです。World IDで一度認証してください。"
+  },
+  "globalSquare": {
+    "title": "グローバル広場",
+    "onlineNow": "{{count}}人がオンライン中",
+    "messagePlaceholder": "何を考えていますか？",
+    "characterCount": "{{count}}/240",
+    "send": "送信",
+    "sending": "送信中...",
+    "cooldownActive": "クールダウン中",
+    "cooldownMessage": "次のメッセージを送信するまで{{seconds}}秒お待ちください",
+    "messageFiltered": "メッセージがフィルタリングされました",
+    "reportSubmitted": "レポートを送信しました",
+    "emptyState": "今日最初に挨拶してみませんか 👋"
+  },
+  "workMode": {
+    "title": "ワークモード",
+    "subtitle": "短期求人、依頼、協業",
+    "categories": {
+      "help": "ヘルプ求む",
+      "advice": "アドバイス",
+      "collab": "コラボ"
+    },
+    "messagePlaceholder": "依頼や提案を説明してください...",
+    "linkPlaceholder": "リンク（オプション）",
+    "locationPlaceholder": "場所",
+    "locations": {
+      "global": "グローバル",
+      "unitedStates": "アメリカ合衆国",
+      "sanFrancisco": "サンフランシスコ",
+      "newYork": "ニューヨーク",
+      "london": "ロンドン",
+      "berlin": "ベルリン",
+      "tokyo": "東京"
+    },
+    "postRequest": "リクエスト投稿",
+    "posting": "投稿中...",
+    "workPostSent": "ワーク投稿を送信しました",
+    "workPostSentDescription": "依頼が正常に投稿されました",
+    "invalidLink": "無効なリンク",
+    "invalidLinkDescription": "有効なURLを入力してください",
+    "postFiltered": "投稿がフィルタリングされました",
+    "rateLimitNotice": "リンク投稿：10分間に2回、1時間に4回の制限",
+    "emptyState": "まだリクエストがありません。ヘルプを求めるかスキルを提供してください。"
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "たった今",
+      "minutesAgo": "{{count}}分前",
+      "hoursAgo": "{{count}}時間前",
+      "daysAgo": "{{count}}日前",
+      "weeksAgo": "{{count}}週間前"
+    },
+    "stars": "{{count}}つ星",
+    "star": "スター",
+    "unstar": "スター削除",
+    "report": "レポート",
+    "mute": "ミュート",
+    "viewProfile": "プロフィール表示",
+    "visitLink": "リンクを訪問"
+  },
+  "topics": {
+    "dailyTopic": "今日のトピック",
+    "topicEndsIn": "トピック終了まで{{time}}",
+    "categories": {
+      "general": "一般",
+      "tech": "テクノロジー",
+      "collaboration": "協業",
+      "inspiration": "インスピレーション",
+      "creativity": "創造性",
+      "learning": "学習",
+      "community": "コミュニティ",
+      "wellness": "ウェルネス"
+    },
+    "special": "特別"
+  },
+  "admin": {
+    "dashboard": "管理者ダッシュボード",
+    "topics": "トピック",
+    "schedules": "スケジュール",
+    "analytics": "アナリティクス",
+    "users": "ユーザー",
+    "reports": "レポート",
+    "settings": "設定"
+  },
+  "errors": {
+    "generic": "何かが間違っています。もう一度お試しください。",
+    "network": "ネットワークエラー。接続を確認してください。",
+    "unauthorized": "この操作を実行する権限がありません。",
+    "notFound": "要求されたリソースが見つかりませんでした。",
+    "rateLimit": "操作が頻繁すぎます。ペースを落としてください。",
+    "validation": "入力を確認して再試行してください。",
+    "cooldown": "深呼吸してください！{{seconds}}秒後に再び投稿できます。"
+  },
+  "language": {
+    "switchLanguage": "言語を切り替え",
+    "currentLanguage": "現在の言語",
+    "detectBrowserLanguage": "ブラウザから検出",
+    "languageChanged": "言語を{{language}}に変更しました",
+    "autoDetected": "言語を自動検出：{{language}}"
+  },
+  "notifications": {
+    "newMessage": "{{room}}に新しいメッセージ",
+    "topicChange": "今日のトピックが変更されました",
+    "welcome": "ヒューマンズスクエアへようこそ！"
+  }
+}

@@ -1,16 +1,27 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
-import { Shield } from "lucide-react";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { Shield, Settings } from "lucide-react";
 import { useMiniKitStatus } from "@/hooks/use-world-id";
+import { useToast } from "@/hooks/use-toast";
 import type { MessageWithAuthor } from "@shared/schema";
 
 export default function Landing() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { isInstalled } = useMiniKitStatus();
+  const { toast } = useToast();
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [adminKey, setAdminKey] = useState('');
 
   // Fetch latest messages for preview (no auth required)
   const { data: messages, isLoading } = useQuery<MessageWithAuthor[]>({
@@ -25,37 +36,112 @@ export default function Landing() {
   const handleEnterGlobalSquare = () => {
     if (!isInstalled) {
       // Show instructions to open in World App
-      alert('Please open this app in World App to access all features');
+      alert(t('landing.worldAppNotice'));
       return;
     }
     setLocation('/room/global');
   };
 
+  const handleAdminAccess = () => {
+    if (adminKey.trim()) {
+      localStorage.setItem('admin_key', adminKey.trim());
+      setLocation('/admin');
+      setAdminDialogOpen(false);
+      toast({
+        title: t('auth.adminAccessGranted'),
+        description: t('auth.adminWelcome')
+      });
+    } else {
+      toast({
+        title: t('common.error'), 
+        description: t('auth.pleaseEnterAdminKey'),
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Language Switcher */}
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
+      
       {/* Hero Section */}
       <div className="px-6 pt-12 pb-8 text-center">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-3" data-testid="hero-title">
-            Humans Square
+            {t('app.name')}
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed" data-testid="hero-subtitle">
-            A global square for verified humans.
+            {t('app.tagline')}
           </p>
           <p className="text-base text-muted-foreground" data-testid="hero-description">
-            Talk. Learn. Build. One human, one voice.
+            {t('app.description')}
           </p>
         </div>
         
-        {/* CTA Button */}
-        <Button 
-          onClick={handleEnterGlobalSquare}
-          className="w-full py-4 text-lg mb-8"
-          size="lg"
-          data-testid="button-enter-global-square"
-        >
-          Enter Global Square
-        </Button>
+        {/* CTA Buttons */}
+        <div className="space-y-3 mb-8">
+          <Button 
+            onClick={handleEnterGlobalSquare}
+            className="w-full py-4 text-lg"
+            size="lg"
+            data-testid="button-enter-global-square"
+          >
+            {t('landing.enterGlobalSquare')}
+          </Button>
+          
+          <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline"
+                className="w-full"
+                size="sm"
+                data-testid="button-admin-access"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                {t('navigation.adminAccess')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('navigation.adminAccess')}</DialogTitle>
+                <DialogDescription>
+                  {t('auth.adminAccessDescription')}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="admin-key">{t('auth.adminKey')}</Label>
+                  <Input
+                    id="admin-key"
+                    type="password"
+                    placeholder={t('auth.adminKeyPlaceholder')}
+                    value={adminKey}
+                    onChange={(e) => setAdminKey(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAdminAccess();
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('auth.adminKeyDemo')}
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAdminDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button onClick={handleAdminAccess} data-testid="button-admin-login">
+                  {t('auth.accessAdmin')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
         
         {/* Verification Gate Notice */}
         <Card className="mb-6">
@@ -64,10 +150,10 @@ export default function Landing() {
               <Shield className="h-5 w-5 text-primary" />
               <div className="text-left">
                 <p className="text-sm font-medium text-foreground" data-testid="text-verification-notice">
-                  Posting is human-only
+                  {t('landing.verificationNotice')}
                 </p>
                 <p className="text-xs text-muted-foreground" data-testid="text-verification-subtitle">
-                  Verify once with World ID
+                  {t('landing.verificationSubtitle')}
                 </p>
               </div>
             </div>
@@ -78,7 +164,7 @@ export default function Landing() {
           <Card className="mb-6 border-amber-200 bg-amber-50">
             <CardContent className="pt-4">
               <p className="text-sm text-amber-800" data-testid="text-world-app-notice">
-                For full functionality, please open this app in World App
+                {t('landing.worldAppNotice')}
               </p>
             </CardContent>
           </Card>
@@ -89,10 +175,10 @@ export default function Landing() {
       <div className="flex-1 px-6 pb-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-foreground mb-2" data-testid="text-preview-header">
-            Live from Global Square
+            {t('landing.previewHeader')}
           </h2>
           <p className="text-sm text-muted-foreground" data-testid="text-preview-subtitle">
-            Latest conversations (read-only preview)
+            {t('landing.previewSubtitle')}
           </p>
         </div>
         
@@ -118,7 +204,7 @@ export default function Landing() {
             <Card>
               <CardContent className="pt-6 text-center">
                 <p className="text-muted-foreground" data-testid="text-empty-preview">
-                  Be the first to say hi today 👋
+                  {t('landing.emptyPreview')}
                 </p>
               </CardContent>
             </Card>
@@ -129,7 +215,7 @@ export default function Landing() {
         {messages && messages.length > 0 && (
           <div className="text-center mt-6">
             <p className="text-sm text-muted-foreground" data-testid="text-join-conversation">
-              Join the conversation to see more
+              {t('landing.joinConversation')}
             </p>
           </div>
         )}

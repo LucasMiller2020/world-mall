@@ -1,0 +1,158 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "success": "Success",
+    "warning": "Warning",
+    "global": "Global"
+  },
+  "app": {
+    "name": "Humans Square",
+    "tagline": "A global square for verified humans.",
+    "description": "Talk. Learn. Build. One human, one voice."
+  },
+  "navigation": {
+    "globalSquare": "Global Square",
+    "workMode": "Work Mode",
+    "capsule": "Capsule",
+    "ledger": "Ledger",
+    "admin": "Admin",
+    "adminAccess": "Admin Access"
+  },
+  "landing": {
+    "enterGlobalSquare": "Enter Global Square",
+    "verificationNotice": "Posting is human-only",
+    "verificationSubtitle": "Verify once with World ID",
+    "worldAppNotice": "For full functionality, please open this app in World App",
+    "previewHeader": "Live from Global Square",
+    "previewSubtitle": "Latest conversations (read-only preview)",
+    "emptyPreview": "Be the first to say hi today 👋",
+    "joinConversation": "Join the conversation to see more"
+  },
+  "auth": {
+    "adminKey": "Admin Key",
+    "adminKeyPlaceholder": "Enter admin key...",
+    "adminAccessDescription": "Enter the admin key to access the administration panel.",
+    "adminKeyDemo": "For demo purposes, use any non-empty value as the admin key.",
+    "adminAccessGranted": "Admin Access Granted",
+    "adminWelcome": "Welcome to the admin dashboard",
+    "pleaseEnterAdminKey": "Please enter an admin key",
+    "accessAdmin": "Access Admin",
+    "verifyWorldId": "Verify with World ID",
+    "verificationGate": "Posting is human-only. Verify once with World ID."
+  },
+  "globalSquare": {
+    "title": "Global Square",
+    "onlineNow": "{{count}} online now",
+    "messagePlaceholder": "What's on your mind?",
+    "characterCount": "{{count}}/240",
+    "send": "Send",
+    "sending": "Sending...",
+    "cooldownActive": "Cooldown Active",
+    "cooldownMessage": "Please wait {{seconds}} seconds before sending another message",
+    "messageFiltered": "Message Filtered",
+    "reportSubmitted": "Report Submitted",
+    "emptyState": "Be the first to say hi today 👋"
+  },
+  "workMode": {
+    "title": "Work Mode",
+    "subtitle": "Short job offers, requests & collaboration",
+    "categories": {
+      "help": "Help Wanted",
+      "advice": "Advice",
+      "collab": "Collab"
+    },
+    "messagePlaceholder": "Describe your request or offer...",
+    "linkPlaceholder": "Link (optional)",
+    "locationPlaceholder": "Location",
+    "locations": {
+      "global": "Global",
+      "unitedStates": "United States",
+      "sanFrancisco": "San Francisco",
+      "newYork": "New York",
+      "london": "London",
+      "berlin": "Berlin",
+      "tokyo": "Tokyo"
+    },
+    "postRequest": "Post Request",
+    "posting": "Posting...",
+    "workPostSent": "Work Post Sent",
+    "workPostSentDescription": "Your request has been posted successfully",
+    "invalidLink": "Invalid Link",
+    "invalidLinkDescription": "Please enter a valid URL",
+    "postFiltered": "Post Filtered",
+    "rateLimitNotice": "Link posts: 2 per 10min, 4 per hour limit",
+    "emptyState": "No requests yet. Ask for help or offer your skills."
+  },
+  "messages": {
+    "timeAgo": {
+      "justNow": "just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago",
+      "weeksAgo": "{{count}}w ago"
+    },
+    "stars": "{{count}} stars",
+    "star": "Star",
+    "unstar": "Unstar",
+    "report": "Report",
+    "mute": "Mute",
+    "viewProfile": "View Profile",
+    "visitLink": "Visit Link"
+  },
+  "topics": {
+    "dailyTopic": "Today's Topic",
+    "topicEndsIn": "Topic ends in {{time}}",
+    "categories": {
+      "general": "General",
+      "tech": "Tech",
+      "collaboration": "Collaboration",
+      "inspiration": "Inspiration",
+      "creativity": "Creativity",
+      "learning": "Learning",
+      "community": "Community",
+      "wellness": "Wellness"
+    },
+    "special": "Special"
+  },
+  "admin": {
+    "dashboard": "Admin Dashboard",
+    "topics": "Topics",
+    "schedules": "Schedules",
+    "analytics": "Analytics",
+    "users": "Users",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "unauthorized": "You are not authorized to perform this action.",
+    "notFound": "The requested resource was not found.",
+    "rateLimit": "You're doing that too often. Please slow down.",
+    "validation": "Please check your input and try again.",
+    "cooldown": "Take a breath! You can post again in {{seconds}} seconds."
+  },
+  "language": {
+    "switchLanguage": "Switch Language",
+    "currentLanguage": "Current Language",
+    "detectBrowserLanguage": "Detect from browser",
+    "languageChanged": "Language changed to {{language}}",
+    "autoDetected": "Language auto-detected: {{language}}"
+  },
+  "notifications": {
+    "newMessage": "New message in {{room}}",
+    "topicChange": "Today's topic has changed",
+    "welcome": "Welcome to Humans Square!"
+  }
+}
