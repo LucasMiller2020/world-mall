@@ -679,6 +679,16 @@ export class MemStorage implements IStorage {
   private bulkOperations: Map<string, BulkOperation> = new Map();
   private systemNotifications: Map<string, SystemNotification> = new Map();
 
+  // Enhanced moderation system data structures
+  private moderationActions: Map<string, ModerationAction> = new Map();
+  private userTrustScores: Map<string, UserTrustScore> = new Map();
+  private moderationAnalyses: Map<string, ModerationAnalysis> = new Map();
+  private enhancedReports: Map<string, EnhancedReport> = new Map();
+  private contentSimilarities: Map<string, ContentSimilarity> = new Map();
+  private moderationQueue: Map<string, ModerationQueue> = new Map();
+  private moderationAppeals: Map<string, ModerationAppeal> = new Map();
+  private moderationStats: Map<string, ModerationStats> = new Map();
+
   constructor() {
     // Initialize with today's default theme
     const today = new Date().toISOString().split('T')[0];
@@ -2639,6 +2649,151 @@ export class MemStorage implements IStorage {
     };
     return descriptions[source] || 'Points earned';
   }
+
+  // Moderation action operations
+  async getModerationAction(id: string): Promise<ModerationAction | undefined> {
+    return this.moderationActions.get(id);
+  }
+
+  async createModerationAction(action: InsertModerationAction): Promise<ModerationAction> {
+    const newAction: ModerationAction = {
+      ...action,
+      id: action.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: true
+    };
+    this.moderationActions.set(newAction.id, newAction);
+    return newAction;
+  }
+
+  async getModerationActionsForContent(contentId: string): Promise<ModerationAction[]> {
+    return Array.from(this.moderationActions.values())
+      .filter(action => action.targetId === contentId && action.targetType === 'content');
+  }
+
+  async getModerationActionsForUser(humanId: string): Promise<ModerationAction[]> {
+    return Array.from(this.moderationActions.values())
+      .filter(action => action.targetId === humanId && action.targetType === 'user');
+  }
+
+  async getActiveModerationActions(humanId: string): Promise<ModerationAction[]> {
+    const now = new Date();
+    return Array.from(this.moderationActions.values())
+      .filter(action => 
+        action.targetId === humanId && 
+        action.targetType === 'user' &&
+        action.isActive &&
+        (!action.expiresAt || new Date(action.expiresAt) > now)
+      );
+  }
+
+  async expireModerationActions(): Promise<void> {
+    const now = new Date();
+    for (const [id, action] of this.moderationActions.entries()) {
+      if (action.expiresAt && new Date(action.expiresAt) <= now) {
+        action.isActive = false;
+        this.moderationActions.set(id, action);
+      }
+    }
+  }
+
+  // User trust score operations
+  async getUserTrustScore(humanId: string): Promise<UserTrustScore | undefined> {
+    return this.userTrustScores.get(humanId);
+  }
+
+  async createUserTrustScore(trustScore: InsertUserTrustScore): Promise<UserTrustScore> {
+    const newTrustScore: UserTrustScore = {
+      ...trustScore,
+      id: trustScore.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.userTrustScores.set(newTrustScore.humanId, newTrustScore);
+    return newTrustScore;
+  }
+
+  async updateUserTrustScore(humanId: string, updates: Partial<InsertUserTrustScore>): Promise<UserTrustScore> {
+    const existing = this.userTrustScores.get(humanId);
+    if (!existing) {
+      return this.createUserTrustScore({ ...updates, humanId } as InsertUserTrustScore);
+    }
+    const updated: UserTrustScore = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.userTrustScores.set(humanId, updated);
+    return updated;
+  }
+
+  async calculateUserTrustScore(humanId: string): Promise<UserTrustScore> {
+    // Simple implementation for MemStorage
+    const existing = await this.getUserTrustScore(humanId);
+    if (existing) return existing;
+    
+    return this.createUserTrustScore({
+      humanId,
+      overallTrustScore: 50,
+      contentQualityScore: 50,
+      communityEngagementScore: 50,
+      reportAccuracyScore: 50,
+      totalMessages: 0,
+      totalReportsReceived: 0,
+      totalReportsMade: 0,
+      accurateReports: 0,
+      falseReports: 0,
+      warningsCount: 0,
+      tempBansCount: 0,
+      daysWithoutViolation: 0,
+      trustLevel: 'new',
+      canReportUsers: true,
+      requiresReview: false,
+      maxDailyMessages: 50
+    });
+  }
+
+  async getUsersByTrustLevel(trustLevel: string): Promise<UserTrustScore[]> {
+    return Array.from(this.userTrustScores.values())
+      .filter(score => score.trustLevel === trustLevel);
+  }
+
+  // Moderation analysis operations
+  async createModerationAnalysis(analysis: InsertModerationAnalysis): Promise<ModerationAnalysis> {
+    const newAnalysis: ModerationAnalysis = {
+      ...analysis,
+      id: analysis.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.moderationAnalyses.set(newAnalysis.id, newAnalysis);
+    return newAnalysis;
+  }
+
+  // Content similarity operations
+  async createContentSimilarity(similarity: InsertContentSimilarity): Promise<ContentSimilarity> {
+    const newSimilarity: ContentSimilarity = {
+      ...similarity,
+      id: similarity.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.contentSimilarities.set(newSimilarity.id, newSimilarity);
+    return newSimilarity;
+  }
+
+  // Moderation queue operations  
+  async createModerationQueueItem(item: InsertModerationQueue): Promise<ModerationQueue> {
+    const newItem: ModerationQueue = {
+      ...item,
+      id: item.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.moderationQueue.set(newItem.id, newItem);
+    return newItem;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3418,6 +3573,157 @@ export class DatabaseStorage implements IStorage {
     // For DatabaseStorage, this would require a separate table to track message-topic associations
     // For now, return null as this is primarily used for memory storage
     return null;
+  }
+
+  // Moderation action operations
+  async getModerationAction(id: string): Promise<ModerationAction | undefined> {
+    const result = await db.select().from(moderationActions).where(eq(moderationActions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createModerationAction(action: InsertModerationAction): Promise<ModerationAction> {
+    const result = await db.insert(moderationActions).values({
+      ...action,
+      id: action.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: true
+    }).returning();
+    return result[0];
+  }
+
+  async getModerationActionsForContent(contentId: string): Promise<ModerationAction[]> {
+    return await db.select()
+      .from(moderationActions)
+      .where(and(
+        eq(moderationActions.targetId, contentId),
+        eq(moderationActions.targetType, 'content')
+      ));
+  }
+
+  async getModerationActionsForUser(humanId: string): Promise<ModerationAction[]> {
+    return await db.select()
+      .from(moderationActions)
+      .where(and(
+        eq(moderationActions.targetId, humanId),
+        eq(moderationActions.targetType, 'user')
+      ));
+  }
+
+  async getActiveModerationActions(humanId: string): Promise<ModerationAction[]> {
+    const now = new Date();
+    return await db.select()
+      .from(moderationActions)
+      .where(and(
+        eq(moderationActions.targetId, humanId),
+        eq(moderationActions.targetType, 'user'),
+        eq(moderationActions.isActive, true),
+        sql`(${moderationActions.expiresAt} IS NULL OR ${moderationActions.expiresAt} > ${now})`
+      ));
+  }
+
+  async expireModerationActions(): Promise<void> {
+    const now = new Date();
+    await db.update(moderationActions)
+      .set({ isActive: false, updatedAt: now })
+      .where(and(
+        eq(moderationActions.isActive, true),
+        sql`${moderationActions.expiresAt} <= ${now}`
+      ));
+  }
+
+  // User trust score operations
+  async getUserTrustScore(humanId: string): Promise<UserTrustScore | undefined> {
+    const result = await db.select().from(userTrustScores).where(eq(userTrustScores.humanId, humanId)).limit(1);
+    return result[0];
+  }
+
+  async createUserTrustScore(trustScore: InsertUserTrustScore): Promise<UserTrustScore> {
+    const result = await db.insert(userTrustScores).values({
+      ...trustScore,
+      id: trustScore.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateUserTrustScore(humanId: string, updates: Partial<InsertUserTrustScore>): Promise<UserTrustScore> {
+    const existing = await this.getUserTrustScore(humanId);
+    if (!existing) {
+      return this.createUserTrustScore({ ...updates, humanId } as InsertUserTrustScore);
+    }
+    
+    const result = await db.update(userTrustScores)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userTrustScores.humanId, humanId))
+      .returning();
+    return result[0];
+  }
+
+  async calculateUserTrustScore(humanId: string): Promise<UserTrustScore> {
+    // For DatabaseStorage, fetch or create with default values
+    const existing = await this.getUserTrustScore(humanId);
+    if (existing) return existing;
+    
+    return this.createUserTrustScore({
+      humanId,
+      overallTrustScore: 50,
+      contentQualityScore: 50,
+      communityEngagementScore: 50,
+      reportAccuracyScore: 50,
+      totalMessages: 0,
+      totalReportsReceived: 0,
+      totalReportsMade: 0,
+      accurateReports: 0,
+      falseReports: 0,
+      warningsCount: 0,
+      tempBansCount: 0,
+      daysWithoutViolation: 0,
+      trustLevel: 'new',
+      canReportUsers: true,
+      requiresReview: false,
+      maxDailyMessages: 50
+    });
+  }
+
+  async getUsersByTrustLevel(trustLevel: string): Promise<UserTrustScore[]> {
+    return await db.select()
+      .from(userTrustScores)
+      .where(eq(userTrustScores.trustLevel, trustLevel));
+  }
+
+  // Moderation analysis operations
+  async createModerationAnalysis(analysis: InsertModerationAnalysis): Promise<ModerationAnalysis> {
+    const result = await db.insert(moderationAnalysis).values({
+      ...analysis,
+      id: analysis.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  // Content similarity operations
+  async createContentSimilarity(similarity: InsertContentSimilarity): Promise<ContentSimilarity> {
+    const result = await db.insert(contentSimilarity).values({
+      ...similarity,
+      id: similarity.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  // Moderation queue operations
+  async createModerationQueueItem(item: InsertModerationQueue): Promise<ModerationQueue> {
+    const result = await db.insert(moderationQueue).values({
+      ...item,
+      id: item.id || randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return result[0];
   }
 }
 

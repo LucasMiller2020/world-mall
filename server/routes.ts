@@ -441,6 +441,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create a temporary human ID for guests
         const humanId = `guest_${req.guestSessionId}`;
         
+        // Ensure guest user exists in humans table
+        let guestHuman = await storage.getHuman(humanId);
+        if (!guestHuman) {
+          await storage.createHuman({
+            id: humanId,
+            role: 'guest'
+          });
+        }
+        
         // Create message for guest
         const message = await storage.createMessage({
           ...messageData,

@@ -156,7 +156,7 @@ export class AutomatedModerationEngine {
     }
     
     // Get user's trust score and history
-    const userTrust = await storage.getUserTrustScore(appellantId);
+    const userTrust = await storage.getUserTrustScore(appellantId) ?? null;
     const userHistory = await storage.getModerationActionsForUser(appellantId);
     
     // Analyze appeal merit
@@ -299,7 +299,7 @@ export class AutomatedModerationEngine {
     messageCount: number;
   }> {
     
-    const trustScore = await storage.getUserTrustScore(humanId);
+    const trustScore = await storage.getUserTrustScore(humanId) ?? null;
     const human = await storage.getHuman(humanId);
     const recentActions = await storage.getModerationActionsForUser(humanId);
     
@@ -527,14 +527,14 @@ export class AutomatedModerationEngine {
     analysisId: string
   ): Promise<void> {
     
-    const actionRecord: InsertModerationAction = {
+    const actionRecord = {
       targetId: contentId,
       targetType: 'message',
       moderatorType: 'auto',
       actionType: decision.action as any,
       reason: decision.reason,
       severity: decision.severity,
-      duration: decision.duration,
+      durationHours: decision.duration,
       expiresAt: decision.duration ? 
         new Date(Date.now() + decision.duration * 60 * 60 * 1000) : undefined,
       analysisId,
@@ -547,7 +547,7 @@ export class AutomatedModerationEngine {
       },
       isAppeal: false,
       isOverride: false
-    };
+    } as unknown as InsertModerationAction;
     
     await storage.createModerationAction(actionRecord);
     
@@ -610,7 +610,7 @@ export class AutomatedModerationEngine {
     
     const autoReject = isSevereViolation && hasRecentBans;
     
-    return { autoApprove, autoReject };
+    return { autoApprove: !!autoApprove, autoReject: !!autoReject };
   }
   
   private async createAppealResolutionAction(
@@ -619,7 +619,7 @@ export class AutomatedModerationEngine {
     reason: string
   ): Promise<ModerationAction> {
     
-    const newActionRecord: InsertModerationAction = {
+    const newActionRecord = {
       targetId: originalAction.targetId,
       targetType: originalAction.targetType,
       moderatorType: 'auto',
@@ -632,7 +632,7 @@ export class AutomatedModerationEngine {
       isAppeal: true,
       isOverride: true,
       overriddenActionId: originalAction.id
-    };
+    } as unknown as InsertModerationAction;
     
     return await storage.createModerationAction(newActionRecord);
   }
