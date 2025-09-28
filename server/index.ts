@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { TopicRotationScheduler } from "./topic-scheduler";
+import { db } from "./db";
+import { humans } from "@shared/schema";
 
 const app = express();
 app.use(express.json());
@@ -40,6 +42,16 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
   
+  // Database smoke test - verify connection on startup
+  try {
+    log('Running database smoke test...');
+    await db.select().from(humans).limit(1);
+    log('Database connection verified successfully');
+  } catch (error) {
+    log(`Database smoke test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    process.exit(1);
+  }
+
   // Initialize topic rotation scheduler
   const topicScheduler = new TopicRotationScheduler();
   await topicScheduler.start();

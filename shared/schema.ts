@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -28,14 +28,22 @@ export const messages = pgTable("messages", {
   geoScope: varchar("geo_scope").default("Global"),
   isHidden: boolean("is_hidden").default(false).notNull(),
   authorRole: varchar("author_role", { enum: ["guest", "verified", "admin"] }).default("guest").notNull(), // Role of message author
-});
+}, (table) => ({
+  // Index for room-based queries ordered by time
+  roomCreatedAtIdx: index("messages_room_created_at_idx").on(table.room, table.createdAt),
+  // Index for user message queries
+  humanIdCreatedAtIdx: index("messages_human_id_created_at_idx").on(table.authorHumanId, table.createdAt),
+}));
 
 // Star table - tracks upvotes (1 per human per message)
 export const stars = pgTable("stars", {
   messageId: varchar("message_id").notNull().references(() => messages.id),
   humanId: varchar("human_id").notNull().references(() => humans.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Unique constraint to ensure one star per human per message
+  humanMessageUnique: uniqueIndex("stars_human_message_unique_idx").on(table.humanId, table.messageId),
+}));
 
 // Rate limit tracking
 export const rateLimits = pgTable("rate_limits", {
@@ -107,7 +115,10 @@ export const reports = pgTable("reports", {
   messageId: varchar("message_id").notNull().references(() => messages.id),
   reporterHumanId: varchar("reporter_human_id").notNull().references(() => humans.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Unique constraint to ensure one report per reporter per message
+  reporterMessageUnique: uniqueIndex("reports_reporter_message_unique_idx").on(table.reporterHumanId, table.messageId),
+}));
 
 // Room Rain ledger entries (points only)
 export const ledgerEntries = pgTable("ledger_entries", {
@@ -144,7 +155,10 @@ export const guestSessions = pgTable("guest_sessions", {
   lastSeen: timestamp("last_seen").defaultNow().notNull(),
   messageCount: integer("message_count").default(0).notNull(),
   dayBucket: varchar("day_bucket").notNull(), // YYYY-MM-DD format for daily limits
-});
+}, (table) => ({
+  // Index for daily limit queries
+  dayBucketIdx: index("guest_sessions_day_bucket_idx").on(table.dayBucket),
+}));
 
 // Invite codes for referral system
 export const inviteCodes = pgTable("invite_codes", {
