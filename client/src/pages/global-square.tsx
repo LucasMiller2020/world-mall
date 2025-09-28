@@ -9,11 +9,22 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
-import { ArrowLeft, Briefcase, Shield, Users } from "lucide-react";
+import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { useToast } from "@/hooks/use-toast";
+import { useThemeContext } from "@/theme/ThemeProvider";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { filterContent } from "@/lib/content-filter";
 import type { MessageWithAuthor, OnlinePresence, Theme, Topic } from "@shared/schema";
 
@@ -24,8 +35,10 @@ export default function GlobalSquare() {
   const [reportingMessage, setReportingMessage] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [showVerifyPrompt, setShowVerifyPrompt] = useState(false);
+  const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   
   const { humanId, isVerified, verify } = useWorldId();
   const { isConnected } = useWebSocket(humanId);
@@ -287,6 +300,96 @@ export default function GlobalSquare() {
             Global Square
           </h1>
           <div className="flex items-center space-x-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                // Quick toggle between light and dark
+                if (mode === 'light') {
+                  setMode('dark');
+                } else if (mode === 'dark') {
+                  setMode('light');
+                } else {
+                  // If in system or sun mode, switch to the opposite of current theme
+                  setMode(activeTheme === 'light' ? 'dark' : 'light');
+                }
+              }}
+              data-testid="button-theme-toggle"
+            >
+              {activeTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Sheet open={themeSheetOpen} onOpenChange={setThemeSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" data-testid="button-theme-settings">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Theme Settings</SheetTitle>
+                  <SheetDescription>
+                    Choose how you'd like the app to appear.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="py-4">
+                  <RadioGroup value={mode} onValueChange={(value) => setMode(value as any)}>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="system" id="system" />
+                        <Label htmlFor="system" className="flex-1">
+                          <div className="font-medium">System</div>
+                          <div className="text-xs text-muted-foreground">Match your device settings</div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="light" id="light" />
+                        <Label htmlFor="light" className="flex-1">
+                          <div className="font-medium">Light</div>
+                          <div className="text-xs text-muted-foreground">Always use light theme</div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="dark" id="dark" />
+                        <Label htmlFor="dark" className="flex-1">
+                          <div className="font-medium">Dark</div>
+                          <div className="text-xs text-muted-foreground">Always use dark theme</div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="sun" id="sun" />
+                        <Label htmlFor="sun" className="flex-1">
+                          <div className="font-medium">Auto (Sunrise→Sunset)</div>
+                          <div className="text-xs text-muted-foreground">
+                            {sunTimes.sunrise && sunTimes.sunset ? (
+                              <span>
+                                Light from {sunTimes.sunrise.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to{' '}
+                                {sunTimes.sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            ) : (
+                              <span>Light during daytime hours (7 AM - 7 PM)</span>
+                            )}
+                          </div>
+                        </Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                  {mode === 'sun' && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {activeTheme === 'light' ? (
+                          <Sun className="h-4 w-4 text-warning" />
+                        ) : (
+                          <Moon className="h-4 w-4 text-primary" />
+                        )}
+                        <span className="text-sm">
+                          Currently: {activeTheme === 'light' ? 'Daytime' : 'Nighttime'} mode
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
             <Button 
               variant="ghost" 
               size="sm"

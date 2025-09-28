@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MiniKitProvider } from "@worldcoin/minikit-js/minikit-provider";
+import { ThemeProvider } from "@/theme/ThemeProvider";
 import '@/lib/i18n'; // Initialize i18n
 
 import Landing from "@/pages/landing";
@@ -46,13 +47,15 @@ function App() {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <div className="max-w-md mx-auto bg-background shadow-lg min-h-screen relative">
-            <div className="h-6 bg-background"></div>
-            <Toaster />
-            <Router />
-          </div>
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <div className="max-w-md mx-auto bg-background shadow-lg min-h-screen relative">
+              <div className="h-6 bg-background"></div>
+              <Toaster />
+              <Router />
+            </div>
+          </TooltipProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </MiniKitProvider>
   );
