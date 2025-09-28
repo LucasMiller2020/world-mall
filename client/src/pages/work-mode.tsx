@@ -239,14 +239,16 @@ export default function WorkMode() {
             Work Mode
           </h1>
           <div className="flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setLocation('/referrals')}
-              data-testid="button-referrals"
-            >
-              <Users className="h-4 w-4" />
-            </Button>
+            {import.meta.env.VITE_ENABLE_REFERRALS === 'true' && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setLocation('/referrals')}
+                data-testid="button-referrals"
+              >
+                <Users className="h-4 w-4" />
+              </Button>
+            )}
             <Button 
               variant="ghost" 
               size="sm"

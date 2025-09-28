@@ -477,6 +477,25 @@ function LeaderboardCard() {
 
 // Main referral dashboard component
 export default function ReferralDashboard() {
+  // Check if referral feature is enabled
+  const isReferralEnabled = import.meta.env.VITE_ENABLE_REFERRALS === 'true';
+  
+  // Show coming soon if feature flag is disabled
+  if (!isReferralEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 p-4">
+        <div className="text-6xl">🎁</div>
+        <h2 className="text-xl font-semibold">Referral Program Coming Soon!</h2>
+        <p className="text-muted-foreground text-center">
+          We're working on an exciting referral program that will let you earn rewards for inviting friends.
+        </p>
+        <p className="text-sm text-muted-foreground text-center">
+          Check back soon to start earning points and climbing the leaderboard!
+        </p>
+      </div>
+    );
+  }
+
   const { humanId, isVerified } = useWorldId();
 
   // Query for dashboard data

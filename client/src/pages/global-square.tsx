@@ -458,14 +458,16 @@ export default function GlobalSquare() {
                 </div>
               </SheetContent>
             </Sheet>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setLocation('/referrals')}
-              data-testid="button-referrals"
-            >
-              <Users className="h-4 w-4" />
-            </Button>
+            {import.meta.env.VITE_ENABLE_REFERRALS === 'true' && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setLocation('/referrals')}
+                data-testid="button-referrals"
+              >
+                <Users className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
