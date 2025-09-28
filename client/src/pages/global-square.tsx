@@ -69,7 +69,7 @@ export default function GlobalSquare() {
   };
   
   const { humanId, isVerified, verify } = useWorldId();
-  const { isConnected } = useWebSocket(humanId);
+  const { isConnected } = useWebSocket(humanId, 'global');
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
   const [guestStats, setGuestStats] = useState<{ messagesRemaining: number; nextMessageIn: number } | null>(null);
 

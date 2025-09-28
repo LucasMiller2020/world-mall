@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { isMiniApp, getMiniAppPollInterval } from "@/lib/platform";
 
-export function useWebSocket(humanId?: string | null) {
+export function useWebSocket(humanId?: string | null, room: string = 'global') {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const queryClient = useQueryClient();
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
+  const pollIntervalRef = useRef<NodeJS.Timeout>();
+  const lastMessageIdRef = useRef<string | null>(null);
+  const isInMiniApp = isMiniApp();
 
   const connect = () => {
+    // Skip WebSocket connection in Mini App, use polling instead
+    if (isInMiniApp) {
+      console.log('[WebSocket] Running in Mini App - using polling strategy');
+      setIsConnected(true); // Mark as "connected" for polling mode
+      return;
+    }
+
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -86,23 +97,72 @@ export function useWebSocket(humanId?: string | null) {
     }
   };
 
+  // Polling function for Mini App
+  const pollMessages = async () => {
+    try {
+      // Build query params
+      const params = new URLSearchParams();
+      if (lastMessageIdRef.current) {
+        params.append('since', lastMessageIdRef.current);
+      }
+      
+      const response = await fetch(`/api/messages/${room}?${params}`);
+      if (response.ok) {
+        const messages = await response.json();
+        
+        if (Array.isArray(messages) && messages.length > 0) {
+          // Update last message ID for next poll
+          const latestMessage = messages[messages.length - 1];
+          if (latestMessage?.id) {
+            lastMessageIdRef.current = latestMessage.id;
+          }
+          
+          // Invalidate queries to update UI
+          queryClient.invalidateQueries({ queryKey: [`/api/messages/${room}`] });
+          queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+        }
+      }
+    } catch (error) {
+      console.error('[Polling] Error fetching messages:', error);
+    }
+  };
+
   useEffect(() => {
-    connect();
+    if (isInMiniApp) {
+      // Set up polling for Mini App
+      const pollInterval = getMiniAppPollInterval();
+      console.log(`[Polling] Starting polling with interval: ${pollInterval}ms`);
+      
+      // Initial poll
+      pollMessages();
+      
+      // Set up recurring polls
+      pollIntervalRef.current = setInterval(pollMessages, pollInterval);
+      
+      // Mark as connected for polling mode
+      setIsConnected(true);
+    } else {
+      // Use WebSocket for regular web
+      connect();
+    }
 
     // Cleanup on unmount
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
-  }, [humanId]);
+  }, [humanId, room, isInMiniApp]);
 
-  // Start polling as fallback when WebSocket is disconnected
+  // Start polling as fallback when WebSocket is disconnected (for web only)
   useEffect(() => {
-    if (!isConnected) {
+    if (!isConnected && !isInMiniApp) {
       const pollInterval = setInterval(() => {
         // Invalidate queries to trigger polling fallback
         queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
@@ -111,7 +171,7 @@ export function useWebSocket(humanId?: string | null) {
 
       return () => clearInterval(pollInterval);
     }
-  }, [isConnected, queryClient]);
+  }, [isConnected, queryClient, isInMiniApp]);
 
   return { isConnected };
 }

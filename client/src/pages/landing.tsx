@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -12,6 +12,7 @@ import { Shield, Settings, Sun, Moon } from "lucide-react";
 import { useMiniKitStatus, useWorldId } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeContext } from "@/theme/ThemeProvider";
+import { isMiniApp, getMiniAppPollInterval } from "@/lib/platform";
 import {
   Sheet,
   SheetContent,
@@ -31,16 +32,54 @@ export default function Landing() {
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
+  const isInMiniApp = isMiniApp();
+  const lastMessageIdRef = useRef<string | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout>();
 
   // Fetch latest messages for preview (no auth required)
-  const { data: messages, isLoading } = useQuery<MessageWithAuthor[]>({
+  const { data: messages, isLoading, refetch } = useQuery<MessageWithAuthor[]>({
     queryKey: ['/api/messages/global'],
     queryFn: async () => {
-      const res = await fetch('/api/messages/global?limit=10');
+      const params = new URLSearchParams({ limit: '10' });
+      if (isInMiniApp && lastMessageIdRef.current) {
+        params.append('since', lastMessageIdRef.current);
+      }
+      const res = await fetch(`/api/messages/global?${params}`);
       if (!res.ok) throw new Error('Failed to fetch messages');
-      return res.json();
+      const newMessages = await res.json();
+      
+      // Update last message ID for next poll (Mini App only)
+      if (isInMiniApp && Array.isArray(newMessages) && newMessages.length > 0) {
+        const latestMessage = newMessages[newMessages.length - 1];
+        if (latestMessage?.id) {
+          lastMessageIdRef.current = latestMessage.id;
+        }
+      }
+      
+      return newMessages;
     },
+    // Reduce refetch interval for Mini App to ensure timely updates
+    refetchInterval: isInMiniApp ? getMiniAppPollInterval() : false,
   });
+
+  // Set up polling for Mini App
+  useEffect(() => {
+    if (isInMiniApp) {
+      const pollInterval = getMiniAppPollInterval();
+      console.log(`[Landing] Mini App detected - using polling with ${pollInterval}ms interval`);
+      
+      // Set up recurring refetch
+      pollIntervalRef.current = setInterval(() => {
+        refetch();
+      }, pollInterval);
+      
+      return () => {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+        }
+      };
+    }
+  }, [isInMiniApp, refetch]);
 
   const handleEnterGlobalSquare = () => {
     // Always allow access - guest mode is available
@@ -245,11 +284,21 @@ export default function Landing() {
           </CardContent>
         </Card>
 
-        {!isInstalled && (
+        {!isInstalled && !isInMiniApp && (
           <Card className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
             <CardContent className="pt-4">
               <p className="text-sm text-amber-800 dark:text-amber-200" data-testid="text-world-app-notice">
                 💡 Tip: Open in World App to unlock full features like unlimited messages and special privileges!
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {isInMiniApp && (
+          <Card className="mb-6 border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
+            <CardContent className="pt-4">
+              <p className="text-sm text-green-800 dark:text-green-200" data-testid="text-miniapp-mode">
+                ✅ Running in World App Mini App mode - live updates enabled!
               </p>
             </CardContent>
           </Card>
