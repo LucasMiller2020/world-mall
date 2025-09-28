@@ -4,6 +4,14 @@
 
 World Mall is a bot-proof global chat platform designed as a World Mini App that runs inside World App using MiniKit. The application provides verified human-only spaces for real-time communication, featuring a global square for general discussion and a work mode for professional collaboration. Built with human verification through World ID, the platform ensures authentic interactions while maintaining pseudonymous privacy.
 
+### Phase 2 Enhancements (Completed)
+- **Guest Mode**: Generous limits of 60 characters, 10 messages per day, 30-second cooldown
+- **Dark Mode**: Comprehensive theme system with Light, Dark, System, and Auto (Sunrise→Sunset) modes
+- **World ID Verification**: Server-side verification with SHA-256 nullifier hashing
+- **Content Filtering**: Relaxed entropy-based spam detection allowing natural expressions
+- **Diagnostic Tools**: Debug endpoints for World ID and session troubleshooting
+- **DM Infrastructure**: Database tables for future direct messaging features
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -35,14 +43,17 @@ Preferred communication style: Simple, everyday language.
   - Themes for daily topics
 
 ### Authentication and Authorization
-- **Human Verification**: World ID integration through MiniKit SDK
+- **Human Verification**: World ID Cloud v2 server-side verification with SHA-256 nullifier hashing
+- **Guest Mode**: Accessible without verification with limited features (60 chars, 10/day, 30s cooldown)
 - **Identity Management**: Hashed nullifiers from World ID as unique identifiers
 - **Privacy Protection**: No personally identifiable information stored
-- **Session Handling**: Temporary session management for user state
+- **Session Handling**: Express sessions with PostgreSQL store for persistent state
+- **Diagnostic Endpoints**: /api/worldid/diag and /api/debug/session for troubleshooting
 
 ### Content Moderation System
 - **Client-side Filtering**: Basic content filtering for immediate feedback
-- **Server-side Validation**: Comprehensive spam and content filtering
+- **Server-side Validation**: Entropy-based spam detection allowing natural elongations and emojis
+- **Smart Filtering**: Distinguishes between human expression (Howdyyyyy) and spam (aaaaaa)
 - **Community Moderation**: Report and mute functionality
 - **Rate Limiting**: Multiple tiers (per minute/hour/day) to prevent abuse
 
@@ -57,6 +68,19 @@ Preferred communication style: Simple, everyday language.
 - **Enhanced Metadata**: Category classification, optional links, geographic scope
 - **Link Rate Limiting**: Stricter limits for promotional content prevention
 - **Professional Context**: Help requests, advice sharing, and collaboration posts
+
+### Theme System
+- **4 Theme Modes**: Light, Dark, System, and Auto (Sunrise→Sunset)
+- **CSS Variables**: Comprehensive theming with CSS custom properties
+- **Geolocation Support**: Auto mode uses browser location for accurate sunrise/sunset
+- **Persistence**: Theme preferences saved in localStorage
+- **UI Controls**: Quick toggle and settings sheet with all mode options
+
+### Direct Messaging Infrastructure (Future)
+- **Database Tables**: connections, dm_threads, dm_members, dm_messages
+- **Relationship System**: Friend connections with pending/accepted/blocked states
+- **Thread Management**: Multi-user DM threads with read receipts
+- **Message Storage**: Persistent DM messages with timestamps
 
 ## External Dependencies
 
