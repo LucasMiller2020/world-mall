@@ -28,12 +28,13 @@ import {
   type ReferralDashboard,
   type ReferralLeaderboardEntry,
   type InviteAnalyticsSummary,
-  type ReferralSystemStats 
+  type ReferralSystemStats
 } from "@shared/schema";
 import crypto from "crypto";
 import { automatedModeration } from "./automated-moderation";
 import { contentAnalyzer } from "./content-analyzer";
 import { POLICY } from "./config";
+import { logStructuredEvent } from "./logger";
 
 // Rate limit constants - using POLICY values for verified users
 const RATE_LIMITS = {
@@ -67,6 +68,54 @@ interface AuthenticatedRequest extends Request {
   sessionId?: string;
   userRole?: 'guest' | 'verified' | 'admin';
   guestSessionId?: string;
+}
+
+function detectMiniAppFromRequest(req: Request): {
+  isMiniApp: boolean;
+  indicator: string | null;
+  userAgent: string;
+} {
+  const userAgentHeader = req.headers['user-agent'];
+  const userAgent = Array.isArray(userAgentHeader)
+    ? userAgentHeader.join(' ')
+    : userAgentHeader || '';
+  const normalizedUserAgent = userAgent.toLowerCase();
+
+  const headerIndicators: Array<{ header: string; value: string | string[] | undefined }> = [
+    { header: 'x-mini-app', value: req.headers['x-mini-app'] },
+    { header: 'x-miniapp', value: req.headers['x-miniapp'] },
+    { header: 'x-world-app', value: req.headers['x-world-app'] },
+  ];
+
+  for (const { header, value } of headerIndicators) {
+    if ((typeof value === 'string' && value.length > 0) || (Array.isArray(value) && value.length > 0)) {
+      return { isMiniApp: true, indicator: `header:${header}`, userAgent };
+    }
+  }
+
+  const userAgentIndicators = [
+    { match: 'world app', indicator: 'ua:world app' },
+    { match: 'worldapp', indicator: 'ua:worldapp' },
+    { match: 'world-app', indicator: 'ua:world-app' },
+    { match: 'minikit', indicator: 'ua:minikit' },
+  ];
+
+  for (const { match, indicator } of userAgentIndicators) {
+    if (normalizedUserAgent.includes(match)) {
+      return { isMiniApp: true, indicator, userAgent };
+    }
+  }
+
+  return { isMiniApp: false, indicator: null, userAgent };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -154,19 +203,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (key && value) cookieObj[key] = value;
     });
     
+    const headerSessionId = req.headers['x-session'] as string | undefined;
+    const authorizationHeader = req.headers.authorization as string | undefined;
+
     // Priority: 1. Cookie (wm_sid), 2. X-Session header, 3. Authorization: Bearer header (for WebView when cookies blocked)
-    let guestSessionId = cookieObj.wm_sid || req.headers['x-session'] as string;
-    
+    let guestSessionId = cookieObj.wm_sid || headerSessionId;
+    let resolutionSource: string | null = null;
+
+    if (cookieObj.wm_sid) {
+      resolutionSource = 'cookie';
+    } else if (headerSessionId) {
+      resolutionSource = 'header:x-session';
+    }
+
     // Check Authorization Bearer header as additional fallback
-    if (!guestSessionId && req.headers.authorization) {
-      const auth = req.headers.authorization as string;
-      if (auth.startsWith('Bearer ')) {
-        guestSessionId = auth.substring(7).trim();
+    if (!guestSessionId && authorizationHeader) {
+      if (authorizationHeader.startsWith('Bearer ')) {
+        guestSessionId = authorizationHeader.substring(7).trim();
+        resolutionSource = 'header:authorization';
       }
     }
-    
-    // Track if we got session from header only (not cookie)
-    const sessionFromHeaderOnly = !cookieObj.wm_sid && guestSessionId;
+
+    const sessionFromHeaderOnly = !cookieObj.wm_sid && !!guestSessionId;
+    const requestedSessionId = guestSessionId || null;
+    let sessionCreated = false;
+    let recoveredByHash = false;
     
     // Hash IP and user agent for privacy-preserving tracking
     const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
@@ -175,11 +236,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Find or create guest session
     let guestSession = guestSessionId ? await storage.getGuestSession(guestSessionId) : null;
-    
+
     if (!guestSession) {
       // Try to find existing session by hash
       guestSession = await storage.getGuestSessionByHash(ipHash, userAgentHash);
-      
+      if (guestSession) {
+        recoveredByHash = true;
+        if (!resolutionSource) {
+          resolutionSource = 'hash_lookup';
+        }
+      }
+
       if (!guestSession) {
         // Create new guest session
         guestSession = await storage.createGuestSession({
@@ -188,23 +255,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dayBucket,
           messageCount: 0
         });
+        sessionCreated = true;
+        if (!resolutionSource) {
+          resolutionSource = 'generated';
+        }
       }
-      
+
       // Set cookie with cross-origin support for World App
       const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
       res.setHeader('Set-Cookie', `wm_sid=${guestSession.id}; HttpOnly; Path=/; SameSite=${isSecure ? 'None' : 'Lax'}; ${isSecure ? 'Secure; ' : ''}Max-Age=${365*24*60*60}`);
     } else {
       // Update last seen
       await storage.updateGuestSessionActivity(guestSession.id);
-      
+
       // If session came from header only (not cookie), set/refresh the cookie
       if (sessionFromHeaderOnly) {
         const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
         res.setHeader('Set-Cookie', `wm_sid=${guestSession.id}; HttpOnly; Path=/; SameSite=${isSecure ? 'None' : 'Lax'}; ${isSecure ? 'Secure; ' : ''}Max-Age=${365*24*60*60}`);
       }
     }
-    
+
     req.guestSessionId = guestSession.id;
+    logStructuredEvent('session.resolve', {
+      requestedSessionId,
+      resolvedSessionId: guestSession.id,
+      resolutionSource: resolutionSource || 'unknown',
+      sessionFromHeaderOnly,
+      sessionCreated,
+      recoveredByHash,
+      ipHash,
+      userAgentHash,
+      expressSessionId: req.sessionID || null,
+    });
     next();
   };
 
@@ -328,6 +410,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply guest session middleware to all routes
   app.use(handleGuestSession);
 
+  if (app.get('env') === 'development') {
+    app.get('/debug', (req: AuthenticatedRequest, res: Response) => {
+      const cookiesHeader = req.headers.cookie || '';
+      const cookieMap: Record<string, string> = {};
+      cookiesHeader.split(';').forEach(cookie => {
+        const [rawKey, rawValue] = cookie.trim().split('=');
+        if (rawKey && rawValue) {
+          cookieMap[rawKey] = rawValue;
+        }
+      });
+
+      const miniAppInfo = detectMiniAppFromRequest(req);
+      const toDisplay = (value?: string | null) => (value && value.length > 0 ? value : 'none');
+      const effectiveSessionId = toDisplay(req.guestSessionId || req.sessionID || cookieMap.wm_sid || null);
+      const expressSessionId = toDisplay(req.sessionID || null);
+      const guestSessionId = toDisplay(req.guestSessionId || cookieMap.wm_sid || null);
+      const resolvedUserRole = req.userRole
+        || (req.humanId ? 'verified' : cookieMap.wm_uid ? 'verified' : req.guestSessionId ? 'guest' : 'unknown');
+
+      const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>World Mall Debug</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 2rem; line-height: 1.5; }
+    h1 { margin-bottom: 1rem; }
+    dl { display: grid; grid-template-columns: max-content 1fr; column-gap: 1rem; row-gap: 0.75rem; }
+    dt { font-weight: 600; }
+    dd { margin: 0; }
+    code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 4px; }
+    .hint { color: #555; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Debug Information</h1>
+  <dl>
+    <dt>Session ID</dt>
+    <dd><code>${escapeHtml(effectiveSessionId)}</code></dd>
+    <dt>Guest Session ID</dt>
+    <dd><code>${escapeHtml(guestSessionId)}</code></dd>
+    <dt>Express Session ID</dt>
+    <dd><code>${escapeHtml(expressSessionId)}</code></dd>
+    <dt>User Role</dt>
+    <dd>${escapeHtml(resolvedUserRole)}</dd>
+    <dt>Mini App</dt>
+    <dd>${miniAppInfo.isMiniApp ? 'Detected' : 'Not detected'}${miniAppInfo.indicator ? ` <span class="hint">(${escapeHtml(miniAppInfo.indicator)})</span>` : ''}</dd>
+    <dt>User Agent</dt>
+    <dd><code>${escapeHtml(toDisplay(miniAppInfo.userAgent || 'unknown'))}</code></dd>
+  </dl>
+</body>
+</html>`;
+
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+    });
+  }
+
   // World ID diagnostic endpoint - returns public World ID configuration (no secrets)
   app.get('/api/worldid/diag', (req, res) => {
     res.json({
@@ -428,6 +569,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // World ID verification endpoint
   app.post('/api/verify/worldid', async (req, res) => {
+    const verificationMode = process.env.NODE_ENV === 'development' || !POLICY.worldId.appId ? 'development' : 'cloud';
+    let hashedNullifierForLog: string | null = null;
+    let actionForLog: string | undefined;
+    let verificationLevelForLog: string | undefined;
     try {
       // Check if World ID is disabled
       if (POLICY.disableWorldId) {
@@ -437,18 +582,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { 
+      const {
         nullifier_hash,
-        proof, 
-        merkle_root, 
-        verification_level, 
-        action, 
-        signal 
+        proof,
+        merkle_root,
+        verification_level,
+        action,
+        signal
       } = req.body;
+
+      actionForLog = action;
+      verificationLevelForLog = verification_level;
       
       // Validate required fields
       if (!nullifier_hash || !proof || !merkle_root || !verification_level || !action) {
-        console.log('verify.failure:', JSON.stringify({ error: 'INVALID_REQUEST', reason: 'Missing required verification parameters' }));
+        const missingFields: string[] = [];
+        if (!nullifier_hash) missingFields.push('nullifier_hash');
+        if (!proof) missingFields.push('proof');
+        if (!merkle_root) missingFields.push('merkle_root');
+        if (!verification_level) missingFields.push('verification_level');
+        if (!action) missingFields.push('action');
+        logStructuredEvent('worldid.verify', {
+          outcome: 'failure',
+          reason: 'missing_parameters',
+          missingFields,
+          mode: verificationMode,
+        }, 'warn');
         return res.status(400).json({
           message: 'Missing required verification parameters',
           code: 'INVALID_REQUEST'
@@ -457,19 +616,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate action matches policy
       if (action !== POLICY.worldId.action) {
-        console.log('verify.failure:', JSON.stringify({ error: 'INVALID_ACTION', reason: `Invalid action parameter. Expected: ${POLICY.worldId.action}, received: ${action}` }));
+        logStructuredEvent('worldid.verify', {
+          outcome: 'failure',
+          reason: 'invalid_action',
+          expectedAction: POLICY.worldId.action,
+          receivedAction: action,
+          mode: verificationMode,
+        }, 'warn');
         return res.status(400).json({
           message: `Invalid action parameter. Expected: ${POLICY.worldId.action}, received: ${action}`,
           code: 'INVALID_ACTION'
         });
       }
+
+      hashedNullifierForLog = crypto.createHash('sha256').update(nullifier_hash).digest('hex');
       
       // Check if we're in development mode to skip actual verification
       let verificationSuccessful = false;
       
       if (process.env.NODE_ENV === 'development' || !POLICY.worldId.appId) {
         // Development mode: simulate successful verification
-        console.log('[worldid.verify] Development mode: simulating successful verification');
         verificationSuccessful = true;
       } else {
         // Production mode: call World ID Cloud API
@@ -504,8 +670,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const worldIdResult = await worldIdResponse.json();
         
         if (!worldIdResponse.ok) {
-          console.log('verify.failure:', JSON.stringify({ error: worldIdResult.code || 'VERIFICATION_FAILED', reason: worldIdResult.message || 'World ID verification failed' }));
-          
+          logStructuredEvent('worldid.verify', {
+            outcome: 'failure',
+            reason: worldIdResult.code || 'VERIFICATION_FAILED',
+            message: worldIdResult.message || null,
+            mode: verificationMode,
+            status: worldIdResponse.status,
+            hashedNullifier: hashedNullifierForLog,
+            action,
+            verificationLevel: verification_level,
+          }, 'warn');
+
           // Provide clear error messages for common issues
           let errorMessage = 'World ID verification failed';
           if (worldIdResult.code === 'invalid_proof') {
@@ -527,7 +702,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!verificationSuccessful) {
-        console.log('verify.failure:', JSON.stringify({ error: 'VERIFICATION_FAILED', reason: 'World ID verification failed' }));
+        logStructuredEvent('worldid.verify', {
+          outcome: 'failure',
+          reason: 'verification_unsuccessful',
+          mode: verificationMode,
+          hashedNullifier: hashedNullifierForLog,
+          action,
+          verificationLevel: verification_level,
+        }, 'warn');
         return res.status(400).json({
           message: 'World ID verification failed',
           code: 'VERIFICATION_FAILED'
@@ -539,11 +721,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if this nullifier has already been verified
       const existingVerification = await storage.getVerificationByNullifierHash(nullifierHashHashed);
-      
+
       if (existingVerification) {
         // User already verified, just return success
-        console.log('verify.success:', JSON.stringify({ humanId: existingVerification.userId }));
-        
+        logStructuredEvent('worldid.verify', {
+          outcome: 'success',
+          reusedVerification: true,
+          humanId: existingVerification.userId,
+          hashedNullifier: nullifierHashHashed,
+          mode: verificationMode,
+          action,
+          verificationLevel: verification_level,
+        });
+
         // Set cookies using Express cookie method for better compatibility
         const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
         res.cookie('wm_uid', existingVerification.userId, {
@@ -579,7 +769,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nullifierHashHashed
       });
       
-      console.log('verify.success:', JSON.stringify({ humanId: userId }));
+      logStructuredEvent('worldid.verify', {
+        outcome: 'success',
+        reusedVerification: false,
+        humanId: userId,
+        hashedNullifier: nullifierHashHashed,
+        mode: verificationMode,
+        action,
+        verificationLevel: verification_level,
+      });
       
       // Set cookies using Express cookie method for better compatibility
       const isSecure = process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https';
@@ -599,8 +797,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error: any) {
-      console.log('verify.failure:', JSON.stringify({ error: error.code || 'INTERNAL_ERROR', reason: error.message || 'Internal server error during verification' }));
-      
+      logStructuredEvent('worldid.verify', {
+        outcome: 'failure',
+        reason: error?.code || 'INTERNAL_ERROR',
+        errorMessage: error?.message || 'Internal server error during verification',
+        mode: verificationMode,
+        hashedNullifier: hashedNullifierForLog,
+        action: actionForLog,
+        verificationLevel: verificationLevelForLog,
+      }, 'error');
+
       // Check for specific database errors
       if (error.code === '23505') { // PostgreSQL unique constraint violation
         return res.status(409).json({
@@ -865,7 +1071,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userRole === 'guest') {
         // Check if guest mode is enabled
         if (!GUEST_CONFIG.ENABLED) {
-          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "guest_mode_disabled" }`);
+          logStructuredEvent('message.create', {
+            outcome: 'blocked',
+            reason: 'guest_mode_disabled',
+            role: 'guest',
+            room: messageData.room,
+            length: messageData.text.length,
+            guestSessionId: req.guestSessionId || null,
+            sessionId: req.sessionID || null,
+          }, 'warn');
           return res.status(403).json({
             message: 'Guest mode is disabled. Please verify with World ID.',
             code: 'VERIFICATION_REQUIRED'
@@ -874,7 +1088,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Restrict to global room only
         if (messageData.room !== 'global') {
-          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "room_restricted" }`);
+          logStructuredEvent('message.create', {
+            outcome: 'blocked',
+            reason: 'room_restricted',
+            role: 'guest',
+            room: messageData.room,
+            length: messageData.text.length,
+            guestSessionId: req.guestSessionId || null,
+            sessionId: req.sessionID || null,
+          }, 'warn');
           return res.status(403).json({
             message: 'Guests can only post in the global room',
             code: 'guest_room_restricted'
@@ -883,7 +1105,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Allow guests to post messages ≤ 60 chars without verification
         if (messageData.text.length > POLICY.guestCharLimit) {
-          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "length_exceeded" }`);
+          logStructuredEvent('message.create', {
+            outcome: 'blocked',
+            reason: 'length_exceeded',
+            role: 'guest',
+            room: messageData.room,
+            length: messageData.text.length,
+            guestSessionId: req.guestSessionId || null,
+            sessionId: req.sessionID || null,
+          }, 'warn');
           return res.status(403).json({
             message: `Guest messages limited to ${POLICY.guestCharLimit} characters. Verify to unlock full chat!`,
             code: 'GUEST_LIMIT_EXCEEDED'
@@ -895,7 +1125,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const messageCount = await storage.getGuestMessageCount(req.guestSessionId!, dayBucket);
         
         if (messageCount >= POLICY.guestDaily) {
-          console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "daily_limit" }`);
+          logStructuredEvent('message.create', {
+            outcome: 'blocked',
+            reason: 'daily_limit',
+            role: 'guest',
+            room: messageData.room,
+            length: messageData.text.length,
+            guestSessionId: req.guestSessionId || null,
+            sessionId: req.sessionID || null,
+          }, 'warn');
           return res.status(429).json({
             message: `Daily limit reached (${POLICY.guestDaily} messages). Verify to unlock full chat!`,
             code: 'guest_daily_limit'
@@ -908,9 +1146,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const timeSinceLastMessage = Date.now() - lastMessageTime.getTime();
           const cooldownMs = POLICY.guestCooldownSec * 1000;
           
-          if (timeSinceLastMessage < cooldownMs) {
-            const remainingSeconds = Math.ceil((cooldownMs - timeSinceLastMessage) / 1000);
-            console.log(`guest_post.blocked: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length}, reason: "cooldown" }`);
+        if (timeSinceLastMessage < cooldownMs) {
+          const remainingSeconds = Math.ceil((cooldownMs - timeSinceLastMessage) / 1000);
+          logStructuredEvent('message.create', {
+            outcome: 'blocked',
+            reason: 'cooldown',
+            role: 'guest',
+            room: messageData.room,
+            length: messageData.text.length,
+            guestSessionId: req.guestSessionId || null,
+            sessionId: req.sessionID || null,
+            cooldownSeconds: remainingSeconds,
+          }, 'warn');
             return res.status(429).json({
               message: `Please wait ${remainingSeconds} seconds before sending another message`,
               code: 'COOLDOWN_ACTIVE',
@@ -952,8 +1199,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
-        // Structured logging for accepted guest post
-        console.log(`guest_post.accepted: { room: "${messageData.room}", role: "guest", length: ${messageData.text.length} }`);
+        logStructuredEvent('message.create', {
+          outcome: 'accepted',
+          role: 'guest',
+          room: messageData.room,
+          length: messageData.text.length,
+          messageId: message.id,
+          guestSessionId: req.guestSessionId || null,
+          sessionId: req.sessionID || null,
+        });
         
         return res.json({ 
           message, 
@@ -1122,7 +1376,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: presence
       });
 
-      console.log(`[post] role=${userRole} accepted messageId=${message.id} humanId=${humanId} room=${message.room}`);
+      logStructuredEvent('message.create', {
+        outcome: 'accepted',
+        role: userRole,
+        messageId: message.id,
+        humanId,
+        room: message.room,
+        hasLink: !!messageData.link,
+        sessionId: req.sessionID || null,
+        guestSessionId: req.guestSessionId || null,
+      });
       res.json(messageWithAuthor);
     } catch (error) {
       console.error('Error sending message:', error);
