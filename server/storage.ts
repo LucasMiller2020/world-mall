@@ -3029,11 +3029,11 @@ export class DatabaseStorage implements IStorage {
 
   async getGuestLastMessageTime(id: string): Promise<Date | undefined> {
     const session = await this.getGuestSession(id);
-    return session?.lastMessageTime;
+    return session?.lastSeen;
   }
 
   async updateGuestLastMessageTime(id: string): Promise<void> {
-    await db.update(guestSessions).set({ lastMessageTime: new Date() }).where(eq(guestSessions.id, id));
+    await db.update(guestSessions).set({ lastSeen: new Date() }).where(eq(guestSessions.id, id));
   }
 
   async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {
