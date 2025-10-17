@@ -349,7 +349,7 @@ export default function GlobalSquare() {
 
   const characterCount = message.length;
   const maxChars = limits?.maxChars || (isGuest() ? 60 : 240);
-  const canSend = message.trim().length > 0 && message.length <= maxChars && cooldownSeconds === 0;
+  const canSend = message.trim().length > 0 && message.length <= maxChars;
 
   return (
     <div className="flex flex-col min-h-screen">
