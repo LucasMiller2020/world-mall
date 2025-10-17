@@ -6,7 +6,7 @@ export const POLICY = {
   // Guest user limits
   guestCharLimit: parseInt(process.env.GUEST_CHAR_LIMIT || '60'),
   guestDaily: parseInt(process.env.GUEST_DAILY || '10'),
-  guestCooldownSec: parseInt(process.env.GUEST_COOLDOWN_SEC || '30'),
+  guestCooldownSec: parseInt(process.env.GUEST_COOLDOWN_SEC || '0'),
   
   // Verified user limits  
   verifiedCharLimit: parseInt(process.env.VERIFIED_CHAR_LIMIT || '240'),
