@@ -679,7 +679,7 @@ export default function GlobalSquare() {
             <SkeletonLoader key={i} />
           ))
         ) : messages.length > 0 ? (
-          messages.map((msg) => (
+          messages.slice().reverse().map((msg) => (
             <MessageItem
               key={msg.id}
               message={msg}
