@@ -29,6 +29,7 @@ export const messages = pgTable("messages", {
   authorHumanId: varchar("author_human_id").notNull().references(() => humans.id),
   text: text("text").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  editedAt: timestamp("edited_at"), // Timestamp of last edit (null if never edited)
   starsCount: integer("stars_count").default(0).notNull(),
   reportsCount: integer("reports_count").default(0).notNull(),
   // Work mode specific fields

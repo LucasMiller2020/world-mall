@@ -227,7 +227,7 @@ export default function Landing() {
               <SkeletonLoader key={i} />
             ))
           ) : messages && messages.length > 0 ? (
-            messages.slice(0, 10).map((message) => (
+            messages.slice().reverse().map((message) => (
               <MessageItem 
                 key={message.id} 
                 message={message} 

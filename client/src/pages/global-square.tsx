@@ -269,6 +269,35 @@ export default function GlobalSquare() {
     },
   });
 
+  // Edit message mutation
+  const editMessageMutation = useMutation({
+    mutationFn: async ({ messageId, text }: { messageId: string; text: string }) => {
+      const res = await fetch(`/api/messages/${messageId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-World-ID-Proof': humanId || '',
+        },
+        body: JSON.stringify({ text }),
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to edit message');
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/global'] });
+    },
+    onError: (error: any) => {
+      // Error is handled in MessageItem component
+      throw error;
+    },
+  });
+
   const handleSendMessage = async () => {
     // Initialize session before first message send
     // This guarantees the session is initialized before any API calls
@@ -336,6 +365,22 @@ export default function GlobalSquare() {
       reportMessageMutation.mutate(reportingMessage);
     }
   };
+
+  const handleEditMessage = async (messageId: string, newText: string) => {
+    await editMessageMutation.mutateAsync({ messageId, text: newText });
+  };
+
+  // Calculate current user's humanId (for both guests and verified users)
+  const getCurrentUserHumanId = () => {
+    if (isGuest) {
+      // For guests, we need to get the session ID
+      const sessionId = getSessionId();
+      return sessionId ? `guest_${sessionId}` : null;
+    }
+    return humanId;
+  };
+
+  const currentUserHumanId = getCurrentUserHumanId();
 
   const handlePremiumUpgrade = async () => {
     if (!isVerified) {
@@ -683,10 +728,12 @@ export default function GlobalSquare() {
             <MessageItem
               key={msg.id}
               message={msg}
+              currentUserHumanId={currentUserHumanId}
               onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
               onStarClick={() => handleStarMessage(msg.id)}
               onReportClick={() => handleReportMessage(msg.id)}
               onMuteClick={() => {}}
+              onEditMessage={handleEditMessage}
               data-testid={`message-item-${msg.id}`}
             />
           ))

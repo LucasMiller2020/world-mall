@@ -219,6 +219,7 @@ export interface IStorage {
   getMessages(room: string, limit?: number): Promise<MessageWithAuthor[]>;
   getMessageById(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
+  updateMessage(messageId: string, text: string): Promise<Message | undefined>;
   incrementMessageStars(messageId: string): Promise<void>;
   incrementMessageReports(messageId: string): Promise<void>;
   hideMessage(messageId: string): Promise<void>;
@@ -3096,6 +3097,15 @@ export class DatabaseStorage implements IStorage {
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const result = await db.insert(messages).values(insertMessage).returning();
     return result[0];
+  }
+
+  async updateMessage(messageId: string, text: string): Promise<Message | undefined> {
+    const result = await db
+      .update(messages)
+      .set({ text, editedAt: new Date() })
+      .where(eq(messages.id, messageId))
+      .returning();
+    return result[0] || undefined;
   }
 
   async incrementMessageStars(messageId: string): Promise<void> {

@@ -1409,6 +1409,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Edit a message (requires authentication)
+  app.patch('/api/messages/:messageId', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { messageId } = req.params;
+      const { text } = req.body;
+
+      // Validate text is provided
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({
+          message: 'Text is required',
+          code: 'INVALID_TEXT'
+        });
+      }
+
+      // Validate text length
+      if (text.length > 240) {
+        return res.status(400).json({
+          message: 'Message too long (240 character limit)',
+          code: 'LENGTH_EXCEEDED'
+        });
+      }
+
+      // Get the message
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).json({
+          message: 'Message not found',
+          code: 'NOT_FOUND'
+        });
+      }
+
+      // Determine the current user's ID (guest or verified)
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+
+      // Verify the message belongs to the current user
+      if (message.authorHumanId !== humanId) {
+        return res.status(403).json({
+          message: 'You can only edit your own messages',
+          code: 'UNAUTHORIZED'
+        });
+      }
+
+      // Check if message is less than 30 seconds old
+      const now = new Date();
+      const messageAge = now.getTime() - message.createdAt.getTime();
+      const thirtySeconds = 30 * 1000;
+
+      if (messageAge > thirtySeconds) {
+        return res.status(403).json({
+          message: 'Messages can only be edited within 30 seconds of posting',
+          code: 'EDIT_WINDOW_EXPIRED'
+        });
+      }
+
+      // Content validation
+      const isPremium = false; // Will be enhanced later if needed
+      const contentCheck = filterContent(text, isPremium);
+      if (!contentCheck.isValid) {
+        return res.status(400).json({
+          message: contentCheck.reason,
+          code: 'INVALID_CONTENT'
+        });
+      }
+
+      // Update the message
+      const updatedMessage = await storage.updateMessage(messageId, text);
+
+      if (!updatedMessage) {
+        return res.status(500).json({
+          message: 'Failed to update message',
+          code: 'UPDATE_FAILED'
+        });
+      }
+
+      // Get message with author info for broadcast
+      const messages = await storage.getMessages(message.room, 100);
+      const messageWithAuthor = messages.find(m => m.id === messageId);
+
+      // Broadcast the update to WebSocket clients
+      broadcast({
+        type: 'message_edited',
+        data: messageWithAuthor || updatedMessage
+      });
+
+      logStructuredEvent('message.edit', {
+        outcome: 'success',
+        role: userRole,
+        messageId,
+        humanId,
+        room: message.room,
+        sessionId: req.sessionID || null,
+        guestSessionId: req.guestSessionId || null,
+      });
+
+      res.json(messageWithAuthor || updatedMessage);
+    } catch (error) {
+      console.error('Error editing message:', error);
+      res.status(500).json({ message: 'Failed to edit message' });
+    }
+  });
+
   // Star a message (requires authentication)
   app.post('/api/stars', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {

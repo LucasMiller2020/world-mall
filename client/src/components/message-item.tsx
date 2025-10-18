@@ -1,36 +1,79 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Flag, VolumeX, Ban } from "lucide-react";
-import { useState } from "react";
+import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { MessageWithAuthor } from "@shared/schema";
 
 interface MessageItemProps {
   message: MessageWithAuthor;
   isPreview?: boolean;
+  currentUserHumanId?: string | null;
   onProfileClick: () => void;
   onStarClick: () => void;
   onReportClick: () => void;
   onMuteClick: () => void;
+  onEditMessage?: (messageId: string, newText: string) => Promise<void>;
 }
 
 export function MessageItem({
   message,
   isPreview = false,
+  currentUserHumanId,
   onProfileClick,
   onStarClick,
   onReportClick,
   onMuteClick,
+  onEditMessage,
 }: MessageItemProps) {
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);
   const [starred, setStarred] = useState(message.isStarredByUser || false);
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
   const [emojiPopoverOpen, setEmojiPopoverOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState(message.text);
+  const [isSaving, setIsSaving] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const { toast } = useToast();
+
+  // Calculate time remaining for edit window
+  useEffect(() => {
+    if (isPreview) return;
+
+    const updateTimeRemaining = () => {
+      const now = new Date();
+      const messageTime = new Date(message.createdAt);
+      const elapsed = now.getTime() - messageTime.getTime();
+      const thirtySeconds = 30 * 1000;
+      const remaining = thirtySeconds - elapsed;
+
+      if (remaining > 0) {
+        setTimeRemaining(remaining);
+      } else {
+        setTimeRemaining(null);
+      }
+    };
+
+    // Initial calculation
+    updateTimeRemaining();
+
+    // Update every second
+    const interval = setInterval(updateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [message.createdAt, isPreview]);
+
+  // Check if current user can edit this message
+  const canEdit = !isPreview && 
+                  currentUserHumanId && 
+                  message.authorHumanId === currentUserHumanId &&
+                  timeRemaining !== null &&
+                  timeRemaining > 0;
 
   const handleUpvote = () => {
     setUpvoted(!upvoted);
@@ -66,6 +109,38 @@ export function MessageItem({
       title: "Coming soon",
       description: "User muting will be available soon!",
     });
+  };
+
+  const handleEditClick = () => {
+    setEditedText(message.text);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedText(message.text);
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!onEditMessage || !editedText.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await onEditMessage(message.id, editedText);
+      setIsEditing(false);
+      toast({
+        title: "Message updated",
+        description: "Your message has been successfully updated.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   const formatTimeAgo = (date: Date | string) => {
     const now = new Date();
@@ -128,9 +203,52 @@ export function MessageItem({
                 {formatTimeAgo(message.createdAt)}
               </span>
             </div>
-            <p className="text-sm text-foreground mb-2" data-testid="text-message-content">
-              {message.text}
-            </p>
+            {isEditing ? (
+              <div className="mb-2">
+                <Textarea
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  className="text-sm min-h-[80px] mb-2"
+                  maxLength={240}
+                  placeholder="Edit your message..."
+                  disabled={isSaving}
+                  data-testid="textarea-edit-message"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveEdit}
+                    disabled={isSaving || !editedText.trim()}
+                    className="h-8"
+                    data-testid="button-save-edit"
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="h-8"
+                    data-testid="button-cancel-edit"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Cancel
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {editedText.length}/240
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-foreground mb-2" data-testid="text-message-content">
+                {message.text}
+                {message.editedAt && (
+                  <span className="text-xs text-muted-foreground ml-2">(edited)</span>
+                )}
+              </p>
+            )}
             {!isPreview && (
               <div className="flex items-center justify-between mt-2">
                 {/* New compact controls row */}
@@ -170,6 +288,26 @@ export function MessageItem({
                   >
                     <span className="text-base">⭐</span>
                   </Button>
+
+                  {/* Edit button (only for own messages within 30 seconds) */}
+                  {canEdit && !isEditing && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleEditClick}
+                          className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                          data-testid="button-edit-message"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Edit message ({Math.ceil((timeRemaining || 0) / 1000)}s remaining)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
 
                   {/* Emoji Launcher */}
                   <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
