@@ -620,7 +620,7 @@ export default function GlobalSquare() {
                 </TooltipContent>
               </Tooltip>
               <span className="text-xs text-muted-foreground">
-                60 chars • {guestStats?.messagesRemaining ?? 10} left today • 30s cooldown
+                60 chars • {guestStats?.messagesRemaining ?? 10} left today
               </span>
             </div>
           </div>

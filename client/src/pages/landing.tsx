@@ -108,7 +108,7 @@ export default function Landing() {
       // On successful verification, redirect to global square
       toast({
         title: 'Verification Successful',
-        description: 'Welcome! You now have full access to World Mall.',
+        description: 'Welcome! You now have full access to Mall Space.',
       });
       setLocation('/room/global');
     } catch (error) {

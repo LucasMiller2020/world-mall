@@ -17,7 +17,7 @@
     "global": "Global"
   },
   "app": {
-    "name": "World Mall",
+    "name": "Mall Space",
     "tagline": "Real-Humans.",
     "description": "Talk. Learn. Build. Connect."
   },
@@ -34,7 +34,7 @@
     "verificationNotice": "Guests can say hi (60 chars, 10/day). Verify with World ID to unlock full chat and features.",
     "verificationSubtitle": "",
     "guestAccessTitle": "Guest access available",
-    "guestBenefits": "✓ Guest Mode: Send up to 10 messages per day (60 chars max, 30s cooldown)",
+    "guestBenefits": "✓ Guest Mode: Send up to 10 messages per day (60 chars max)",
     "verifiedBenefits": "✓ Verified: Unlimited 240-char messages, star & report features, Work Mode access",
     "worldAppNotice": "For full functionality, please open this app in World App",
     "previewHeader": "Live from Global Square",
@@ -157,6 +157,6 @@
   "notifications": {
     "newMessage": "New message in {{room}}",
     "topicChange": "Today's topic has changed",
-    "welcome": "Welcome to World Mall!"
+    "welcome": "Welcome to Mall Space!"
   }
 }
