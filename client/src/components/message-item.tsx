@@ -8,6 +8,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { MessageWithAuthor } from "@shared/schema";
 
 interface MessageItemProps {
@@ -137,18 +139,58 @@ export function MessageItem({
     });
   };
 
+  const muteMutation = useMutation({
+    mutationFn: async (mutedHumanId: string) => {
+      return apiRequest("POST", "/api/mutes", { mutedHumanId });
+    },
+    onSuccess: () => {
+      toast({
+        title: "User muted successfully",
+        description: "You won't see messages from this user anymore.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/global"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/work"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mute user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: async (blockedHumanId: string) => {
+      return apiRequest("POST", "/api/blocks", { blockedHumanId });
+    },
+    onSuccess: () => {
+      toast({
+        title: "User blocked successfully",
+        description: "You and this user won't see each other's messages.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/global"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/work"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to block user",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleBlock = () => {
-    toast({
-      title: "Coming soon", 
-      description: "User blocking will be available soon!",
-    });
+    if (message.authorHumanId) {
+      blockMutation.mutate(message.authorHumanId);
+    }
   };
 
   const handleMute = () => {
-    toast({
-      title: "Coming soon",
-      description: "User muting will be available soon!",
-    });
+    if (message.authorHumanId) {
+      muteMutation.mutate(message.authorHumanId);
+    }
   };
 
   const handleEditClick = () => {
@@ -469,18 +511,26 @@ export function MessageItem({
                         <DropdownMenuSeparator />
                       </>
                     )}
-                    <DropdownMenuItem onClick={onReportClick}>
+                    <DropdownMenuItem onClick={onReportClick} data-testid="menuitem-report">
                       <Flag className="h-4 w-4 mr-2" />
                       Report
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleMute}>
+                    <DropdownMenuItem 
+                      onClick={handleMute} 
+                      disabled={muteMutation.isPending}
+                      data-testid="menuitem-mute"
+                    >
                       <VolumeX className="h-4 w-4 mr-2" />
-                      Mute
+                      {muteMutation.isPending ? "Muting..." : "Mute"}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleBlock}>
+                    <DropdownMenuItem 
+                      onClick={handleBlock}
+                      disabled={blockMutation.isPending}
+                      data-testid="menuitem-block"
+                    >
                       <Ban className="h-4 w-4 mr-2" />
-                      Block user
+                      {blockMutation.isPending ? "Blocking..." : "Block user"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

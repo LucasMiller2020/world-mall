@@ -122,13 +122,10 @@ export const themes = pgTable("themes", {
 // Report tracking
 export const reports = pgTable("reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  messageId: varchar("message_id").notNull().references(() => messages.id),
+  messageId: varchar("message_id").notNull().references(() => messages.id, { onDelete: 'cascade' }),
   reporterHumanId: varchar("reporter_human_id").notNull().references(() => humans.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-  // Unique constraint to ensure one report per reporter per message
-  reporterMessageUnique: uniqueIndex("reports_reporter_message_unique_idx").on(table.reporterHumanId, table.messageId),
-}));
+});
 
 // Room Rain ledger entries (points only)
 export const ledgerEntries = pgTable("ledger_entries", {
@@ -168,6 +165,34 @@ export const guestSessions = pgTable("guest_sessions", {
 }, (table) => ({
   // Index for daily limit queries
   dayBucketIdx: index("guest_sessions_day_bucket_idx").on(table.dayBucket),
+}));
+
+// Mutes table - users can mute other users to hide their messages
+export const mutes = pgTable("mutes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  muterHumanId: varchar("muter_human_id").notNull().references(() => humans.id),
+  mutedHumanId: varchar("muted_human_id").notNull().references(() => humans.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Unique constraint to ensure one mute per user pair
+  muterMutedUnique: uniqueIndex("mutes_muter_muted_unique_idx").on(table.muterHumanId, table.mutedHumanId),
+  // Index for querying muted users
+  muterIdx: index("mutes_muter_idx").on(table.muterHumanId),
+}));
+
+// Blocks table - users can block other users (mutual invisibility)
+export const blocks = pgTable("blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blockerHumanId: varchar("blocker_human_id").notNull().references(() => humans.id),
+  blockedHumanId: varchar("blocked_human_id").notNull().references(() => humans.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Unique constraint to ensure one block per user pair
+  blockerBlockedUnique: uniqueIndex("blocks_blocker_blocked_unique_idx").on(table.blockerHumanId, table.blockedHumanId),
+  // Index for querying blocked users
+  blockerIdx: index("blocks_blocker_idx").on(table.blockerHumanId),
+  // Index for reverse lookup (checking if current user is blocked by someone)
+  blockedIdx: index("blocks_blocked_idx").on(table.blockedHumanId),
 }));
 
 // Invite codes for referral system
@@ -580,6 +605,17 @@ export const insertGuestSessionSchema = createInsertSchema(guestSessions).omit({
   lastSeen: true,
 });
 
+// Mute and block insert schemas
+export const insertMuteSchema = createInsertSchema(mutes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBlockSchema = createInsertSchema(blocks).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Token system insert schemas
 export const insertSupportedTokenSchema = createInsertSchema(supportedTokens).omit({
   id: true,
@@ -666,6 +702,12 @@ export type Message = typeof messages.$inferSelect;
 
 export type InsertGuestSession = z.infer<typeof insertGuestSessionSchema>;
 export type GuestSession = typeof guestSessions.$inferSelect;
+
+export type InsertMute = z.infer<typeof insertMuteSchema>;
+export type Mute = typeof mutes.$inferSelect;
+
+export type InsertBlock = z.infer<typeof insertBlockSchema>;
+export type Block = typeof blocks.$inferSelect;
 
 export type InsertStar = z.infer<typeof insertStarSchema>;
 export type Star = typeof stars.$inferSelect;

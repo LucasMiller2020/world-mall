@@ -136,6 +136,11 @@ import {
   type PointBreakdown,
   type LeaderboardEntry,
   type DistributionSummary,
+  // Mute and block types
+  type Mute,
+  type InsertMute,
+  type Block,
+  type InsertBlock,
   // Database tables
   humans,
   messages,
@@ -150,6 +155,8 @@ import {
   connectRequests,
   verifications,
   guestSessions,
+  mutes,
+  blocks,
   // Invite system tables
   inviteCodes,
   referrals,
@@ -428,6 +435,19 @@ export interface IStorage {
   // Enhanced profile with token balances
   getEnhancedHumanProfile(humanId: string): Promise<EnhancedHumanProfile | undefined>;
 
+  // Mute operations
+  muteUser(muterHumanId: string, mutedHumanId: string): Promise<void>;
+  unmuteUser(muterHumanId: string, mutedHumanId: string): Promise<void>;
+  getMutedUsers(muterHumanId: string): Promise<string[]>;
+  isUserMuted(muterHumanId: string, mutedHumanId: string): Promise<boolean>;
+
+  // Block operations
+  blockUser(blockerHumanId: string, blockedHumanId: string): Promise<void>;
+  unblockUser(blockerHumanId: string, blockedHumanId: string): Promise<void>;
+  getBlockedUsers(blockerHumanId: string): Promise<string[]>;
+  getBlockingUsers(humanId: string): Promise<string[]>; // Users who have blocked this user
+  isUserBlocked(blockerHumanId: string, blockedHumanId: string): Promise<boolean>;
+
   // ===== ENHANCED MODERATION SYSTEM METHODS =====
   
   // Moderation analysis operations
@@ -673,6 +693,8 @@ export class MemStorage implements IStorage {
   private verifications: Map<string, Verification> = new Map();
   private presenceMap: Map<string, Date> = new Map();
   private guestSessions: Map<string, GuestSession> = new Map();
+  private mutes: Map<string, Mute> = new Map();
+  private blocks: Map<string, Block> = new Map();
   
   // Point system data structures
   private userPointBalances: Map<string, UserPointBalance> = new Map();
@@ -2925,6 +2947,78 @@ export class MemStorage implements IStorage {
     this.moderationQueue.set(newItem.id, newItem);
     return newItem;
   }
+
+  // Mute operations
+  async muteUser(muterHumanId: string, mutedHumanId: string): Promise<void> {
+    const id = randomUUID();
+    const mute: Mute = {
+      id,
+      muterHumanId,
+      mutedHumanId,
+      createdAt: new Date()
+    };
+    this.mutes.set(id, mute);
+  }
+
+  async unmuteUser(muterHumanId: string, mutedHumanId: string): Promise<void> {
+    const toDelete = Array.from(this.mutes.values()).find(
+      m => m.muterHumanId === muterHumanId && m.mutedHumanId === mutedHumanId
+    );
+    if (toDelete) {
+      this.mutes.delete(toDelete.id);
+    }
+  }
+
+  async getMutedUsers(muterHumanId: string): Promise<string[]> {
+    return Array.from(this.mutes.values())
+      .filter(m => m.muterHumanId === muterHumanId)
+      .map(m => m.mutedHumanId);
+  }
+
+  async isUserMuted(muterHumanId: string, mutedHumanId: string): Promise<boolean> {
+    return Array.from(this.mutes.values()).some(
+      m => m.muterHumanId === muterHumanId && m.mutedHumanId === mutedHumanId
+    );
+  }
+
+  // Block operations
+  async blockUser(blockerHumanId: string, blockedHumanId: string): Promise<void> {
+    const id = randomUUID();
+    const block: Block = {
+      id,
+      blockerHumanId,
+      blockedHumanId,
+      createdAt: new Date()
+    };
+    this.blocks.set(id, block);
+  }
+
+  async unblockUser(blockerHumanId: string, blockedHumanId: string): Promise<void> {
+    const toDelete = Array.from(this.blocks.values()).find(
+      b => b.blockerHumanId === blockerHumanId && b.blockedHumanId === blockedHumanId
+    );
+    if (toDelete) {
+      this.blocks.delete(toDelete.id);
+    }
+  }
+
+  async getBlockedUsers(blockerHumanId: string): Promise<string[]> {
+    return Array.from(this.blocks.values())
+      .filter(b => b.blockerHumanId === blockerHumanId)
+      .map(b => b.blockedHumanId);
+  }
+
+  async getBlockingUsers(humanId: string): Promise<string[]> {
+    return Array.from(this.blocks.values())
+      .filter(b => b.blockedHumanId === humanId)
+      .map(b => b.blockerHumanId);
+  }
+
+  async isUserBlocked(blockerHumanId: string, blockedHumanId: string): Promise<boolean> {
+    return Array.from(this.blocks.values()).some(
+      b => b.blockerHumanId === blockerHumanId && b.blockedHumanId === blockedHumanId
+    );
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4025,6 +4119,87 @@ export class DatabaseStorage implements IStorage {
   async getActivePremiumUsers(): Promise<PremiumUser[]> {
     const result = await db.select().from(premiumUsers).where(eq(premiumUsers.status, 'active'));
     return result;
+  }
+
+  // Mute operations
+  async muteUser(muterHumanId: string, mutedHumanId: string): Promise<void> {
+    await db.insert(mutes).values({
+      muterHumanId,
+      mutedHumanId
+    }).onConflictDoNothing();
+  }
+
+  async unmuteUser(muterHumanId: string, mutedHumanId: string): Promise<void> {
+    await db.delete(mutes).where(
+      and(
+        eq(mutes.muterHumanId, muterHumanId),
+        eq(mutes.mutedHumanId, mutedHumanId)
+      )
+    );
+  }
+
+  async getMutedUsers(muterHumanId: string): Promise<string[]> {
+    const result = await db.select({ mutedHumanId: mutes.mutedHumanId })
+      .from(mutes)
+      .where(eq(mutes.muterHumanId, muterHumanId));
+    return result.map(r => r.mutedHumanId);
+  }
+
+  async isUserMuted(muterHumanId: string, mutedHumanId: string): Promise<boolean> {
+    const result = await db.select()
+      .from(mutes)
+      .where(
+        and(
+          eq(mutes.muterHumanId, muterHumanId),
+          eq(mutes.mutedHumanId, mutedHumanId)
+        )
+      )
+      .limit(1);
+    return result.length > 0;
+  }
+
+  // Block operations
+  async blockUser(blockerHumanId: string, blockedHumanId: string): Promise<void> {
+    await db.insert(blocks).values({
+      blockerHumanId,
+      blockedHumanId
+    }).onConflictDoNothing();
+  }
+
+  async unblockUser(blockerHumanId: string, blockedHumanId: string): Promise<void> {
+    await db.delete(blocks).where(
+      and(
+        eq(blocks.blockerHumanId, blockerHumanId),
+        eq(blocks.blockedHumanId, blockedHumanId)
+      )
+    );
+  }
+
+  async getBlockedUsers(blockerHumanId: string): Promise<string[]> {
+    const result = await db.select({ blockedHumanId: blocks.blockedHumanId })
+      .from(blocks)
+      .where(eq(blocks.blockerHumanId, blockerHumanId));
+    return result.map(r => r.blockedHumanId);
+  }
+
+  async getBlockingUsers(humanId: string): Promise<string[]> {
+    const result = await db.select({ blockerHumanId: blocks.blockerHumanId })
+      .from(blocks)
+      .where(eq(blocks.blockedHumanId, humanId));
+    return result.map(r => r.blockerHumanId);
+  }
+
+  async isUserBlocked(blockerHumanId: string, blockedHumanId: string): Promise<boolean> {
+    const result = await db.select()
+      .from(blocks)
+      .where(
+        and(
+          eq(blocks.blockerHumanId, blockerHumanId),
+          eq(blocks.blockedHumanId, blockedHumanId)
+        )
+      )
+      .limit(1);
+    return result.length > 0;
   }
 }
 

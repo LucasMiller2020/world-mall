@@ -1121,7 +1121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get messages for a room
-  app.get('/api/messages/:room', async (req, res) => {
+  app.get('/api/messages/:room', async (req: AuthenticatedRequest, res) => {
     try {
       const { room } = req.params;
       const limit = parseInt(req.query.limit as string) || 50;
@@ -1133,7 +1133,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For global room, fetch more messages to ensure we have recent activity for landing page
       // The storage.getMessages already returns the most recent messages
       const fetchLimit = room === 'global' ? Math.min(limit, 10) : limit;
-      const messages = await storage.getMessages(room, fetchLimit);
+      let messages = await storage.getMessages(room, fetchLimit);
+      
+      // Filter messages based on mutes and blocks if user is authenticated
+      if (req.humanId || req.guestSessionId) {
+        const userRole = req.userRole || 'guest';
+        const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+        
+        // Get muted and blocked users
+        const mutedUsers = await storage.getMutedUsers(humanId);
+        const blockedUsers = await storage.getBlockedUsers(humanId);
+        const blockingUsers = await storage.getBlockingUsers(humanId);
+        
+        // Filter out messages from muted users
+        // Filter out messages from blocked users (blocker perspective)
+        // Filter out messages from users who blocked the requester (mutual invisibility)
+        messages = messages.filter(msg => {
+          const authorId = msg.authorHumanId;
+          return !mutedUsers.includes(authorId) && 
+                 !blockedUsers.includes(authorId) && 
+                 !blockingUsers.includes(authorId);
+        });
+      }
       
       res.json(messages);
     } catch (error) {
@@ -1681,6 +1702,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error reporting message:', error);
       res.status(500).json({ message: 'Failed to submit report' });
+    }
+  });
+
+  // ===== MUTE AND BLOCK ENDPOINTS =====
+  
+  // Mute a user
+  app.post('/api/mutes', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+      const { mutedHumanId } = req.body;
+
+      if (!mutedHumanId || typeof mutedHumanId !== 'string') {
+        return res.status(400).json({ message: 'mutedHumanId is required' });
+      }
+
+      if (humanId === mutedHumanId) {
+        return res.status(400).json({ message: 'Cannot mute yourself' });
+      }
+
+      await storage.muteUser(humanId, mutedHumanId);
+      res.json({ message: 'User muted successfully' });
+    } catch (error) {
+      console.error('Error muting user:', error);
+      res.status(500).json({ message: 'Failed to mute user' });
+    }
+  });
+
+  // Unmute a user
+  app.delete('/api/mutes/:humanId', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+      const { humanId: mutedHumanId } = req.params;
+
+      await storage.unmuteUser(humanId, mutedHumanId);
+      res.json({ message: 'User unmuted successfully' });
+    } catch (error) {
+      console.error('Error unmuting user:', error);
+      res.status(500).json({ message: 'Failed to unmute user' });
+    }
+  });
+
+  // Get muted users
+  app.get('/api/mutes', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+
+      const mutedUsers = await storage.getMutedUsers(humanId);
+      res.json(mutedUsers);
+    } catch (error) {
+      console.error('Error getting muted users:', error);
+      res.status(500).json({ message: 'Failed to get muted users' });
+    }
+  });
+
+  // Block a user
+  app.post('/api/blocks', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+      const { blockedHumanId } = req.body;
+
+      if (!blockedHumanId || typeof blockedHumanId !== 'string') {
+        return res.status(400).json({ message: 'blockedHumanId is required' });
+      }
+
+      if (humanId === blockedHumanId) {
+        return res.status(400).json({ message: 'Cannot block yourself' });
+      }
+
+      await storage.blockUser(humanId, blockedHumanId);
+      res.json({ message: 'User blocked successfully' });
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      res.status(500).json({ message: 'Failed to block user' });
+    }
+  });
+
+  // Unblock a user
+  app.delete('/api/blocks/:humanId', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+      const { humanId: blockedHumanId } = req.params;
+
+      await storage.unblockUser(humanId, blockedHumanId);
+      res.json({ message: 'User unblocked successfully' });
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      res.status(500).json({ message: 'Failed to unblock user' });
+    }
+  });
+
+  // Get blocked users
+  app.get('/api/blocks', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+
+      const blockedUsers = await storage.getBlockedUsers(humanId);
+      res.json(blockedUsers);
+    } catch (error) {
+      console.error('Error getting blocked users:', error);
+      res.status(500).json({ message: 'Failed to get blocked users' });
     }
   });
 
