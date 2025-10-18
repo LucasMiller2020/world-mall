@@ -142,6 +142,14 @@ export function MessageItem({
       setIsSaving(false);
     }
   };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveEdit();
+    }
+  };
+
   const formatTimeAgo = (date: Date | string) => {
     const now = new Date();
     const past = new Date(date);
@@ -208,6 +216,7 @@ export function MessageItem({
                 <Textarea
                   value={editedText}
                   onChange={(e) => setEditedText(e.target.value)}
+                  onKeyDown={handleEditKeyDown}
                   className="text-sm min-h-[80px] mb-2"
                   maxLength={240}
                   placeholder="Edit your message..."
