@@ -21,6 +21,14 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Optional Features**: World ID and premium features remain in code but are optional/unused
 - **Landing Page Simplified**: Removed verification prompts, error banners, and promotional cards
 
+### Phase 5 UX Enhancements (Completed - October 18, 2025)
+- **Inline Edit Keyboard Shortcut**: Press Enter to save edits, Shift+Enter for new lines (30-second edit window)
+- **Message Deletion**: Users can delete their own messages within 60 seconds with confirmation dialog
+- **Real-Time Sync**: Fixed WebSocket query key invalidation using hierarchical pattern `['/api/messages', room]`
+- **Optimistic Updates**: Instant UI feedback for edit and delete operations with automatic rollback on errors
+- **Confirmation Protection**: Mandatory "Are you sure?" dialog prevents accidental deletions
+- **Countdown Timers**: Visual feedback showing remaining time for edit (30s) and delete (60s) actions
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
