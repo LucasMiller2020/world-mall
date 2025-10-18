@@ -35,7 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { filterContent } from "@/lib/content-filter";
-import { getSessionId } from "@/lib/session";
+import { getSessionId, getSessionIdSync } from "@/lib/session";
 import type { MessageWithAuthor, OnlinePresence, Theme, Topic } from "@shared/schema";
 
 export default function GlobalSquare() {
@@ -372,9 +372,9 @@ export default function GlobalSquare() {
 
   // Calculate current user's humanId (for both guests and verified users)
   const getCurrentUserHumanId = () => {
-    if (isGuest) {
-      // For guests, we need to get the session ID
-      const sessionId = getSessionId();
+    if (isGuest()) {
+      // For guests, we need to get the session ID synchronously from cookie/localStorage
+      const sessionId = getSessionIdSync();
       return sessionId ? `guest_${sessionId}` : null;
     }
     return humanId;
