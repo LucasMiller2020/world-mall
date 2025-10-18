@@ -52,12 +52,22 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
           switch (message.type) {
             case 'new_message':
               // Invalidate messages query to refetch
-              queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/messages', message.room] });
               break;
               
             case 'message_starred':
               // Update specific message star count
-              queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/messages', message.room] });
+              break;
+
+            case 'message_edited':
+              // Update edited message
+              queryClient.invalidateQueries({ queryKey: ['/api/messages', message.room] });
+              break;
+
+            case 'message_deleted':
+              // Remove deleted message
+              queryClient.invalidateQueries({ queryKey: ['/api/messages', message.room] });
               break;
               
             case 'presence_update':
@@ -118,8 +128,7 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
           }
           
           // Invalidate queries to update UI
-          queryClient.invalidateQueries({ queryKey: [`/api/messages/${room}`] });
-          queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/messages', room] });
         }
       }
     } catch (error) {
@@ -165,7 +174,7 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     if (!isConnected && !isInMiniApp) {
       const pollInterval = setInterval(() => {
         // Invalidate queries to trigger polling fallback
-        queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/messages', room] });
         queryClient.invalidateQueries({ queryKey: ['/api/presence'] });
       }, 2000);
 

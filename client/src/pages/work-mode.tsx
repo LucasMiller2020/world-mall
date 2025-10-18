@@ -33,7 +33,7 @@ export default function WorkMode() {
 
   // Fetch work messages
   const { data: workPosts = [], isLoading } = useQuery<MessageWithAuthor[]>({
-    queryKey: ['/api/messages/work'],
+    queryKey: ['/api/messages', 'work'],
     queryFn: async () => {
       const res = await fetch('/api/messages/work');
       if (!res.ok) throw new Error('Failed to fetch work posts');
@@ -70,7 +70,7 @@ export default function WorkMode() {
       setMessage("");
       setLink("");
       setGeoScope("Global");
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/work'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'work'] });
       toast({
         title: "Work Post Sent",
         description: "Your request has been posted successfully",
@@ -105,7 +105,7 @@ export default function WorkMode() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/work'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'work'] });
     },
     onError: (error: any) => {
       toast({

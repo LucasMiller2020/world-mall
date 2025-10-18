@@ -34,7 +34,7 @@ export default function Landing() {
 
   // Fetch latest messages for preview (no auth required)
   const { data: messages, isLoading, refetch } = useQuery<MessageWithAuthor[]>({
-    queryKey: ['/api/messages/global'],
+    queryKey: ['/api/messages', 'global'],
     queryFn: async () => {
       const params = new URLSearchParams({ limit: '10' });
       if (isInMiniApp && lastMessageIdRef.current) {

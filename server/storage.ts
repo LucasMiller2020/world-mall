@@ -220,6 +220,7 @@ export interface IStorage {
   getMessageById(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(messageId: string, text: string): Promise<Message | undefined>;
+  deleteMessage(messageId: string): Promise<void>;
   incrementMessageStars(messageId: string): Promise<void>;
   incrementMessageReports(messageId: string): Promise<void>;
   hideMessage(messageId: string): Promise<void>;
@@ -980,6 +981,10 @@ export class MemStorage implements IStorage {
     };
     this.messages.set(message.id, message);
     return message;
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    this.messages.delete(messageId);
   }
 
   async incrementMessageStars(messageId: string): Promise<void> {
@@ -3106,6 +3111,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.id, messageId))
       .returning();
     return result[0] || undefined;
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    await db.delete(messages).where(eq(messages.id, messageId));
   }
 
   async incrementMessageStars(messageId: string): Promise<void> {

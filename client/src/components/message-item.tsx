@@ -4,7 +4,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { MessageWithAuthor } from "@shared/schema";
@@ -18,6 +19,7 @@ interface MessageItemProps {
   onReportClick: () => void;
   onMuteClick: () => void;
   onEditMessage?: (messageId: string, newText: string) => Promise<void>;
+  onDeleteMessage?: (messageId: string) => Promise<void>;
 }
 
 export function MessageItem({
@@ -29,6 +31,7 @@ export function MessageItem({
   onReportClick,
   onMuteClick,
   onEditMessage,
+  onDeleteMessage,
 }: MessageItemProps) {
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);
@@ -39,6 +42,9 @@ export function MessageItem({
   const [editedText, setEditedText] = useState(message.text);
   const [isSaving, setIsSaving] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [timeRemainingDelete, setTimeRemainingDelete] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   // Calculate time remaining for edit window
@@ -68,12 +74,46 @@ export function MessageItem({
     return () => clearInterval(interval);
   }, [message.createdAt, isPreview]);
 
+  // Calculate time remaining for delete window (60 seconds)
+  useEffect(() => {
+    if (isPreview) return;
+
+    const updateTimeRemainingDelete = () => {
+      const now = new Date();
+      const messageTime = new Date(message.createdAt);
+      const elapsed = now.getTime() - messageTime.getTime();
+      const sixtySeconds = 60 * 1000;
+      const remaining = sixtySeconds - elapsed;
+
+      if (remaining > 0) {
+        setTimeRemainingDelete(remaining);
+      } else {
+        setTimeRemainingDelete(null);
+      }
+    };
+
+    // Initial calculation
+    updateTimeRemainingDelete();
+
+    // Update every second
+    const interval = setInterval(updateTimeRemainingDelete, 1000);
+
+    return () => clearInterval(interval);
+  }, [message.createdAt, isPreview]);
+
   // Check if current user can edit this message
   const canEdit = !isPreview && 
                   currentUserHumanId && 
                   message.authorHumanId === currentUserHumanId &&
                   timeRemaining !== null &&
                   timeRemaining > 0;
+
+  // Check if current user can delete this message (60 second window)
+  const canDelete = !isPreview && 
+                    currentUserHumanId && 
+                    message.authorHumanId === currentUserHumanId &&
+                    timeRemainingDelete !== null &&
+                    timeRemainingDelete > 0;
 
   const handleUpvote = () => {
     setUpvoted(!upvoted);
@@ -148,6 +188,32 @@ export function MessageItem({
       e.preventDefault();
       handleSaveEdit();
     }
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!onDeleteMessage) return;
+
+    setIsDeleting(true);
+    try {
+      await onDeleteMessage(message.id);
+      setShowDeleteConfirm(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   const formatTimeAgo = (date: Date | string) => {
@@ -394,6 +460,15 @@ export function MessageItem({
                         <DropdownMenuSeparator />
                       </>
                     )}
+                    {canDelete && !isEditing && (
+                      <>
+                        <DropdownMenuItem onClick={handleDeleteClick} data-testid="menuitem-delete">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete ({Math.ceil((timeRemainingDelete || 0) / 1000)}s)
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem onClick={onReportClick}>
                       <Flag className="h-4 w-4 mr-2" />
                       Report
@@ -422,6 +497,30 @@ export function MessageItem({
           </div>
         </div>
       </CardContent>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Message</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this message? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete} disabled={isDeleting} data-testid="button-cancel-delete">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

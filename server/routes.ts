@@ -1511,6 +1511,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete a message (requires authentication)
+  app.delete('/api/messages/:id', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const messageId = req.params.id;
+
+      if (!messageId) {
+        return res.status(400).json({
+          message: 'Message ID is required',
+          code: 'MISSING_ID'
+        });
+      }
+
+      // Get the message
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).json({
+          message: 'Message not found',
+          code: 'NOT_FOUND'
+        });
+      }
+
+      // Determine the current user's ID (guest or verified)
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+
+      // Verify the message belongs to the current user
+      if (message.authorHumanId !== humanId) {
+        return res.status(403).json({
+          message: 'You can only delete your own messages',
+          code: 'UNAUTHORIZED'
+        });
+      }
+
+      // Check if message is less than 60 seconds old
+      const now = new Date();
+      const messageAge = now.getTime() - message.createdAt.getTime();
+      const sixtySeconds = 60 * 1000;
+
+      if (messageAge > sixtySeconds) {
+        return res.status(403).json({
+          message: 'Messages can only be deleted within 60 seconds of posting',
+          code: 'DELETE_WINDOW_EXPIRED'
+        });
+      }
+
+      // Delete the message
+      await storage.deleteMessage(messageId);
+
+      // Broadcast the deletion to WebSocket clients
+      broadcast({
+        type: 'message_deleted',
+        messageId,
+        room: message.room
+      });
+
+      logStructuredEvent('message.delete', {
+        outcome: 'success',
+        role: userRole,
+        messageId,
+        humanId,
+        room: message.room,
+        sessionId: req.sessionID || null,
+        guestSessionId: req.guestSessionId || null,
+      });
+
+      res.json({ 
+        success: true,
+        messageId,
+        room: message.room
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      res.status(500).json({ message: 'Failed to delete message' });
+    }
+  });
+
   // Star a message (requires authentication)
   app.post('/api/stars', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {

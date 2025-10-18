@@ -80,7 +80,7 @@ export default function GlobalSquare() {
 
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery<MessageWithAuthor[]>({
-    queryKey: ['/api/messages/global'],
+    queryKey: ['/api/messages', 'global'],
     queryFn: async () => {
       const res = await fetch('/api/messages/global');
       if (!res.ok) throw new Error('Failed to fetch messages');
@@ -147,7 +147,7 @@ export default function GlobalSquare() {
     },
     onSuccess: (data) => {
       setMessage("");
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/global'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'global'] });
       
       // If guest, update stats and start cooldown
       if (data.guestStats) {
@@ -223,7 +223,7 @@ export default function GlobalSquare() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/global'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'global'] });
     },
     onError: (error: any) => {
       toast({
@@ -290,11 +290,65 @@ export default function GlobalSquare() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/global'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'global'] });
     },
     onError: (error: any) => {
       // Error is handled in MessageItem component
       throw error;
+    },
+  });
+
+  // Delete message mutation
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      const res = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'X-World-ID-Proof': humanId || '',
+        },
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to delete message');
+      }
+      
+      return res.json();
+    },
+    onMutate: async (messageId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/messages', 'global'] });
+
+      // Snapshot the previous value
+      const previousMessages = queryClient.getQueryData<MessageWithAuthor[]>(['/api/messages', 'global']);
+
+      // Optimistically update to remove the message
+      queryClient.setQueryData<MessageWithAuthor[]>(
+        ['/api/messages', 'global'],
+        (old) => old?.filter((msg) => msg.id !== messageId) || []
+      );
+
+      // Return context with the previous data
+      return { previousMessages };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'global'] });
+      toast({
+        title: "Message deleted",
+        description: "Your message has been successfully deleted.",
+      });
+    },
+    onError: (error: any, messageId, context) => {
+      // Restore the previous messages on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['/api/messages', 'global'], context.previousMessages);
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete message",
+        variant: "destructive",
+      });
     },
   });
 
@@ -368,6 +422,10 @@ export default function GlobalSquare() {
 
   const handleEditMessage = async (messageId: string, newText: string) => {
     await editMessageMutation.mutateAsync({ messageId, text: newText });
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    await deleteMessageMutation.mutateAsync(messageId);
   };
 
   // Calculate current user's humanId (for both guests and verified users)
@@ -734,6 +792,7 @@ export default function GlobalSquare() {
               onReportClick={() => handleReportMessage(msg.id)}
               onMuteClick={() => {}}
               onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
               data-testid={`message-item-${msg.id}`}
             />
           ))
