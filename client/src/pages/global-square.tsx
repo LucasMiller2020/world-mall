@@ -315,27 +315,27 @@ export default function GlobalSquare() {
     });
   };
 
-  const handleStarMessage = (messageId: string) => {
+  const handleStarMessage = async (messageId: string) => {
     if (!canStar()) {
-      setShowVerifyPrompt(true);
-      toast({
-        title: "Verification Required",
-        description: "Verify with World ID to star messages",
-        variant: "destructive",
-      });
+      try {
+        await verify();
+        starMessageMutation.mutate(messageId);
+      } catch (error) {
+        console.log('Verification cancelled or failed');
+      }
       return;
     }
     starMessageMutation.mutate(messageId);
   };
 
-  const handleReportMessage = (messageId: string) => {
+  const handleReportMessage = async (messageId: string) => {
     if (!canReport()) {
-      setShowVerifyPrompt(true);
-      toast({
-        title: "Verification Required",
-        description: "Verify with World ID to report messages",
-        variant: "destructive",
-      });
+      try {
+        await verify();
+        setReportingMessage(messageId);
+      } catch (error) {
+        console.log('Verification cancelled or failed');
+      }
       return;
     }
     setReportingMessage(messageId);
