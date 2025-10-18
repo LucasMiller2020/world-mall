@@ -353,6 +353,15 @@ export default function GlobalSquare() {
   const maxChars = isPremium ? 500 : 240; // 500 chars for premium, 240 for regular users
   const canSend = message.trim().length > 0 && message.length <= maxChars;
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (canSend && !sendMessageMutation.isPending && cooldownSeconds === 0) {
+        handleSendMessage();
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
@@ -591,37 +600,6 @@ export default function GlobalSquare() {
         </div>
       </div>
 
-      {/* Messages Feed */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" data-testid="list-messages">
-        {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <SkeletonLoader key={i} />
-          ))
-        ) : messages.length > 0 ? (
-          messages.map((msg) => (
-            <MessageItem
-              key={msg.id}
-              message={msg}
-              onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
-              onStarClick={() => handleStarMessage(msg.id)}
-              onReportClick={() => handleReportMessage(msg.id)}
-              onMuteClick={() => {}}
-              data-testid={`message-item-${msg.id}`}
-            />
-          ))
-        ) : (
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-muted-foreground" data-testid="text-empty-state">
-                Be the first to say hi today 👋
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Guest Mode Badge removed - World ID verification required */}
-
       {/* Composer Section - More Compact */}
       <div className="bg-background border-t border-border p-4">
         {showVerifyPrompt ? (
@@ -667,6 +645,7 @@ export default function GlobalSquare() {
                 placeholder="Say hello 👋..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="resize-none"
                 rows={2}
                 maxLength={maxChars}
@@ -693,6 +672,35 @@ export default function GlobalSquare() {
         )}
       </div>
 
+      {/* Messages Feed */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" data-testid="list-messages">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonLoader key={i} />
+          ))
+        ) : messages.length > 0 ? (
+          messages.map((msg) => (
+            <MessageItem
+              key={msg.id}
+              message={msg}
+              onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
+              onStarClick={() => handleStarMessage(msg.id)}
+              onReportClick={() => handleReportMessage(msg.id)}
+              onMuteClick={() => {}}
+              data-testid={`message-item-${msg.id}`}
+            />
+          ))
+        ) : (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-muted-foreground" data-testid="text-empty-state">
+                Be the first to say hi today 👋
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Modals */}
       {selectedProfileHandle && (
         <ProfileModal
@@ -703,7 +711,7 @@ export default function GlobalSquare() {
 
       {reportingMessage && (
         <ReportModal
-          onConfirm={confirmReport}
+          onConfirm={handleConfirmReport}
           onCancel={() => setReportingMessage(null)}
           isLoading={reportMessageMutation.isPending}
         />
