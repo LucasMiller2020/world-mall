@@ -367,6 +367,28 @@ export const permit2Signatures = pgTable("permit2_signatures", {
   usedAt: timestamp("used_at"),
 });
 
+// Premium users table - tracks WLD payments for premium features
+export const premiumUsers = pgTable("premium_users", {
+  humanId: varchar("human_id").primaryKey().references(() => humans.id),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+  transactionId: varchar("transaction_id").notNull().unique(), // Unique payment transaction ID from World ID
+  expiresAt: timestamp("expires_at"), // Null for lifetime access
+  amount: integer("amount").default(1).notNull(), // Amount in WLD (should be 1)
+  status: varchar("status", { enum: ["active", "expired", "cancelled"] }).default("active").notNull(),
+  metadata: jsonb("metadata").$type<{
+    paymentProof?: string; // Payment proof from MiniKit
+    appId?: string; // World App ID
+    currency?: string; // Should be "WLD"
+    benefits?: string[]; // List of enabled premium features
+  }>().default({}).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  // Index for status queries
+  statusIdx: index("premium_users_status_idx").on(table.status),
+  // Index for expiration checks
+  expiresAtIdx: index("premium_users_expires_at_idx").on(table.expiresAt),
+}));
+
 // Legacy: Keep point balances for backward compatibility during migration
 export const userPointBalances = pgTable("user_point_balances", {
   humanId: varchar("human_id").primaryKey().references(() => humans.id),
@@ -585,6 +607,12 @@ export const insertPermit2SignatureSchema = createInsertSchema(permit2Signatures
   usedAt: true,
 });
 
+// Premium users insert schema
+export const insertPremiumUserSchema = createInsertSchema(premiumUsers).omit({
+  purchasedAt: true,
+  updatedAt: true,
+});
+
 // Legacy: Keep point system insert schemas for backward compatibility
 export const insertUserPointBalanceSchema = createInsertSchema(userPointBalances).omit({
   lastUpdated: true,
@@ -682,6 +710,10 @@ export type TokenTransaction = typeof tokenTransactions.$inferSelect;
 
 export type InsertPermit2Signature = z.infer<typeof insertPermit2SignatureSchema>;
 export type Permit2Signature = typeof permit2Signatures.$inferSelect;
+
+// Premium users types
+export type InsertPremiumUser = z.infer<typeof insertPremiumUserSchema>;
+export type PremiumUser = typeof premiumUsers.$inferSelect;
 
 // Legacy: Keep point system types for backward compatibility
 export type InsertUserPointBalance = z.infer<typeof insertUserPointBalanceSchema>;

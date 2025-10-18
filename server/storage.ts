@@ -57,6 +57,8 @@ import {
   type InsertTokenDistributionEvent,
   type Permit2Signature,
   type InsertPermit2Signature,
+  type PremiumUser,
+  type InsertPremiumUser,
   type TokenSummary,
   type UserTokenSummary,
   type UserTokenHistory,
@@ -161,6 +163,7 @@ import {
   tokenTransactions,
   tokenDistributionEvents,
   permit2Signatures,
+  premiumUsers,
   // Enhanced moderation system tables
   moderationAnalysis,
   moderationActions,
@@ -646,6 +649,13 @@ export interface IStorage {
   exportAuditLog(filters?: any, format?: 'json' | 'csv'): Promise<any>;
   exportUserData(filters?: any): Promise<any>;
   generateSystemReport(type: string, parameters?: any): Promise<any>;
+  
+  // Premium user operations
+  getPremiumStatus(humanId: string): Promise<PremiumUser | undefined>;
+  createPremiumUser(premiumUser: InsertPremiumUser): Promise<PremiumUser>;
+  updatePremiumStatus(humanId: string, status: 'active' | 'expired' | 'cancelled'): Promise<void>;
+  checkPremiumExpiration(humanId: string): Promise<boolean>;
+  getActivePremiumUsers(): Promise<PremiumUser[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -703,6 +713,9 @@ export class MemStorage implements IStorage {
   private moderationQueue: Map<string, ModerationQueue> = new Map();
   private moderationAppeals: Map<string, ModerationAppeal> = new Map();
   private moderationStats: Map<string, ModerationStats> = new Map();
+  
+  // Premium users data structure
+  private premiumUsers: Map<string, PremiumUser> = new Map();
 
   constructor() {
     // Initialize with today's default theme
@@ -937,9 +950,11 @@ export class MemStorage implements IStorage {
 
     return allMessages.map(message => {
       const author = this.humans.get(message.authorHumanId);
+      // Use actual handle from database, fallback to generated handle if not set
+      const authorHandle = author?.handle || this.generateHandle(message.authorHumanId);
       return {
         ...message,
-        authorHandle: this.generateHandle(message.authorHumanId),
+        authorHandle,
         isStarredByUser: false // This would be set based on current user
       };
     });
@@ -3038,8 +3053,12 @@ export class DatabaseStorage implements IStorage {
 
   async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {
     const messageResults = await db
-      .select()
+      .select({
+        message: messages,
+        author: humans
+      })
       .from(messages)
+      .leftJoin(humans, eq(messages.authorHumanId, humans.id))
       .where(and(eq(messages.room, room), eq(messages.isHidden, false)))
       .orderBy(desc(messages.createdAt))
       .limit(limit);
@@ -3047,9 +3066,10 @@ export class DatabaseStorage implements IStorage {
     // Reverse to get chronological order
     const sortedMessages = messageResults.reverse();
 
-    return sortedMessages.map(message => ({
-      ...message,
-      authorHandle: this.generateHandle(message.authorHumanId),
+    return sortedMessages.map(result => ({
+      ...result.message,
+      // Use actual handle from database, fallback to generated handle if not set
+      authorHandle: result.author?.handle || this.generateHandle(result.message.authorHumanId),
       isStarredByUser: false
     }));
   }
@@ -3924,6 +3944,49 @@ export class DatabaseStorage implements IStorage {
       updatedAt: new Date()
     }).returning();
     return result[0];
+  }
+
+  // Premium user operations
+  async getPremiumStatus(humanId: string): Promise<PremiumUser | undefined> {
+    const result = await db.select().from(premiumUsers).where(eq(premiumUsers.humanId, humanId)).limit(1);
+    const premiumUser = result[0];
+    
+    if (premiumUser) {
+      // Check if expired (if expiresAt is set)
+      if (premiumUser.expiresAt && new Date(premiumUser.expiresAt) < new Date()) {
+        // Mark as expired
+        await this.updatePremiumStatus(humanId, 'expired');
+        return { ...premiumUser, status: 'expired' };
+      }
+    }
+    
+    return premiumUser;
+  }
+
+  async createPremiumUser(premiumUser: InsertPremiumUser): Promise<PremiumUser> {
+    const result = await db.insert(premiumUsers).values({
+      ...premiumUser,
+      purchasedAt: new Date(),
+      updatedAt: new Date(),
+      metadata: premiumUser.metadata || { currency: 'WLD', benefits: ['500_char_messages', 'unlimited_daily', 'premium_badge', 'work_priority'] }
+    }).returning();
+    return result[0];
+  }
+
+  async updatePremiumStatus(humanId: string, status: 'active' | 'expired' | 'cancelled'): Promise<void> {
+    await db.update(premiumUsers)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(premiumUsers.humanId, humanId));
+  }
+
+  async checkPremiumExpiration(humanId: string): Promise<boolean> {
+    const premium = await this.getPremiumStatus(humanId);
+    return premium?.status === 'active';
+  }
+
+  async getActivePremiumUsers(): Promise<PremiumUser[]> {
+    const result = await db.select().from(premiumUsers).where(eq(premiumUsers.status, 'active'));
+    return result;
   }
 }
 

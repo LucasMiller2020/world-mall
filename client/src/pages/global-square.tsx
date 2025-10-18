@@ -9,13 +9,14 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
-import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus } from "lucide-react";
+import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus, Crown, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeContext } from "@/theme/ThemeProvider";
+import { usePayment, usePremiumStatus } from "@/hooks/use-payment";
 import {
   Sheet,
   SheetContent,
@@ -47,9 +48,12 @@ export default function GlobalSquare() {
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const [devMenuOpen, setDevMenuOpen] = useState(false);
   const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
+  const { payForPremium, isPaying } = usePayment();
+  const { isPremium } = usePremiumStatus();
   
   // Check if developer menu should be shown
   const showDevMenu = () => {
@@ -270,20 +274,18 @@ export default function GlobalSquare() {
     // This guarantees the session is initialized before any API calls
     await getSessionId();
     
-    // Check message length based on user role
-    const maxChars = limits?.maxChars || (isGuest() ? 60 : 240);
+    // Check message length (500 chars for premium, 240 for regular users)
+    const maxChars = isPremium ? 500 : 240;
     if (message.length > maxChars) {
       toast({
         title: "Message too long",
-        description: isGuest() 
-          ? `Guest messages limited to ${maxChars} characters. Verify to unlock full chat!`
-          : `Message exceeds ${maxChars} character limit`,
+        description: `Message exceeds ${maxChars} character limit`,
         variant: "destructive",
       });
       return;
     }
 
-    if (!isGuest() && !isVerified) {
+    if (!isVerified) {
       await verify();
       return;
     }
@@ -348,7 +350,7 @@ export default function GlobalSquare() {
   };
 
   const characterCount = message.length;
-  const maxChars = limits?.maxChars || (isGuest() ? 60 : 240);
+  const maxChars = isPremium ? 500 : 240; // 500 chars for premium, 240 for regular users
   const canSend = message.trim().length > 0 && message.length <= maxChars;
 
   return (
@@ -487,6 +489,29 @@ export default function GlobalSquare() {
             >
               <Briefcase className="h-4 w-4" />
             </Button>
+            
+            {/* Premium Upgrade Button */}
+            {!isPremium && isVerified && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPremiumModalOpen(true)}
+                disabled={isPaying}
+                data-testid="button-upgrade-premium"
+                className="animate-pulse"
+              >
+                <Crown className="h-4 w-4 text-amber-500" />
+              </Button>
+            )}
+            
+            {/* Premium Badge */}
+            {isPremium && (
+              <Badge variant="secondary" className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0">
+                <Crown className="h-3 w-3 mr-1" />
+                Premium
+              </Badge>
+            )}
+            
             {showDevMenu() && (
               <Sheet open={devMenuOpen} onOpenChange={setDevMenuOpen}>
                 <SheetTrigger asChild>
@@ -595,37 +620,7 @@ export default function GlobalSquare() {
         )}
       </div>
 
-      {/* Compact Guest Mode Badge with Shield */}
-      {isGuest() && role !== 'verified' && !isVerified && (
-        <div className="bg-muted/50 border-t border-border px-6 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                Guest Mode
-              </Badge>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    onClick={verify} 
-                    size="icon" 
-                    variant="ghost"
-                    className="h-6 w-6"
-                    data-testid="button-verify-shield"
-                  >
-                    <Shield className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Verify to unlock full chat</p>
-                </TooltipContent>
-              </Tooltip>
-              <span className="text-xs text-muted-foreground">
-                60 chars • {guestStats?.messagesRemaining ?? 10} left today
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Guest Mode Badge removed - World ID verification required */}
 
       {/* Composer Section - More Compact */}
       <div className="bg-background border-t border-border p-4">
@@ -653,15 +648,6 @@ export default function GlobalSquare() {
                 <Shield className="h-4 w-4 mr-2" />
                 Verify with World ID
               </Button>
-              <Button 
-                onClick={() => setShowVerifyPrompt(false)} 
-                variant="ghost" 
-                size="sm" 
-                className="w-full mt-2"
-                data-testid="button-continue-as-guest"
-              >
-                Continue as Guest
-              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -670,7 +656,7 @@ export default function GlobalSquare() {
               <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
                 <CardContent className="pt-4 text-center">
                   <p className="text-sm text-amber-800 dark:text-amber-200" data-testid="text-cooldown-notice">
-                    {isGuest() && role !== 'verified' ? `Wait ${cooldownSeconds}s before sending another message` : `Take a breath—back in ${cooldownSeconds}s`}
+                    Take a breath—back in {cooldownSeconds}s
                   </p>
                 </CardContent>
               </Card>
@@ -678,14 +664,9 @@ export default function GlobalSquare() {
 
             <div className="relative">
               <Textarea
-                placeholder={isVerified || role === 'verified' ? "Say hello 👋..." : "Say hello 👋 (verify to unlock full chat)"}
+                placeholder="Say hello 👋..."
                 value={message}
-                onChange={(e) => {
-                  if (isGuest() && role !== 'verified' && e.target.value.length > maxChars) {
-                    return; // Prevent typing beyond limit for guests
-                  }
-                  setMessage(e.target.value);
-                }}
+                onChange={(e) => setMessage(e.target.value)}
                 className="resize-none"
                 rows={2}
                 maxLength={maxChars}
@@ -697,11 +678,6 @@ export default function GlobalSquare() {
                   <span className={`text-xs ${characterCount > maxChars ? 'text-destructive' : 'text-muted-foreground'}`} data-testid="text-character-count">
                     {characterCount}/{maxChars}
                   </span>
-                  {isGuest() && role !== 'verified' && !isVerified && (
-                    <span className="text-xs text-muted-foreground" data-testid="text-messages-remaining">
-                      {guestStats?.messagesRemaining ?? 10} messages left today
-                    </span>
-                  )}
                 </div>
                 <Button 
                   onClick={handleSendMessage}
@@ -732,6 +708,86 @@ export default function GlobalSquare() {
           isLoading={reportMessageMutation.isPending}
         />
       )}
+
+      {/* Premium Benefits Modal */}
+      <Dialog open={premiumModalOpen} onOpenChange={setPremiumModalOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-500" />
+              Upgrade to Mall Space Premium
+            </DialogTitle>
+            <DialogDescription className="pt-4 space-y-4">
+              <div className="text-center">
+                <p className="text-lg font-semibold text-foreground">
+                  One-time payment of 1 WLD
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Lifetime access to premium features
+                </p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 p-4 rounded-lg space-y-3">
+                <h4 className="font-semibold text-sm">Premium Benefits:</h4>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span><strong>500 character messages</strong> (vs 240 for standard users)</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span><strong>Unlimited daily messages</strong> (no cooldowns or limits)</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span><strong>Premium badge</strong> next to your name</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span><strong>Priority in Work Mode</strong> for collaboration</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span><strong>Special themes</strong> (coming soon)</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="pt-2">
+                <Button 
+                  onClick={async () => {
+                    try {
+                      setPremiumModalOpen(false);
+                      await payForPremium();
+                    } catch (error) {
+                      console.error('Payment failed:', error);
+                    }
+                  }}
+                  disabled={isPaying}
+                  className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
+                  data-testid="button-pay-premium"
+                >
+                  {isPaying ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Crown className="h-4 w-4 mr-2" />
+                      Pay 1 WLD for Premium
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <p className="text-xs text-muted-foreground text-center">
+                Payment processed securely through World ID
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
 
       {/* Friends Coming Soon Dialog */}
       <Dialog open={friendsDialogOpen} onOpenChange={setFriendsDialogOpen}>

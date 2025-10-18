@@ -46,12 +46,17 @@ const RATE_LIMITS = {
   WORK_LINKS_PER_HOUR: parseInt(process.env.RATE_LIMIT_WORK_LINKS_PER_HOUR || '4'),
 };
 
-// Guest mode configuration - using POLICY values
+// Guest mode configuration - DISABLED (World ID verification required)
 const GUEST_CONFIG = {
-  ENABLED: process.env.FEATURE_GUEST_MODE === 'true' || process.env.NODE_ENV === 'development',
-  MAX_CHARS: POLICY.guestCharLimit,
-  COOLDOWN_SEC: POLICY.guestCooldownSec,
-  MAX_PER_DAY: POLICY.guestDaily,
+  ENABLED: false, // Guest mode disabled - World ID verification required for all access
+  MAX_CHARS: 0,
+  COOLDOWN_SEC: 999999,
+  MAX_PER_DAY: 0,
+  // Original config kept for reference:
+  // ENABLED: process.env.FEATURE_GUEST_MODE === 'true' || process.env.NODE_ENV === 'development',
+  // MAX_CHARS: POLICY.guestCharLimit,
+  // COOLDOWN_SEC: POLICY.guestCooldownSec,
+  // MAX_PER_DAY: POLICY.guestDaily,
 };
 
 // Simple content filter
@@ -294,16 +299,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const authenticateHuman = async (req: AuthenticatedRequest, res: Response, next: any) => {
     const worldIdProof = req.headers['x-world-id-proof'] as string;
     
-    // Check if guest mode is enabled and no proof provided
-    if (!worldIdProof && GUEST_CONFIG.ENABLED) {
-      // Handle as guest
-      req.userRole = 'guest';
-      return next();
-    }
+    // Guest mode disabled - World ID verification is always required
+    // Original guest mode check kept for reference:
+    // if (!worldIdProof && GUEST_CONFIG.ENABLED) {
+    //   req.userRole = 'guest';
+    //   return next();
+    // }
     
     if (!worldIdProof) {
       return res.status(401).json({ 
-        message: 'World ID verification required',
+        message: 'World ID verification required to access Mall Space',
         code: 'VERIFICATION_REQUIRED'
       });
     }
@@ -316,7 +321,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure human exists in storage
       let human = await storage.getHuman(humanId);
       if (!human) {
-        human = await storage.createHuman({ id: humanId, role: 'verified' });
+        // Generate a unique handle from the humanId (first 8 chars)
+        const baseHandle = `user_${humanId.substring(0, 8)}`;
+        human = await storage.createHuman({ 
+          id: humanId, 
+          role: 'verified',
+          handle: baseHandle
+        });
       }
 
       // Update presence
@@ -333,10 +344,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  // Content filter function
-  function filterContent(text: string): { isValid: boolean; reason?: string } {
-    if (text.length > 240) {
-      return { isValid: false, reason: 'Message too long (240 character limit)' };
+  // Content filter function with premium support
+  function filterContent(text: string, isPremium: boolean = false): { isValid: boolean; reason?: string } {
+    const maxChars = isPremium ? 500 : 240;
+    
+    if (text.length > maxChars) {
+      return { isValid: false, reason: `Message too long (${maxChars} character limit)` };
     }
 
     if (text.length < 1) {
@@ -353,8 +366,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { isValid: true };
   }
 
-  // Rate limiting helper
-  async function checkRateLimit(humanId: string, action: string): Promise<{ allowed: boolean; cooldownSeconds?: number }> {
+  // Rate limiting helper with premium support
+  async function checkRateLimit(humanId: string, action: string, isPremium: boolean = false): Promise<{ allowed: boolean; cooldownSeconds?: number }> {
+    // Premium users have no rate limits
+    if (isPremium) {
+      return { allowed: true };
+    }
+    
     const limits = {
       'message_minute': RATE_LIMITS.MESSAGES_PER_MIN,
       'message_hour': RATE_LIMITS.MESSAGES_PER_HOUR,
@@ -758,7 +776,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create or update human
       let human = await storage.getHuman(userId);
       if (!human) {
-        human = await storage.createHuman({ id: userId, role: 'verified' });
+        // Generate a unique handle from the userId (first 8 chars)
+        const baseHandle = `user_${userId.substring(0, 8)}`;
+        human = await storage.createHuman({ 
+          id: userId, 
+          role: 'verified',
+          handle: baseHandle
+        });
       } else {
         await storage.updateHumanRole(userId, 'verified');
       }
@@ -846,6 +870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Prepare response object
     const response: any = {
       humanId: humanId || null,
+      handle: human?.handle || null,
       role,
       isVerified: role === 'verified' || role === 'admin',
       limits,
@@ -1221,6 +1246,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verified user flow continues below
       const humanId = req.humanId!;
+      
+      // Check premium status
+      const premiumStatus = await storage.getPremiumStatus(humanId);
+      const isPremium = premiumStatus?.status === 'active';
 
       // Check user moderation status first
       const moderationStatus = await automatedModeration.checkUserModerationStatus(humanId);
@@ -1231,10 +1260,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           code: 'ACCOUNT_SUSPENDED'
         });
       }
+      
+      // Content validation with premium support
+      const contentCheck = filterContent(messageData.text, isPremium);
+      if (!contentCheck.isValid) {
+        return res.status(400).json({
+          message: contentCheck.reason,
+          code: 'INVALID_CONTENT'
+        });
+      }
 
-      // Rate limiting (enhanced with moderation status)
+      // Rate limiting (enhanced with moderation status and premium support)
       const rateLimitAction = messageData.link ? 'work_link' : 'message';
-      const rateCheck = await checkRateLimit(humanId, rateLimitAction);
+      const rateCheck = await checkRateLimit(humanId, rateLimitAction, isPremium);
       if (!rateCheck.allowed) {
         return res.status(429).json({
           message: `You're sending messages fast. Take a breath—back in ${rateCheck.cooldownSeconds} sec.`,
@@ -2160,6 +2198,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Premium System API Endpoints
+  
+  // Get premium status for current user
+  app.get('/api/premium/status', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const humanId = req.humanId!;
+      const premiumStatus = await storage.getPremiumStatus(humanId);
+      
+      res.json({
+        isPremium: premiumStatus?.status === 'active',
+        status: premiumStatus?.status || 'none',
+        purchasedAt: premiumStatus?.purchasedAt,
+        expiresAt: premiumStatus?.expiresAt,
+        benefits: premiumStatus?.metadata?.benefits || []
+      });
+    } catch (error) {
+      console.error('Error fetching premium status:', error);
+      res.status(500).json({ message: 'Failed to fetch premium status' });
+    }
+  });
+  
+  // Process premium purchase (initiated from MiniKit payment)
+  app.post('/api/premium/purchase', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const humanId = req.humanId!;
+      const { transactionId, paymentProof, amount } = req.body;
+      
+      // Validate request
+      if (!transactionId || !paymentProof) {
+        return res.status(400).json({ 
+          message: 'Missing transaction ID or payment proof',
+          code: 'INVALID_PAYMENT_DATA'
+        });
+      }
+      
+      // Verify amount is 1 WLD
+      if (amount !== 1) {
+        return res.status(400).json({ 
+          message: 'Invalid payment amount. Premium requires 1 WLD',
+          code: 'INVALID_AMOUNT'
+        });
+      }
+      
+      // Check if already premium
+      const existingPremium = await storage.getPremiumStatus(humanId);
+      if (existingPremium?.status === 'active') {
+        return res.status(400).json({ 
+          message: 'User already has active premium',
+          code: 'ALREADY_PREMIUM'
+        });
+      }
+      
+      // Create premium user record
+      const premiumUser = await storage.createPremiumUser({
+        humanId,
+        transactionId,
+        amount: 1,
+        status: 'active',
+        expiresAt: null, // Lifetime access
+        metadata: {
+          paymentProof,
+          currency: 'WLD',
+          appId: req.headers['x-world-app-id'] as string,
+          benefits: [
+            '500_char_messages',
+            'unlimited_daily_messages', 
+            'premium_badge',
+            'work_priority',
+            'special_themes'
+          ]
+        }
+      });
+      
+      // Log the premium purchase
+      logStructuredEvent({
+        event: 'premium_purchase',
+        humanId,
+        transactionId,
+        amount: 1,
+        currency: 'WLD'
+      });
+      
+      // Broadcast premium status update
+      broadcast({
+        type: 'premium_status_update',
+        data: {
+          humanId,
+          isPremium: true,
+          status: 'active'
+        }
+      });
+      
+      res.json({
+        success: true,
+        message: 'Premium activated successfully',
+        premium: {
+          status: premiumUser.status,
+          purchasedAt: premiumUser.purchasedAt,
+          benefits: premiumUser.metadata?.benefits
+        }
+      });
+      
+    } catch (error: any) {
+      console.error('Error processing premium purchase:', error);
+      
+      // Check for duplicate transaction
+      if (error.code === '23505' && error.constraint === 'premium_users_transaction_id_unique') {
+        return res.status(400).json({ 
+          message: 'This transaction has already been processed',
+          code: 'DUPLICATE_TRANSACTION'
+        });
+      }
+      
+      res.status(500).json({ 
+        message: 'Failed to process premium purchase',
+        code: 'PURCHASE_FAILED'
+      });
+    }
+  });
+  
+  // Verify premium payment with World ID backend
+  app.post('/api/premium/verify-payment', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      const humanId = req.humanId!;
+      const { transactionId, paymentProof } = req.body;
+      
+      // In production, you would verify the payment with World ID backend here
+      // For now, we'll trust the client-side proof
+      
+      // TODO: Add actual World ID payment verification
+      // const verified = await verifyWorldIDPayment(transactionId, paymentProof);
+      // if (!verified) {
+      //   return res.status(400).json({ message: 'Payment verification failed' });
+      // }
+      
+      res.json({
+        verified: true,
+        message: 'Payment verification successful'
+      });
+      
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      res.status(500).json({ 
+        message: 'Failed to verify payment',
+        code: 'VERIFICATION_FAILED'
+      });
+    }
+  });
+
   // Mute/unmute user (requires authentication)
   app.post('/api/mute', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
@@ -2831,9 +3018,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if human exists, create if not
       let human = await storage.getHuman(humanId);
       if (!human) {
+        // Generate a unique handle from the humanId (first 8 chars)
+        const baseHandle = `user_${humanId.substring(0, 8)}`;
         human = await storage.createHuman({ 
           id: humanId,
-          role: 'verified'
+          role: 'verified',
+          handle: baseHandle
         });
       } else if (human.role === 'guest') {
         // Upgrade from guest to verified

@@ -3,10 +3,14 @@
  * All values can be overridden via environment variables
  */
 export const POLICY = {
-  // Guest user limits
-  guestCharLimit: parseInt(process.env.GUEST_CHAR_LIMIT || '60'),
-  guestDaily: parseInt(process.env.GUEST_DAILY || '10'),
-  guestCooldownSec: parseInt(process.env.GUEST_COOLDOWN_SEC || '0'),
+  // Guest user limits (DISABLED - World ID verification required)
+  // Kept for future reference if guest mode needs to be re-enabled
+  // guestCharLimit: parseInt(process.env.GUEST_CHAR_LIMIT || '60'),
+  // guestDaily: parseInt(process.env.GUEST_DAILY || '10'),
+  // guestCooldownSec: parseInt(process.env.GUEST_COOLDOWN_SEC || '0'),
+  guestCharLimit: 0,  // Guest mode disabled - World ID required
+  guestDaily: 0,      // Guest mode disabled - World ID required
+  guestCooldownSec: 999999,  // Guest mode disabled - World ID required
   
   // Verified user limits  
   verifiedCharLimit: parseInt(process.env.VERIFIED_CHAR_LIMIT || '240'),

@@ -83,8 +83,12 @@ export default function Landing() {
   }, [isInMiniApp, refetch]);
 
   const handleEnterGlobalSquare = () => {
-    // Always allow access - guest mode is available
-    setLocation('/room/global');
+    // World ID verification required - redirect to verify
+    if (!isVerified) {
+      handleVerifyWithWorldId();
+    } else {
+      setLocation('/room/global');
+    }
   };
 
 
@@ -266,29 +270,45 @@ export default function Landing() {
           </div>
         </div>
         
-        {/* Guest Access Card */}
+        {/* Verification Required Card */}
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <Shield className="h-5 w-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground" data-testid="text-guest-access-title">
-                  {t('landing.guestAccessTitle')}
+                <h3 className="text-sm font-semibold text-foreground" data-testid="text-verification-required-title">
+                  World ID Verification Required
                 </h3>
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-foreground mb-2" data-testid="text-verification-notice">
-                  {t('landing.verificationNotice')}
+                  Verify your humanity with World ID to access Mall Space
                 </p>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground" data-testid="text-guest-benefits">
-                    {t('landing.guestBenefits')}
+                  <p className="text-xs text-muted-foreground" data-testid="text-verification-reason">
+                    ✓ Ensures authentic human interactions
                   </p>
                   <p className="text-xs text-muted-foreground" data-testid="text-verified-benefits">
-                    {t('landing.verifiedBenefits')}
+                    ✓ Unlock messaging, profiles, and community features
                   </p>
                 </div>
               </div>
+              {!isVerified && (
+                <Button 
+                  onClick={handleVerifyWithWorldId}
+                  className="w-full"
+                  variant="default"
+                  disabled={isVerifying}
+                  data-testid="button-verify-card"
+                >
+                  {isVerifying ? 'Verifying...' : 'Verify with World ID'}
+                </Button>
+              )}
+              {isVerified && (
+                <div className="text-center text-sm text-green-600 dark:text-green-400">
+                  ✓ Verified - Click "Enter Global Square" to join
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

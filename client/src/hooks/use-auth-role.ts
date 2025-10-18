@@ -32,11 +32,11 @@ interface PolicyData {
 export function useAuthRole() {
   const [authState, setAuthState] = useState<AuthState>({
     humanId: null,
-    role: 'guest',
+    role: 'guest', // Default until verified
     isVerified: false,
     limits: {
-      maxChars: 60, // Default guest char limit
-      features: ['global_room']
+      maxChars: 240, // World ID verified users only
+      features: [] // No features until verified
     },
     joinedAt: null,
     capsuleSeen: false
@@ -59,44 +59,33 @@ export function useAuthRole() {
       // Merge userInfo with policy data for accurate limits
       let updatedInfo = { ...userInfo };
       
-      // If policy is available and user is a guest, ensure we use policy maxChars
-      if (policy && userInfo.role === 'guest') {
+      // World ID verification required - no guest mode
+      if (policy && (userInfo.role === 'verified' || userInfo.role === 'admin')) {
         updatedInfo.limits = {
           ...userInfo.limits,
-          maxChars: policy.guestMode.maxChars,
-          cooldownSec: policy.guestMode.cooldownSec,
-          maxPerDay: policy.guestMode.maxPerDay
+          maxChars: policy.verified.maxChars || 240,
+          features: policy.verified.features || ['global_room', 'star', 'report', 'work_mode', 'connect']
         };
-      } else if (policy && (userInfo.role === 'verified' || userInfo.role === 'admin')) {
+      } else {
+        // Not verified - no features
         updatedInfo.limits = {
-          ...userInfo.limits,
-          maxChars: policy.verified.maxChars
+          maxChars: 0,
+          features: []
         };
       }
       
       setAuthState(updatedInfo);
-    } else if (policy && !userInfo) {
-      // If no user info but we have policy, update default guest limits
-      setAuthState(prev => ({
-        ...prev,
-        limits: {
-          ...prev.limits,
-          maxChars: policy.guestMode.maxChars,
-          cooldownSec: policy.guestMode.cooldownSec,
-          maxPerDay: policy.guestMode.maxPerDay
-        }
-      }));
     }
   }, [userInfo, policy]);
 
-  const isGuest = () => authState.role === 'guest';
+  const isGuest = () => false; // Guest mode disabled - World ID required
   const isVerified = () => authState.role === 'verified' || authState.role === 'admin';
   const isAdmin = () => authState.role === 'admin';
   
-  const canStar = () => authState.limits.features.includes('star');
-  const canReport = () => authState.limits.features.includes('report');
-  const canWorkMode = () => authState.limits.features.includes('work_mode');
-  const canConnect = () => authState.limits.features.includes('connect');
+  const canStar = () => isVerified() && authState.limits.features.includes('star');
+  const canReport = () => isVerified() && authState.limits.features.includes('report');
+  const canWorkMode = () => isVerified() && authState.limits.features.includes('work_mode');
+  const canConnect = () => isVerified() && authState.limits.features.includes('connect');
 
   const verifyWithWorldId = async (proof: any) => {
     try {

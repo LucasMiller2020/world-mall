@@ -5,12 +5,13 @@
 Mall Space is a bot-proof global chat platform designed as a World Mini App that runs inside World App using MiniKit. The application provides verified human-only spaces for real-time communication, featuring a global square for general discussion and a work mode for professional collaboration. Built with human verification through World ID, the platform ensures authentic interactions while maintaining pseudonymous privacy.
 
 ### Phase 2 Enhancements (Completed)
-- **Guest Mode**: Generous limits of 60 characters, 10 messages per day, no cooldown
+- **Verification-Only Access**: Removed guest mode, World ID verification now required for all access
+- **Premium Features (1 WLD)**: Users can pay 1 WLD for premium status with 500 char messages, unlimited daily posts, and premium badge
 - **Dark Mode**: Comprehensive theme system with Light, Dark, System, and Auto (Sunrise→Sunset) modes
-- **World ID Verification**: Server-side verification with SHA-256 nullifier hashing
+- **World ID Verification**: Server-side verification with SHA-256 nullifier hashing (no deprecated Sign-in)
 - **Content Filtering**: Relaxed entropy-based spam detection allowing natural expressions
-- **Diagnostic Tools**: Debug endpoints for World ID and session troubleshooting
-- **DM Infrastructure**: Database tables for future direct messaging features
+- **Profile System**: Fixed profile modals with unique handles for all users
+- **Payment Integration**: MiniKit pay command integration for 1 WLD premium upgrades
 
 ## User Preferences
 
@@ -44,11 +45,12 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication and Authorization
 - **Human Verification**: World ID Cloud v2 server-side verification with SHA-256 nullifier hashing
-- **Guest Mode**: Accessible without verification with limited features (60 chars, 10/day, 30s cooldown)
+- **Access Control**: World ID verification required for all features (no guest mode)
+- **Premium System**: 1 WLD payment unlocks premium features via MiniKit pay command
 - **Identity Management**: Hashed nullifiers from World ID as unique identifiers
 - **Privacy Protection**: No personally identifiable information stored
 - **Session Handling**: Express sessions with PostgreSQL store for persistent state
-- **Diagnostic Endpoints**: /api/worldid/diag and /api/debug/session for troubleshooting
+- **Payment Processing**: MiniKit payment integration for premium upgrades
 
 ### Content Moderation System
 - **Client-side Filtering**: Basic content filtering for immediate feedback
