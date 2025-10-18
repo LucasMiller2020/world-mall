@@ -129,7 +129,6 @@ export function WorkPostItem({
               {post.link && (
                 <a 
                   href={post.link}
-                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs text-primary hover:underline"
                   data-testid="link-post-external"

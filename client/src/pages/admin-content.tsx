@@ -719,7 +719,7 @@ export default function AdminContent() {
                             {item.link && (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Link className="h-3 w-3" />
-                                <a href={item.link} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                <a href={item.link} rel="noopener noreferrer" className="hover:underline">
                                   {item.link.substring(0, 40)}...
                                 </a>
                               </div>
@@ -817,7 +817,6 @@ export default function AdminContent() {
                                               <Link className="h-4 w-4 text-muted-foreground" />
                                               <a 
                                                 href={selectedItem.link} 
-                                                target="_blank" 
                                                 rel="noopener noreferrer"
                                                 className="text-blue-500 hover:underline"
                                               >
