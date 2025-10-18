@@ -1,11 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X, Trash2 } from "lucide-react";
+import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X, Trash2, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -296,8 +297,13 @@ export function MessageItem({
     return colors[hash % colors.length];
   };
 
+  // Check if this is a hidden message that belongs to the current user
+  const isOwnHiddenMessage = message.isHidden && 
+                              currentUserHumanId && 
+                              message.authorHumanId === currentUserHumanId;
+
   return (
-    <Card className="message-bubble hover:shadow-md transition-all duration-200">
+    <Card className={`message-bubble hover:shadow-md transition-all duration-200 ${isOwnHiddenMessage ? 'opacity-70 bg-muted/30' : ''}`} data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}>
       <CardContent className="pt-4">
         <div className="flex items-start gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getAvatarColor(message.authorHandle)}`}>
@@ -306,7 +312,7 @@ export function MessageItem({
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <button
                 onClick={onProfileClick}
                 className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
@@ -318,6 +324,12 @@ export function MessageItem({
               <span className="text-xs text-muted-foreground" data-testid="text-message-timestamp">
                 {formatTimeAgo(message.createdAt)}
               </span>
+              {isOwnHiddenMessage && (
+                <Badge variant="destructive" className="text-xs h-5 gap-1" data-testid="badge-message-hidden">
+                  <EyeOff className="h-3 w-3" />
+                  Hidden (Reported)
+                </Badge>
+              )}
             </div>
             {isEditing ? (
               <div className="mb-2">

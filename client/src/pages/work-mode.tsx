@@ -10,10 +10,21 @@ import { WorkPostItem } from "@/components/work-post-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ArrowLeft, MessageCircle, Users } from "lucide-react";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useToast } from "@/hooks/use-toast";
 import { filterContent } from "@/lib/content-filter";
+import { containsFilteredKeyword, getFilteredContentMessage } from "@shared/keyword-filter";
 import type { MessageWithAuthor } from "@shared/schema";
 
 type WorkCategory = 'help' | 'advice' | 'collab';
@@ -26,6 +37,7 @@ export default function WorkMode() {
   const [geoScope, setGeoScope] = useState("Global");
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<string | null>(null);
+  const [mutePromptHumanId, setMutePromptHumanId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -116,6 +128,43 @@ export default function WorkMode() {
     },
   });
 
+  // Mute user mutation
+  const muteMutation = useMutation({
+    mutationFn: async (mutedHumanId: string) => {
+      const res = await fetch('/api/mutes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-World-ID-Proof': humanId || '',
+        },
+        body: JSON.stringify({ mutedHumanId }),
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to mute user');
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      setMutePromptHumanId(null);
+      toast({
+        title: "User muted successfully",
+        description: "You won't see messages from this user anymore.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'work'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mute user",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Report message mutation
   const reportMessageMutation = useMutation({
     mutationFn: async (messageId: string) => {
@@ -141,6 +190,15 @@ export default function WorkMode() {
         title: "Report Submitted",
         description: data.message,
       });
+      
+      // Find the reported message to get author's humanId
+      if (reportingMessage) {
+        const reportedMsg = workPosts.find(m => m.id === reportingMessage);
+        if (reportedMsg && reportedMsg.authorHumanId !== humanId) {
+          // Show mute prompt for the reported user
+          setMutePromptHumanId(reportedMsg.authorHumanId);
+        }
+      }
     },
     onError: (error: any) => {
       toast({
@@ -164,6 +222,17 @@ export default function WorkMode() {
       toast({
         title: "Post Filtered",
         description: contentCheck.reason,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Keyword filtering - check for harmful content
+    const keywordCheck = containsFilteredKeyword(trimmedMessage);
+    if (keywordCheck.blocked) {
+      toast({
+        title: "Post Contains Prohibited Content",
+        description: getFilteredContentMessage(keywordCheck),
         variant: "destructive",
       });
       return;
@@ -411,6 +480,35 @@ export default function WorkMode() {
           isLoading={reportMessageMutation.isPending}
         />
       )}
+
+      {/* Mute Prompt Dialog */}
+      <AlertDialog open={!!mutePromptHumanId} onOpenChange={(open) => !open && setMutePromptHumanId(null)}>
+        <AlertDialogContent className="sm:max-w-md" data-testid="dialog-mute-prompt">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mute this user?</AlertDialogTitle>
+            <AlertDialogDescription className="pt-2">
+              Muting will hide all messages from this user. You can unmute them later from settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setMutePromptHumanId(null)}
+              disabled={muteMutation.isPending}
+              data-testid="button-dismiss-mute-prompt"
+            >
+              No Thanks
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => mutePromptHumanId && muteMutation.mutate(mutePromptHumanId)}
+              disabled={muteMutation.isPending}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              data-testid="button-confirm-mute"
+            >
+              {muteMutation.isPending ? "Muting..." : "Mute User"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

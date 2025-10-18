@@ -195,6 +195,23 @@ export const blocks = pgTable("blocks", {
   blockedIdx: index("blocks_blocked_idx").on(table.blockedHumanId),
 }));
 
+// Warnings table - tracks moderation warnings and strikes
+export const warnings = pgTable("warnings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull().references(() => humans.id),
+  reason: text("reason").notNull(), // e.g., "filtered_keyword", "reported_content"
+  messageId: varchar("message_id").references(() => messages.id), // Optional: which message caused the warning
+  strikeNumber: integer("strike_number").notNull(), // 1, 2, or 3
+  action: varchar("action", { enum: ["warning", "timeout", "ban"] }).notNull(),
+  expiresAt: timestamp("expires_at"), // For timeouts (1 hour from creation)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Index for querying user warnings
+  humanIdIdx: index("warnings_human_id_idx").on(table.humanId),
+  // Index for active warnings queries (by creation time and expiration)
+  createdAtIdx: index("warnings_created_at_idx").on(table.createdAt),
+}));
+
 // Invite codes for referral system
 export const inviteCodes = pgTable("invite_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -616,6 +633,12 @@ export const insertBlockSchema = createInsertSchema(blocks).omit({
   createdAt: true,
 });
 
+// Warning insert schema
+export const insertWarningSchema = createInsertSchema(warnings).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Token system insert schemas
 export const insertSupportedTokenSchema = createInsertSchema(supportedTokens).omit({
   id: true,
@@ -708,6 +731,9 @@ export type Mute = typeof mutes.$inferSelect;
 
 export type InsertBlock = z.infer<typeof insertBlockSchema>;
 export type Block = typeof blocks.$inferSelect;
+
+export type InsertWarning = z.infer<typeof insertWarningSchema>;
+export type Warning = typeof warnings.$inferSelect;
 
 export type InsertStar = z.infer<typeof insertStarSchema>;
 export type Star = typeof stars.$inferSelect;

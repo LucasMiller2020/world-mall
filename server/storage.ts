@@ -141,6 +141,9 @@ import {
   type InsertMute,
   type Block,
   type InsertBlock,
+  // Warning types
+  type Warning,
+  type InsertWarning,
   // Database tables
   humans,
   messages,
@@ -157,6 +160,7 @@ import {
   guestSessions,
   mutes,
   blocks,
+  warnings,
   // Invite system tables
   inviteCodes,
   referrals,
@@ -223,7 +227,7 @@ export interface IStorage {
   updateGuestLastMessageTime(id: string): Promise<void>;
   
   // Message operations
-  getMessages(room: string, limit?: number): Promise<MessageWithAuthor[]>;
+  getMessages(room: string, limit?: number, currentUserHumanId?: string): Promise<MessageWithAuthor[]>;
   getMessageById(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(messageId: string, text: string): Promise<Message | undefined>;
@@ -447,6 +451,14 @@ export interface IStorage {
   getBlockedUsers(blockerHumanId: string): Promise<string[]>;
   getBlockingUsers(humanId: string): Promise<string[]>; // Users who have blocked this user
   isUserBlocked(blockerHumanId: string, blockedHumanId: string): Promise<boolean>;
+
+  // Warning operations
+  getUserWarnings(humanId: string): Promise<Warning[]>;
+  getActiveWarnings(humanId: string): Promise<Warning[]>;
+  addWarning(humanId: string, reason: string, messageId: string | null, strikeNumber: number, action: string, expiresAt: Date | null): Promise<Warning>;
+  getUserStrikeCount(humanId: string): Promise<number>;
+  isUserBanned(humanId: string): Promise<boolean>;
+  isUserTimedOut(humanId: string): Promise<boolean>;
 
   // ===== ENHANCED MODERATION SYSTEM METHODS =====
   
@@ -695,6 +707,7 @@ export class MemStorage implements IStorage {
   private guestSessions: Map<string, GuestSession> = new Map();
   private mutes: Map<string, Mute> = new Map();
   private blocks: Map<string, Block> = new Map();
+  private warnings: Map<string, Warning> = new Map();
   
   // Point system data structures
   private userPointBalances: Map<string, UserPointBalance> = new Map();
@@ -966,9 +979,14 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {
+  async getMessages(room: string, limit = 50, currentUserHumanId?: string): Promise<MessageWithAuthor[]> {
     const allMessages = Array.from(this.messages.values())
-      .filter(m => m.room === room && !m.isHidden)
+      .filter(m => {
+        // Show message if:
+        // 1. It's in the requested room
+        // 2. It's not hidden OR it's hidden but belongs to the current user
+        return m.room === room && (!m.isHidden || (currentUserHumanId && m.authorHumanId === currentUserHumanId));
+      })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit)
       .reverse(); // Return in chronological order
@@ -1085,8 +1103,13 @@ export class MemStorage implements IStorage {
   }
 
   async getReportCountForMessage(messageId: string): Promise<number> {
-    return Array.from(this.reports.values())
-      .filter(report => report.messageId === messageId).length;
+    // Count unique reporters (distinct reporter_human_id)
+    const uniqueReporters = new Set(
+      Array.from(this.reports.values())
+        .filter(report => report.messageId === messageId)
+        .map(report => report.reporterHumanId)
+    );
+    return uniqueReporters.size;
   }
 
   async getThemeForDate(date: string): Promise<Theme | undefined> {
@@ -3019,6 +3042,67 @@ export class MemStorage implements IStorage {
       b => b.blockerHumanId === blockerHumanId && b.blockedHumanId === blockedHumanId
     );
   }
+
+  // Warning operations
+  async getUserWarnings(humanId: string): Promise<Warning[]> {
+    return Array.from(this.warnings.values())
+      .filter(w => w.humanId === humanId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getActiveWarnings(humanId: string): Promise<Warning[]> {
+    const now = new Date();
+    return Array.from(this.warnings.values())
+      .filter(w => w.humanId === humanId && (!w.expiresAt || w.expiresAt > now))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async addWarning(
+    humanId: string,
+    reason: string,
+    messageId: string | null,
+    strikeNumber: number,
+    action: string,
+    expiresAt: Date | null
+  ): Promise<Warning> {
+    const id = randomUUID();
+    const warning: Warning = {
+      id,
+      humanId,
+      reason,
+      messageId,
+      strikeNumber,
+      action,
+      expiresAt,
+      createdAt: new Date()
+    };
+    this.warnings.set(id, warning);
+    return warning;
+  }
+
+  async getUserStrikeCount(humanId: string): Promise<number> {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    return Array.from(this.warnings.values()).filter(w =>
+      w.humanId === humanId &&
+      w.createdAt > thirtyDaysAgo &&
+      (!w.expiresAt || w.expiresAt > now)
+    ).length;
+  }
+
+  async isUserBanned(humanId: string): Promise<boolean> {
+    return Array.from(this.warnings.values()).some(
+      w => w.humanId === humanId && w.action === 'ban'
+    );
+  }
+
+  async isUserTimedOut(humanId: string): Promise<boolean> {
+    const now = new Date();
+    return Array.from(this.warnings.values()).some(
+      w => w.humanId === humanId && w.action === 'timeout' && w.expiresAt && w.expiresAt > now
+    );
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3165,7 +3249,15 @@ export class DatabaseStorage implements IStorage {
     await db.update(guestSessions).set({ lastSeen: new Date() }).where(eq(guestSessions.id, id));
   }
 
-  async getMessages(room: string, limit = 50): Promise<MessageWithAuthor[]> {
+  async getMessages(room: string, limit = 50, currentUserHumanId?: string): Promise<MessageWithAuthor[]> {
+    // Build the where condition: show messages that are not hidden OR belong to current user
+    const whereCondition = currentUserHumanId
+      ? and(
+          eq(messages.room, room),
+          sql`(${messages.isHidden} = false OR ${messages.authorHumanId} = ${currentUserHumanId})`
+        )
+      : and(eq(messages.room, room), eq(messages.isHidden, false));
+
     const messageResults = await db
       .select({
         message: messages,
@@ -3173,7 +3265,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(messages)
       .leftJoin(humans, eq(messages.authorHumanId, humans.id))
-      .where(and(eq(messages.room, room), eq(messages.isHidden, false)))
+      .where(whereCondition)
       .orderBy(desc(messages.createdAt))
       .limit(limit);
 
@@ -3279,11 +3371,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReportCountForMessage(messageId: string): Promise<number> {
+    // Count unique reporters (distinct reporter_human_id)
     const result = await db
-      .select({ count: count() })
+      .select({ count: sql<number>`COUNT(DISTINCT ${reports.reporterHumanId})` })
       .from(reports)
       .where(eq(reports.messageId, messageId));
-    return result[0]?.count || 0;
+    return Number(result[0]?.count) || 0;
   }
 
   async getThemeForDate(date: string): Promise<Theme | undefined> {
@@ -4196,6 +4289,93 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(blocks.blockerHumanId, blockerHumanId),
           eq(blocks.blockedHumanId, blockedHumanId)
+        )
+      )
+      .limit(1);
+    return result.length > 0;
+  }
+
+  // Warning operations
+  async getUserWarnings(humanId: string): Promise<Warning[]> {
+    const result = await db.select()
+      .from(warnings)
+      .where(eq(warnings.humanId, humanId))
+      .orderBy(desc(warnings.createdAt));
+    return result;
+  }
+
+  async getActiveWarnings(humanId: string): Promise<Warning[]> {
+    const now = new Date();
+    const result = await db.select()
+      .from(warnings)
+      .where(
+        and(
+          eq(warnings.humanId, humanId),
+          sql`(${warnings.expiresAt} IS NULL OR ${warnings.expiresAt} > ${now})`
+        )
+      )
+      .orderBy(desc(warnings.createdAt));
+    return result;
+  }
+
+  async addWarning(
+    humanId: string,
+    reason: string,
+    messageId: string | null,
+    strikeNumber: number,
+    action: string,
+    expiresAt: Date | null
+  ): Promise<Warning> {
+    const result = await db.insert(warnings).values({
+      humanId,
+      reason,
+      messageId,
+      strikeNumber,
+      action,
+      expiresAt
+    }).returning();
+    return result[0];
+  }
+
+  async getUserStrikeCount(humanId: string): Promise<number> {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    const result = await db.select({ count: count() })
+      .from(warnings)
+      .where(
+        and(
+          eq(warnings.humanId, humanId),
+          gte(warnings.createdAt, thirtyDaysAgo),
+          sql`(${warnings.expiresAt} IS NULL OR ${warnings.expiresAt} > ${now})`
+        )
+      );
+    
+    return result[0]?.count || 0;
+  }
+
+  async isUserBanned(humanId: string): Promise<boolean> {
+    const result = await db.select()
+      .from(warnings)
+      .where(
+        and(
+          eq(warnings.humanId, humanId),
+          eq(warnings.action, 'ban')
+        )
+      )
+      .limit(1);
+    return result.length > 0;
+  }
+
+  async isUserTimedOut(humanId: string): Promise<boolean> {
+    const now = new Date();
+    const result = await db.select()
+      .from(warnings)
+      .where(
+        and(
+          eq(warnings.humanId, humanId),
+          eq(warnings.action, 'timeout'),
+          sql`${warnings.expiresAt} > ${now}`
         )
       )
       .limit(1);

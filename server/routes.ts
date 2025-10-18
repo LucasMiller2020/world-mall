@@ -35,6 +35,8 @@ import { automatedModeration } from "./automated-moderation";
 import { contentAnalyzer } from "./content-analyzer";
 import { POLICY } from "./config";
 import { logStructuredEvent } from "./logger";
+import { containsFilteredKeyword, getFilteredContentMessage } from "@shared/keyword-filter";
+import { issueWarningForViolation } from "./warning-system";
 
 // Rate limit constants - using POLICY values for verified users
 const RATE_LIMITS = {
@@ -1130,15 +1132,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid room' });
       }
 
+      // Determine current user ID for filtering hidden messages
+      const userRole = req.userRole || 'guest';
+      const currentUserHumanId = req.humanId || req.guestSessionId 
+        ? (userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!)
+        : undefined;
+
       // For global room, fetch more messages to ensure we have recent activity for landing page
       // The storage.getMessages already returns the most recent messages
       const fetchLimit = room === 'global' ? Math.min(limit, 10) : limit;
-      let messages = await storage.getMessages(room, fetchLimit);
+      let messages = await storage.getMessages(room, fetchLimit, currentUserHumanId);
       
       // Filter messages based on mutes and blocks if user is authenticated
       if (req.humanId || req.guestSessionId) {
-        const userRole = req.userRole || 'guest';
-        const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
+        const humanId = currentUserHumanId!;
         
         // Get muted and blocked users
         const mutedUsers = await storage.getMutedUsers(humanId);
@@ -1227,6 +1234,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
+        // Check if user is banned
+        const isBanned = await storage.isUserBanned(humanId);
+        if (isBanned) {
+          return res.status(403).json({
+            message: 'Your account has been permanently banned for violating community guidelines',
+            code: 'ACCOUNT_BANNED'
+          });
+        }
+        
+        // Check if user is timed out
+        const isTimedOut = await storage.isUserTimedOut(humanId);
+        if (isTimedOut) {
+          const activeWarnings = await storage.getActiveWarnings(humanId);
+          const timeoutWarning = activeWarnings.find(w => w.action === 'timeout' && w.expiresAt);
+          const minutesRemaining = timeoutWarning?.expiresAt 
+            ? Math.ceil((timeoutWarning.expiresAt.getTime() - Date.now()) / 60000)
+            : 0;
+          return res.status(403).json({
+            message: `You are temporarily restricted from posting. Try again in ${minutesRemaining} minutes.`,
+            code: 'ACCOUNT_TIMED_OUT',
+            minutesRemaining
+          });
+        }
+        
+        // Keyword filtering - check for harmful content
+        const keywordCheck = containsFilteredKeyword(messageData.text);
+        if (keywordCheck.blocked) {
+          // Issue warning for keyword violation
+          const warning = await issueWarningForViolation(
+            storage,
+            humanId,
+            'filtered_keyword',
+            null
+          );
+          
+          logStructuredEvent('message.create', {
+            outcome: 'blocked',
+            reason: 'filtered_keyword',
+            role: 'guest',
+            room: messageData.room,
+            length: messageData.text.length,
+            category: keywordCheck.category,
+            matchedWord: keywordCheck.matchedWord,
+            strikeNumber: warning.strikeNumber,
+            action: warning.action,
+            guestSessionId: req.guestSessionId || null,
+            sessionId: req.sessionID || null,
+          }, 'warn');
+          return res.status(400).json({
+            message: getFilteredContentMessage(keywordCheck),
+            code: 'FILTERED_KEYWORD',
+            reason: keywordCheck.reason,
+            warning: {
+              strikeNumber: warning.strikeNumber,
+              action: warning.action,
+              expiresAt: warning.expiresAt
+            }
+          });
+        }
+        
         // Create message for guest
         const message = await storage.createMessage({
           ...messageData,
@@ -1263,6 +1330,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verified user flow continues below
       const humanId = req.humanId!;
       
+      // Check if user is banned (via warning system)
+      const isBanned = await storage.isUserBanned(humanId);
+      if (isBanned) {
+        return res.status(403).json({
+          message: 'Your account has been permanently banned for violating community guidelines',
+          code: 'ACCOUNT_BANNED'
+        });
+      }
+      
+      // Check if user is timed out (via warning system)
+      const isTimedOut = await storage.isUserTimedOut(humanId);
+      if (isTimedOut) {
+        const activeWarnings = await storage.getActiveWarnings(humanId);
+        const timeoutWarning = activeWarnings.find(w => w.action === 'timeout' && w.expiresAt);
+        const minutesRemaining = timeoutWarning?.expiresAt 
+          ? Math.ceil((timeoutWarning.expiresAt.getTime() - Date.now()) / 60000)
+          : 0;
+        return res.status(403).json({
+          message: `You are temporarily restricted from posting. Try again in ${minutesRemaining} minutes.`,
+          code: 'ACCOUNT_TIMED_OUT',
+          minutesRemaining
+        });
+      }
+      
       // Check premium status
       const premiumStatus = await storage.getPremiumStatus(humanId);
       const isPremium = premiumStatus?.status === 'active';
@@ -1283,6 +1374,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({
           message: contentCheck.reason,
           code: 'INVALID_CONTENT'
+        });
+      }
+
+      // Keyword filtering - check for harmful content
+      const keywordCheck = containsFilteredKeyword(messageData.text);
+      if (keywordCheck.blocked) {
+        // Issue warning for keyword violation
+        const warning = await issueWarningForViolation(
+          storage,
+          humanId,
+          'filtered_keyword',
+          null
+        );
+        
+        logStructuredEvent('message.create', {
+          outcome: 'blocked',
+          reason: 'filtered_keyword',
+          role: userRole,
+          room: messageData.room,
+          length: messageData.text.length,
+          category: keywordCheck.category,
+          matchedWord: keywordCheck.matchedWord,
+          humanId: humanId,
+          strikeNumber: warning.strikeNumber,
+          action: warning.action,
+        }, 'warn');
+        return res.status(400).json({
+          message: getFilteredContentMessage(keywordCheck),
+          code: 'FILTERED_KEYWORD',
+          reason: keywordCheck.reason,
+          warning: {
+            strikeNumber: warning.strikeNumber,
+            action: warning.action,
+            expiresAt: warning.expiresAt
+          }
         });
       }
 
@@ -1687,6 +1813,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...reportData,
         reporterHumanId: humanId
       });
+
+      // Check report count and log if auto-hide was triggered
+      const reportCount = await storage.getReportCountForMessage(reportData.messageId);
+      if (reportCount >= 3) {
+        const message = await storage.getMessageById(reportData.messageId);
+        if (message?.isHidden) {
+          console.log(`Message ${reportData.messageId} auto-hidden after ${reportCount} unique reports`);
+          logStructuredEvent('message.auto_hide', {
+            messageId: reportData.messageId,
+            reportCount,
+            reporterId: humanId,
+            authorId: message.authorHumanId,
+            room: message.room
+          });
+        }
+      }
 
       // Update user trust score for making a report
       await automatedModeration.updateUserTrustScore(humanId, {
