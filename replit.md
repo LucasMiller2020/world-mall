@@ -4,14 +4,13 @@
 
 Mall Space is a bot-proof global chat platform designed as a World Mini App that runs inside World App using MiniKit. The application provides verified human-only spaces for real-time communication, featuring a global square for general discussion and a work mode for professional collaboration. Built with human verification through World ID, the platform ensures authentic interactions while maintaining pseudonymous privacy.
 
-### Phase 2 Enhancements (Completed)
-- **Verification-Only Access**: Removed guest mode, World ID verification now required for all access
-- **Premium Features (1 WLD)**: Users can pay 1 WLD for premium status with 500 char messages, unlimited daily posts, and premium badge
-- **Dark Mode**: Comprehensive theme system with Light, Dark, System, and Auto (Sunrise→Sunset) modes
-- **World ID Verification**: Server-side verification with SHA-256 nullifier hashing (no deprecated Sign-in)
-- **Content Filtering**: Relaxed entropy-based spam detection allowing natural expressions
-- **Profile System**: Fixed profile modals with unique handles for all users
-- **Payment Integration**: MiniKit pay command integration for 1 WLD premium upgrades
+### Phase 2 Community Moderation (Completed - October 18, 2025)
+- **Community Guidelines Modal**: Educational modal displaying 5 rules of conduct and 3-strike system explanation
+- **Keyword Filtering**: ROT13-encoded blocklist with advanced evasion detection (l33t speak, character repetition, spacing)
+- **3-Strike Warning System**: Progressive penalties (warning → 1-hour timeout → permanent ban) with 30-day lookback
+- **Auto-Hide Reported Messages**: Messages with 3+ unique reports automatically hidden from everyone except author
+- **Mute Prompt After Reporting**: Dialog suggesting to mute user after successful report submission
+- **Structured Logging**: Comprehensive audit trail for all moderation actions and violations
 
 ### Phase 4 Restoration (Completed - October 18, 2025)
 - **Guest Mode Restored**: Removed all World ID verification requirements for basic access
@@ -69,11 +68,17 @@ Preferred communication style: Simple, everyday language.
 - **Payment Processing**: MiniKit payment integration for premium upgrades
 
 ### Content Moderation System
-- **Client-side Filtering**: Basic content filtering for immediate feedback
-- **Server-side Validation**: Entropy-based spam detection allowing natural elongations and emojis
-- **Smart Filtering**: Distinguishes between human expression (Howdyyyyy) and spam (aaaaaa)
-- **Community Moderation**: Report and mute functionality
-- **Rate Limiting**: Multiple tiers (per minute/hour/day) to prevent abuse
+- **Community Guidelines**: Educational modal with 5 rules and 3-strike system explanation
+- **Keyword Filtering**: ROT13-encoded blocklist detecting slurs, hate speech, and explicit content
+- **Advanced Evasion Detection**: Catches l33t speak, character repetition, and spacing tricks
+- **3-Strike Warning System**: Progressive enforcement (warning → 1-hour timeout → permanent ban)
+- **30-Day Lookback Window**: Strikes count for 30 days before expiring
+- **Auto-Hide Mechanism**: Messages with 3+ unique reports hidden from all users except author
+- **Community Reporting**: Users can report inappropriate content with reason selection
+- **Mute & Block Features**: Personal filtering with mute prompt after reporting
+- **Structured Logging**: Comprehensive audit trail for moderation actions and policy violations
+- **Client-side Pre-validation**: Immediate feedback before server submission
+- **Server-side Enforcement**: Final validation layer preventing harmful content
 
 ### Real-time Features
 - **WebSocket Connection**: Live message updates and presence tracking
