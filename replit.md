@@ -1,11 +1,11 @@
-# World Mall - World Mini App
+# Mall Space - World Mini App
 
 ## Overview
 
-World Mall is a bot-proof global chat platform designed as a World Mini App that runs inside World App using MiniKit. The application provides verified human-only spaces for real-time communication, featuring a global square for general discussion and a work mode for professional collaboration. Built with human verification through World ID, the platform ensures authentic interactions while maintaining pseudonymous privacy.
+Mall Space is a bot-proof global chat platform designed as a World Mini App that runs inside World App using MiniKit. The application provides verified human-only spaces for real-time communication, featuring a global square for general discussion and a work mode for professional collaboration. Built with human verification through World ID, the platform ensures authentic interactions while maintaining pseudonymous privacy.
 
 ### Phase 2 Enhancements (Completed)
-- **Guest Mode**: Generous limits of 60 characters, 10 messages per day, 30-second cooldown
+- **Guest Mode**: Generous limits of 60 characters, 10 messages per day, no cooldown
 - **Dark Mode**: Comprehensive theme system with Light, Dark, System, and Auto (Sunrise→Sunset) modes
 - **World ID Verification**: Server-side verification with SHA-256 nullifier hashing
 - **Content Filtering**: Relaxed entropy-based spam detection allowing natural expressions
