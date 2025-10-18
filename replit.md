@@ -28,6 +28,13 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Confirmation Protection**: Mandatory "Are you sure?" dialog prevents accidental deletions
 - **Countdown Timers**: Visual feedback showing remaining time for edit (30s) and delete (60s) actions
 
+### CORS Configuration (Completed - October 18, 2025)
+- **Cross-Origin Support**: Added CORS middleware to enable World Mini App communication from World App iframe
+- **Origin Whitelisting**: Production allows *.worldcoin.org, *.world.org, *.replit.app, *.replit.dev domains
+- **Credential Support**: Enabled CORS credentials for session cookie functionality across origins
+- **Security**: Dynamic origin validation with logging, no wildcard origins in production
+- **Session Compatibility**: Works with SameSite=None, Secure cookies for cross-origin authenticated requests
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
