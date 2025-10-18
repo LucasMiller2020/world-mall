@@ -289,26 +289,6 @@ export function MessageItem({
                     <span className="text-base">⭐</span>
                   </Button>
 
-                  {/* Edit button (only for own messages within 30 seconds) */}
-                  {canEdit && !isEditing && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleEditClick}
-                          className="h-auto p-1 text-muted-foreground hover:text-foreground"
-                          data-testid="button-edit-message"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Edit message ({Math.ceil((timeRemaining || 0) / 1000)}s remaining)</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-
                   {/* Emoji Launcher */}
                   <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -396,6 +376,15 @@ export function MessageItem({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {canEdit && !isEditing && (
+                      <>
+                        <DropdownMenuItem onClick={handleEditClick} data-testid="menuitem-edit">
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit ({Math.ceil((timeRemaining || 0) / 1000)}s)
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem onClick={onReportClick}>
                       <Flag className="h-4 w-4 mr-2" />
                       Report
