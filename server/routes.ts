@@ -380,6 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       'star_minute': RATE_LIMITS.STARS_PER_MIN,
       'work_link_10min': RATE_LIMITS.WORK_LINKS_PER_10MIN,
       'work_link_hour': RATE_LIMITS.WORK_LINKS_PER_HOUR,
+      'invite_generate': 3,
     };
 
     if (action === 'message') {
@@ -419,6 +420,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (perHour >= RATE_LIMITS.WORK_LINKS_PER_HOUR) {
         return { allowed: false, cooldownSeconds: 3600 };
+      }
+    }
+
+    if (action === 'invite_generate') {
+      const perDay = await storage.getRateLimit(humanId, 'invite_generate', 'day');
+      if (perDay >= 3) {
+        return { allowed: false, cooldownSeconds: 86400 };
       }
     }
 
@@ -852,20 +860,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const humanId = req.humanId;
     
     let human = null;
+    let isPremium = false;
+    
     if (humanId) {
       human = await storage.getHuman(humanId);
+      
+      // Check premium status for verified users
+      if (role === 'verified' || role === 'admin') {
+        const premiumStatus = await storage.getPremiumStatus(humanId);
+        isPremium = premiumStatus?.status === 'active';
+      }
     }
     
-    // Get applicable limits based on role
-    const limits = role === 'guest' ? {
-      maxChars: POLICY.guestCharLimit,
-      cooldownSec: POLICY.guestCooldownSec,
-      maxPerDay: POLICY.guestDaily,
-      features: ['global_room']
-    } : {
-      maxChars: POLICY.verifiedCharLimit,
-      features: ['global_room', 'star', 'report', 'work_mode', 'connect']
-    };
+    // Get applicable limits based on role and premium status
+    let limits;
+    if (role === 'guest') {
+      limits = {
+        maxChars: POLICY.guestCharLimit,
+        cooldownSec: POLICY.guestCooldownSec,
+        maxPerDay: POLICY.guestDaily,
+        features: ['global_room']
+      };
+    } else if (isPremium) {
+      limits = {
+        maxChars: 500, // Premium users get 500 char limit
+        cooldownSec: 0, // No cooldown for premium
+        maxPerDay: -1, // Unlimited messages
+        features: ['global_room', 'star', 'report', 'work_mode', 'connect', 'premium']
+      };
+    } else {
+      limits = {
+        maxChars: POLICY.verifiedCharLimit,
+        features: ['global_room', 'star', 'report', 'work_mode', 'connect']
+      };
+    }
     
     // Prepare response object
     const response: any = {
@@ -873,6 +901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       handle: human?.handle || null,
       role,
       isVerified: role === 'verified' || role === 'admin',
+      isPremium,
       limits,
       joinedAt: human?.joinedAt || null,
       capsuleSeen: human?.capsuleSeen || false,
@@ -1323,14 +1352,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authorRole: userRole || 'verified'
       });
 
-      // Update rate limits
-      await storage.incrementRateLimit(humanId, 'message', 'minute');
-      await storage.incrementRateLimit(humanId, 'message', 'hour');
-      await storage.incrementRateLimit(humanId, 'message', 'day');
+      // Update rate limits (skip for premium users)
+      if (!isPremium) {
+        await storage.incrementRateLimit(humanId, 'message', 'minute');
+        await storage.incrementRateLimit(humanId, 'message', 'hour');
+        await storage.incrementRateLimit(humanId, 'message', 'day');
 
-      if (messageData.link) {
-        await storage.incrementRateLimit(humanId, 'work_link', 'minute');
-        await storage.incrementRateLimit(humanId, 'work_link', 'hour');
+        if (messageData.link) {
+          await storage.incrementRateLimit(humanId, 'work_link', 'minute');
+          await storage.incrementRateLimit(humanId, 'work_link', 'hour');
+        }
       }
 
       // Update participation metrics
@@ -1445,6 +1476,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const humanId = req.humanId!;
       const starData = insertStarSchema.parse(req.body);
 
+      // Check premium status
+      const premiumStatus = await storage.getPremiumStatus(humanId);
+      const isPremium = premiumStatus?.status === 'active';
+
       // Check if user already starred this message
       const existingStar = await storage.getUserStarForMessage(starData.messageId, humanId);
       if (existingStar) {
@@ -1454,8 +1489,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Rate limiting for stars
-      const rateCheck = await checkRateLimit(humanId, 'star');
+      // Rate limiting for stars (with premium support)
+      const rateCheck = await checkRateLimit(humanId, 'star', isPremium);
       if (!rateCheck.allowed) {
         return res.status(429).json({
           message: `Slow down on the stars! Try again in ${rateCheck.cooldownSeconds} seconds.`,
@@ -1470,8 +1505,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         humanId
       });
 
-      // Update rate limit
-      await storage.incrementRateLimit(humanId, 'star', 'minute');
+      // Update rate limit (skip for premium users)
+      if (!isPremium) {
+        await storage.incrementRateLimit(humanId, 'star', 'minute');
+      }
 
       // Update participation metrics for star giver
       const message = await storage.getMessageById(starData.messageId);
@@ -2271,6 +2308,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
+      // Clear existing rate limits to ensure immediate benefit
+      await storage.clearRateLimits(humanId);
+      
       // Log the premium purchase
       logStructuredEvent({
         event: 'premium_purchase',
@@ -2628,8 +2668,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const humanId = req.humanId!;
       const { customMessage, maxUsage, expiresAt } = req.body;
 
-      // Rate limiting for invite code generation
-      const rateCheck = await checkRateLimit(humanId, 'invite_generate');
+      // Check premium status
+      const premiumStatus = await storage.getPremiumStatus(humanId);
+      const isPremium = premiumStatus?.status === 'active';
+
+      // Rate limiting for invite code generation (with premium support)
+      const rateCheck = await checkRateLimit(humanId, 'invite_generate', isPremium);
       if (!rateCheck.allowed) {
         return res.status(429).json({
           message: 'You can only generate 3 invite codes per day. Try again tomorrow.',
@@ -2649,8 +2693,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Update rate limit
-      await storage.incrementRateLimit(humanId, 'invite_generate', 'day');
+      // Update rate limit (skip for premium users)
+      if (!isPremium) {
+        await storage.incrementRateLimit(humanId, 'invite_generate', 'day');
+      }
 
       res.json({
         message: 'Invite code generated successfully',
@@ -2904,67 +2950,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update rate limiting helper to include invite operations
-  async function checkRateLimit(humanId: string, action: string): Promise<{ allowed: boolean; cooldownSeconds?: number }> {
-    const limits = {
-      'message_minute': RATE_LIMITS.MESSAGES_PER_MIN,
-      'message_hour': RATE_LIMITS.MESSAGES_PER_HOUR,
-      'message_day': RATE_LIMITS.MESSAGES_PER_DAY,
-      'star_minute': RATE_LIMITS.STARS_PER_MIN,
-      'work_link_10min': RATE_LIMITS.WORK_LINKS_PER_10MIN,
-      'work_link_hour': RATE_LIMITS.WORK_LINKS_PER_HOUR,
-      'invite_generate': 3, // 3 invite codes per day
-    };
-
-    if (action === 'message') {
-      const [perMin, perHour, perDay] = await Promise.all([
-        storage.getRateLimit(humanId, 'message', 'minute'),
-        storage.getRateLimit(humanId, 'message', 'hour'),
-        storage.getRateLimit(humanId, 'message', 'day'),
-      ]);
-
-      if (perMin >= RATE_LIMITS.MESSAGES_PER_MIN) {
-        return { allowed: false, cooldownSeconds: 60 };
-      }
-      if (perHour >= RATE_LIMITS.MESSAGES_PER_HOUR) {
-        return { allowed: false, cooldownSeconds: 3600 };
-      }
-      if (perDay >= RATE_LIMITS.MESSAGES_PER_DAY) {
-        return { allowed: false, cooldownSeconds: 86400 };
-      }
-    }
-
-    if (action === 'star') {
-      const perMin = await storage.getRateLimit(humanId, 'star', 'minute');
-      if (perMin >= RATE_LIMITS.STARS_PER_MIN) {
-        return { allowed: false, cooldownSeconds: 60 };
-      }
-    }
-
-    if (action === 'work_link') {
-      const [per10Min, perHour] = await Promise.all([
-        storage.getRateLimit(humanId, 'work_link', 'minute'), // Use minute as 10min proxy
-        storage.getRateLimit(humanId, 'work_link', 'hour'),
-      ]);
-
-      // Rough 10-minute check (not exact, but sufficient for demo)
-      if (per10Min >= RATE_LIMITS.WORK_LINKS_PER_10MIN) {
-        return { allowed: false, cooldownSeconds: 600 };
-      }
-      if (perHour >= RATE_LIMITS.WORK_LINKS_PER_HOUR) {
-        return { allowed: false, cooldownSeconds: 3600 };
-      }
-    }
-
-    if (action === 'invite_generate') {
-      const perDay = await storage.getRateLimit(humanId, 'invite_generate', 'day');
-      if (perDay >= 3) {
-        return { allowed: false, cooldownSeconds: 86400 };
-      }
-    }
-
-    return { allowed: true };
-  }
 
   // World ID Verification endpoint
   app.post('/api/verify/worldid', handleGuestSession, async (req: AuthenticatedRequest, res) => {

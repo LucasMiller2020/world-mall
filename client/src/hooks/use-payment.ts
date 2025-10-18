@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useMiniKit } from "@worldcoin/minikit-js/minikit-provider";
-import { MiniKit, PayCommandInput, PaymentResult } from "@worldcoin/minikit-js";
-import { useQueryClient } from "@tanstack/react-query";
+import { MiniKit, PayCommandInput } from "@worldcoin/minikit-js";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 export interface PaymentHookResult {
@@ -42,11 +42,11 @@ export function usePayment(): PaymentHookResult {
       
       // Create payment request for exactly 1 WLD
       const payPayload: PayCommandInput = {
-        // Token ID for WLD (Worldcoin)
-        token: "WLD",
-        // Amount in smallest unit (1 WLD = 1e18 units for ERC20 tokens)
-        // For simplicity, we'll use 1 as the amount since MiniKit handles the conversion
-        amount: "1",
+        // Token ID for WLD (Worldcoin) in array format
+        tokens: [{
+          symbol: "WLD",
+          token_amount: "1",
+        }],
         // Description for the payment
         description: "Mall Space Premium - Lifetime Access",
         // Reference ID for tracking
@@ -62,7 +62,7 @@ export function usePayment(): PaymentHookResult {
 
       // Check if payment was successful
       if (result.finalPayload?.status === 'success') {
-        const paymentData = result.finalPayload as PaymentResult;
+        const paymentData = result.finalPayload as any;
         
         // Send payment confirmation to backend
         const response = await fetch('/api/premium/purchase', {
@@ -99,7 +99,7 @@ export function usePayment(): PaymentHookResult {
         console.log('Premium activated successfully:', premiumResult);
       } else {
         // Payment was cancelled or failed
-        const errorMsg = result.finalPayload?.error_message || 'Payment was cancelled';
+        const errorMsg = (result.finalPayload as any)?.message || 'Payment was cancelled';
         setPaymentError(errorMsg);
         
         toast({
@@ -138,38 +138,20 @@ export function usePayment(): PaymentHookResult {
   };
 }
 
-// Hook to check premium status
+// Hook to check premium status using TanStack Query
 export function usePremiumStatus() {
   const { isInstalled } = useMiniKit();
-  const [isPremium, setIsPremium] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const checkPremiumStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/premium/status', {
-        credentials: 'include',
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setIsPremium(data.isPremium);
-      }
-    } catch (error) {
-      console.error('Error checking premium status:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Check status on mount - properly using useEffect
-  useEffect(() => {
-    checkPremiumStatus();
-  }, [checkPremiumStatus]);
+  
+  const { data, isLoading, refetch } = useQuery<{ isPremium: boolean; status: string; purchasedAt?: string; expiresAt?: string }>({
+    queryKey: ['/api/premium/status'],
+    staleTime: 30000, // 30 seconds
+    retry: 1,
+  });
 
   return {
-    isPremium,
+    isPremium: data?.isPremium || false,
     isLoading,
     isInstalled,
-    checkPremiumStatus,
+    checkPremiumStatus: refetch,
   };
 }

@@ -277,6 +277,7 @@ export interface IStorage {
   // Rate limiting
   getRateLimit(humanId: string, action: string, windowType: string): Promise<number>;
   incrementRateLimit(humanId: string, action: string, windowType: string): Promise<void>;
+  clearRateLimits(humanId: string): Promise<void>;
   
   // Ledger operations
   getLedgerEntries(limit?: number): Promise<LedgerEntry[]>;
@@ -2243,6 +2244,19 @@ export class MemStorage implements IStorage {
     }
   }
 
+  async clearRateLimits(humanId: string): Promise<void> {
+    // Clear all rate limit entries for this user
+    const keysToDelete: string[] = [];
+    for (const key of this.rateLimits.keys()) {
+      if (key.startsWith(`${humanId}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    for (const key of keysToDelete) {
+      this.rateLimits.delete(key);
+    }
+  }
+
   async getLedgerEntries(limit = 20): Promise<LedgerEntry[]> {
     return this.ledgerEntries
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -3219,6 +3233,11 @@ export class DatabaseStorage implements IStorage {
         windowStart: now
       });
     }
+  }
+
+  async clearRateLimits(humanId: string): Promise<void> {
+    // Delete all rate limit entries for this user
+    await db.delete(rateLimits).where(eq(rateLimits.humanId, humanId));
   }
 
   async getLedgerEntries(limit = 20): Promise<LedgerEntry[]> {
