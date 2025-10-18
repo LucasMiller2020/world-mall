@@ -399,7 +399,7 @@ export default function WorkMode() {
       {/* Modals */}
       {selectedProfile && (
         <ProfileModal
-          humanId={selectedProfile}
+          handle={selectedProfile}
           onClose={() => setSelectedProfile(null)}
         />
       )}
