@@ -13,6 +13,17 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Profile System**: Fixed profile modals with unique handles for all users
 - **Payment Integration**: MiniKit pay command integration for 1 WLD premium upgrades
 
+### Phase 3 Bug Fixes (Completed - October 18, 2025)
+- **Premium Status Persistence**: Fixed usePremiumStatus hook to properly fetch and cache status using TanStack Query
+- **500-Character Messages**: Verified and confirmed premium users can send up to 500 characters (vs 240 standard)
+- **Rate Limit Bypass**: Fixed critical bug where premium users were still blocked by rate limit checks
+  - Updated checkRateLimit to accept isPremium parameter and skip checks for premium users
+  - Removed duplicate checkRateLimit function that was overriding the correct implementation
+  - All endpoints (messages, stars, invite codes) now properly check premium status
+  - Added clearRateLimits() method that clears existing counters on premium purchase
+- **Payment API Fixes**: Corrected MiniKit pay command TypeScript types (tokens array format)
+- **Premium Benefits**: Confirmed premium users get 0 cooldown, unlimited daily posts, and 500 char limit
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
