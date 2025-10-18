@@ -285,19 +285,7 @@ export default function GlobalSquare() {
       return;
     }
 
-    if (!isVerified) {
-      await verify();
-      return;
-    }
-
-    if (cooldownSeconds > 0) {
-      toast({
-        title: "Cooldown Active",
-        description: `Please wait ${cooldownSeconds} seconds before sending another message`,
-        variant: "destructive",
-      });
-      return;
-    }
+    // No verification required - guests can post immediately
 
     const trimmedMessage = message.trim();
     const contentCheck = filterContent(trimmedMessage);
@@ -318,35 +306,47 @@ export default function GlobalSquare() {
   };
 
   const handleStarMessage = async (messageId: string) => {
+    // Guests can star messages too
     if (!canStar()) {
-      try {
-        await verify();
-        starMessageMutation.mutate(messageId);
-      } catch (error) {
-        console.log('Verification cancelled or failed');
-      }
+      toast({
+        title: "Feature unavailable",
+        description: "Star feature is not available",
+        variant: "destructive",
+      });
       return;
     }
     starMessageMutation.mutate(messageId);
   };
 
   const handleReportMessage = async (messageId: string) => {
+    // Guests can report messages too
     if (!canReport()) {
-      try {
-        await verify();
-        setReportingMessage(messageId);
-      } catch (error) {
-        console.log('Verification cancelled or failed');
-      }
+      toast({
+        title: "Feature unavailable",
+        description: "Report feature is not available",
+        variant: "destructive",
+      });
       return;
     }
     setReportingMessage(messageId);
   };
 
-  const confirmReport = () => {
+  const handleConfirmReport = () => {
     if (reportingMessage) {
       reportMessageMutation.mutate(reportingMessage);
     }
+  };
+
+  const handlePremiumUpgrade = async () => {
+    if (!isVerified) {
+      try {
+        await verify();
+      } catch (error) {
+        console.log('Verification cancelled or failed');
+      }
+      return;
+    }
+    setPremiumModalOpen(true);
   };
 
   const characterCount = message.length;

@@ -59,18 +59,14 @@ export function useAuthRole() {
       // Merge userInfo with policy data for accurate limits
       let updatedInfo = { ...userInfo };
       
-      // World ID verification required - no guest mode
-      if (policy && (userInfo.role === 'verified' || userInfo.role === 'admin')) {
+      // Guest mode enabled - everyone gets full access
+      if (policy) {
         updatedInfo.limits = {
           ...userInfo.limits,
-          maxChars: policy.verified.maxChars || 240,
-          features: policy.verified.features || ['global_room', 'star', 'report', 'work_mode', 'connect']
-        };
-      } else {
-        // Not verified - no features
-        updatedInfo.limits = {
-          maxChars: 0,
-          features: []
+          maxChars: userInfo.role === 'verified' || userInfo.role === 'admin' 
+            ? (policy.verified.maxChars || 240)
+            : 240, // Guests get same as verified
+          features: ['global_room', 'star', 'report', 'work_mode', 'connect'] // Full access for everyone
         };
       }
       
@@ -78,14 +74,14 @@ export function useAuthRole() {
     }
   }, [userInfo, policy]);
 
-  const isGuest = () => false; // Guest mode disabled - World ID required
+  const isGuest = () => authState.role === 'guest';
   const isVerified = () => authState.role === 'verified' || authState.role === 'admin';
   const isAdmin = () => authState.role === 'admin';
   
-  const canStar = () => isVerified() && authState.limits.features.includes('star');
-  const canReport = () => isVerified() && authState.limits.features.includes('report');
-  const canWorkMode = () => isVerified() && authState.limits.features.includes('work_mode');
-  const canConnect = () => isVerified() && authState.limits.features.includes('connect');
+  const canStar = () => authState.limits.features.includes('star'); // All users can star
+  const canReport = () => authState.limits.features.includes('report'); // All users can report
+  const canWorkMode = () => authState.limits.features.includes('work_mode'); // All users can access work mode
+  const canConnect = () => authState.limits.features.includes('connect'); // All users can connect
 
   const verifyWithWorldId = async (proof: any) => {
     try {

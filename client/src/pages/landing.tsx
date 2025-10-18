@@ -8,9 +8,7 @@ import { Label } from "@/components/ui/label";
 import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { Shield, Settings, Sun, Moon } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useMiniKitStatus, useWorldId } from "@/hooks/use-world-id";
+import { Settings, Sun, Moon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeContext } from "@/theme/ThemeProvider";
 import { isMiniApp, getMiniAppPollInterval } from "@/lib/platform";
@@ -28,9 +26,6 @@ import type { MessageWithAuthor } from "@shared/schema";
 export default function Landing() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const { isInstalled } = useMiniKitStatus();
-  const { verify, isVerifying, isVerified } = useWorldId();
-  const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const isInMiniApp = isMiniApp();
@@ -83,46 +78,8 @@ export default function Landing() {
   }, [isInMiniApp, refetch]);
 
   const handleEnterGlobalSquare = () => {
-    // World ID verification required - redirect to verify
-    if (!isVerified) {
-      handleVerifyWithWorldId();
-    } else {
-      setLocation('/room/global');
-    }
-  };
-
-
-  const handleVerifyWithWorldId = async () => {
-    if (!isInstalled) {
-      toast({
-        title: t('common.error'),
-        description: 'Please open this app in World App to verify',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (isVerified) {
-      setLocation('/room/global');
-      return;
-    }
-
-    try {
-      await verify();
-      // On successful verification, redirect to global square
-      toast({
-        title: 'Verification Successful',
-        description: 'Welcome! You now have full access to Mall Space.',
-      });
-      setLocation('/room/global');
-    } catch (error) {
-      console.error('Verification failed:', error);
-      toast({
-        title: t('common.error'),
-        description: 'Verification failed. Please try again.',
-        variant: 'destructive'
-      });
-    }
+    // Allow immediate entry without verification
+    setLocation('/room/global');
   };
 
   return (
@@ -238,100 +195,18 @@ export default function Landing() {
           </p>
         </div>
         
-        {/* CTA Buttons */}
+        {/* CTA Button */}
         <div className="mb-8">
-          <div className="flex items-center gap-2">
-            <Button 
-              onClick={handleEnterGlobalSquare}
-              className="flex-1 py-4 text-lg"
-              size="lg"
-              data-testid="button-enter-global-square"
-            >
-              {t('landing.enterGlobalSquare')}
-            </Button>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline"
-                  size="icon"
-                  onClick={handleVerifyWithWorldId}
-                  disabled={isVerifying}
-                  data-testid="button-verify-world-id-shield"
-                  className="h-auto py-3 px-3"
-                >
-                  <Shield className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{isVerified ? 'Verified ✓' : 'Verify to unlock full chat'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          <Button 
+            onClick={handleEnterGlobalSquare}
+            className="w-full py-4 text-lg"
+            size="lg"
+            data-testid="button-enter-global-square"
+          >
+            {t('landing.enterGlobalSquare')}
+          </Button>
         </div>
-        
-        {/* Verification Required Card */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground" data-testid="text-verification-required-title">
-                  World ID Verification Required
-                </h3>
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground mb-2" data-testid="text-verification-notice">
-                  Verify your humanity with World ID to access Mall Space
-                </p>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground" data-testid="text-verification-reason">
-                    ✓ Ensures authentic human interactions
-                  </p>
-                  <p className="text-xs text-muted-foreground" data-testid="text-verified-benefits">
-                    ✓ Unlock messaging, profiles, and community features
-                  </p>
-                </div>
-              </div>
-              {!isVerified && (
-                <Button 
-                  onClick={handleVerifyWithWorldId}
-                  className="w-full"
-                  variant="default"
-                  disabled={isVerifying}
-                  data-testid="button-verify-card"
-                >
-                  {isVerifying ? 'Verifying...' : 'Verify with World ID'}
-                </Button>
-              )}
-              {isVerified && (
-                <div className="text-center text-sm text-green-600 dark:text-green-400">
-                  ✓ Verified - Click "Enter Global Square" to join
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        {!isInstalled && !isInMiniApp && (
-          <Card className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
-            <CardContent className="pt-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200" data-testid="text-world-app-notice">
-                💡 Tip: Open in World App to unlock full features like unlimited messages and special privileges!
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isInMiniApp && (
-          <Card className="mb-6 border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
-            <CardContent className="pt-4">
-              <p className="text-sm text-green-800 dark:text-green-200" data-testid="text-miniapp-mode">
-                ✅ Running in World App Mini App mode - live updates enabled!
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
       
       {/* Read-only Preview Section */}

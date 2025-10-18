@@ -46,17 +46,12 @@ const RATE_LIMITS = {
   WORK_LINKS_PER_HOUR: parseInt(process.env.RATE_LIMIT_WORK_LINKS_PER_HOUR || '4'),
 };
 
-// Guest mode configuration - DISABLED (World ID verification required)
+// Guest mode configuration - ENABLED (Simple guest access without verification)
 const GUEST_CONFIG = {
-  ENABLED: false, // Guest mode disabled - World ID verification required for all access
-  MAX_CHARS: 0,
-  COOLDOWN_SEC: 999999,
-  MAX_PER_DAY: 0,
-  // Original config kept for reference:
-  // ENABLED: process.env.FEATURE_GUEST_MODE === 'true' || process.env.NODE_ENV === 'development',
-  // MAX_CHARS: POLICY.guestCharLimit,
-  // COOLDOWN_SEC: POLICY.guestCooldownSec,
-  // MAX_PER_DAY: POLICY.guestDaily,
+  ENABLED: true, // Guest mode enabled - no verification required
+  MAX_CHARS: 240, // Same as verified users
+  COOLDOWN_SEC: 0, // No cooldown
+  MAX_PER_DAY: 999999, // Unlimited messages per day
 };
 
 // Simple content filter
@@ -297,51 +292,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Middleware to extract and verify human ID from World ID nullifier
   const authenticateHuman = async (req: AuthenticatedRequest, res: Response, next: any) => {
+    // Check for wm_uid cookie (existing verified session)
+    const cookies = req.headers.cookie || '';
+    const cookieObj: { [key: string]: string } = {};
+    cookies.split(';').forEach(cookie => {
+      const [key, value] = cookie.trim().split('=');
+      if (key && value) cookieObj[key] = value;
+    });
+    
+    const wmUidCookie = cookieObj.wm_uid;
+    
+    // Try to authenticate with wm_uid cookie first
+    if (wmUidCookie) {
+      try {
+        const human = await storage.getHuman(wmUidCookie);
+        if (human) {
+          // Valid verified session from cookie
+          await storage.updatePresence(wmUidCookie);
+          req.humanId = wmUidCookie;
+          req.userRole = human.role || 'verified';
+          return next();
+        }
+        // Cookie exists but user not found - fall through to other auth methods
+      } catch (error) {
+        // Cookie auth failed - fall through to other auth methods
+      }
+    }
+    
+    // Check for World ID proof header
     const worldIdProof = req.headers['x-world-id-proof'] as string;
     
-    // Guest mode disabled - World ID verification is always required
-    // Original guest mode check kept for reference:
-    // if (!worldIdProof && GUEST_CONFIG.ENABLED) {
-    //   req.userRole = 'guest';
-    //   return next();
-    // }
-    
-    if (!worldIdProof) {
-      return res.status(401).json({ 
-        message: 'World ID verification required to access Mall Space',
-        code: 'VERIFICATION_REQUIRED'
-      });
-    }
+    if (worldIdProof) {
+      try {
+        // In a real implementation, verify the World ID proof here
+        // For now, we'll use the proof as a simulated nullifier hash
+        const humanId = crypto.createHash('sha256').update(worldIdProof).digest('hex');
+        
+        // Ensure human exists in storage
+        let human = await storage.getHuman(humanId);
+        if (!human) {
+          // Generate a unique handle from the humanId (first 8 chars)
+          const baseHandle = `user_${humanId.substring(0, 8)}`;
+          human = await storage.createHuman({ 
+            id: humanId, 
+            role: 'verified',
+            handle: baseHandle
+          });
+        }
 
-    try {
-      // In a real implementation, verify the World ID proof here
-      // For now, we'll use the proof as a simulated nullifier hash
-      const humanId = crypto.createHash('sha256').update(worldIdProof).digest('hex');
-      
-      // Ensure human exists in storage
-      let human = await storage.getHuman(humanId);
-      if (!human) {
-        // Generate a unique handle from the humanId (first 8 chars)
-        const baseHandle = `user_${humanId.substring(0, 8)}`;
-        human = await storage.createHuman({ 
-          id: humanId, 
-          role: 'verified',
-          handle: baseHandle
-        });
+        // Update presence
+        await storage.updatePresence(humanId);
+        
+        req.humanId = humanId;
+        req.userRole = human.role || 'verified';
+        return next();
+      } catch (error) {
+        // World ID proof verification failed
+        if (!GUEST_CONFIG.ENABLED) {
+          return res.status(401).json({ 
+            message: 'Invalid World ID proof',
+            code: 'INVALID_PROOF'
+          });
+        }
+        // Fall through to guest mode if enabled
       }
-
-      // Update presence
-      await storage.updatePresence(humanId);
-      
-      req.humanId = humanId;
-      req.userRole = human.role || 'verified';
-      next();
-    } catch (error) {
-      return res.status(401).json({ 
-        message: 'Invalid World ID proof',
-        code: 'INVALID_PROOF'
-      });
     }
+    
+    // No valid authentication found - check if guest mode is enabled
+    if (GUEST_CONFIG.ENABLED) {
+      req.userRole = 'guest';
+      return next();
+    }
+    
+    // Guest mode disabled and no valid authentication
+    return res.status(401).json({ 
+      message: 'World ID verification required to access Mall Space',
+      code: 'VERIFICATION_REQUIRED'
+    });
   };
 
   // Content filter function with premium support
@@ -558,9 +585,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({
       guestMode: {
         enabled: GUEST_CONFIG.ENABLED,
-        maxChars: POLICY.guestCharLimit,
-        cooldownSec: POLICY.guestCooldownSec,
-        maxPerDay: POLICY.guestDaily
+        maxChars: 240,
+        cooldownSec: 0,
+        maxPerDay: 999999
       },
       verified: {
         maxChars: POLICY.verifiedCharLimit,
@@ -876,10 +903,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let limits;
     if (role === 'guest') {
       limits = {
-        maxChars: POLICY.guestCharLimit,
-        cooldownSec: POLICY.guestCooldownSec,
-        maxPerDay: POLICY.guestDaily,
-        features: ['global_room']
+        maxChars: 240, // Same as verified users
+        cooldownSec: 0, // No cooldown
+        maxPerDay: 999999, // Unlimited
+        features: ['global_room', 'star', 'report', 'work_mode', 'connect'] // Full access
       };
     } else if (isPremium) {
       limits = {
@@ -1157,68 +1184,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Allow guests to post messages ≤ 60 chars without verification
-        if (messageData.text.length > POLICY.guestCharLimit) {
-          logStructuredEvent('message.create', {
-            outcome: 'blocked',
-            reason: 'length_exceeded',
-            role: 'guest',
-            room: messageData.room,
-            length: messageData.text.length,
-            guestSessionId: req.guestSessionId || null,
-            sessionId: req.sessionID || null,
-          }, 'warn');
+        // No character limit for guests - same as verified users
+        if (messageData.text.length > 240) {
           return res.status(403).json({
-            message: `Guest messages limited to ${POLICY.guestCharLimit} characters. Verify to unlock full chat!`,
-            code: 'GUEST_LIMIT_EXCEEDED'
+            message: `Message too long (240 character limit)`,
+            code: 'LENGTH_EXCEEDED'
           });
         }
         
-        // Check guest rate limits
-        const dayBucket = new Date().toISOString().split('T')[0];
-        const messageCount = await storage.getGuestMessageCount(req.guestSessionId!, dayBucket);
-        
-        if (messageCount >= POLICY.guestDaily) {
-          logStructuredEvent('message.create', {
-            outcome: 'blocked',
-            reason: 'daily_limit',
-            role: 'guest',
-            room: messageData.room,
-            length: messageData.text.length,
-            guestSessionId: req.guestSessionId || null,
-            sessionId: req.sessionID || null,
-          }, 'warn');
-          return res.status(429).json({
-            message: `Daily limit reached (${POLICY.guestDaily} messages). Verify to unlock full chat!`,
-            code: 'guest_daily_limit'
-          });
-        }
-        
-        // Check cooldown - get last message time
-        const lastMessageTime = await storage.getGuestLastMessageTime(req.guestSessionId!);
-        if (lastMessageTime) {
-          const timeSinceLastMessage = Date.now() - lastMessageTime.getTime();
-          const cooldownMs = POLICY.guestCooldownSec * 1000;
-          
-        if (timeSinceLastMessage < cooldownMs) {
-          const remainingSeconds = Math.ceil((cooldownMs - timeSinceLastMessage) / 1000);
-          logStructuredEvent('message.create', {
-            outcome: 'blocked',
-            reason: 'cooldown',
-            role: 'guest',
-            room: messageData.room,
-            length: messageData.text.length,
-            guestSessionId: req.guestSessionId || null,
-            sessionId: req.sessionID || null,
-            cooldownSeconds: remainingSeconds,
-          }, 'warn');
-            return res.status(429).json({
-              message: `Please wait ${remainingSeconds} seconds before sending another message`,
-              code: 'COOLDOWN_ACTIVE',
-              cooldownSeconds: remainingSeconds
-            });
-          }
-        }
+        // No rate limits for guests - unlimited posting
         
         // Create a temporary human ID for guests
         const humanId = `guest_${req.guestSessionId}`;
@@ -1238,10 +1212,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           authorHumanId: humanId,
           authorRole: 'guest'
         });
-        
-        // Update guest session message count and last message time
-        await storage.incrementGuestMessageCount(req.guestSessionId!, dayBucket);
-        await storage.updateGuestLastMessageTime(req.guestSessionId!);
         
         // Broadcast new message
         broadcast({
@@ -1265,11 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         return res.json({ 
           message, 
-          code: 'SUCCESS',
-          guestStats: {
-            messagesRemaining: POLICY.guestDaily - messageCount - 1,
-            nextMessageIn: POLICY.guestCooldownSec
-          }
+          code: 'SUCCESS'
         });
       }
       
@@ -1299,16 +1265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Rate limiting (enhanced with moderation status and premium support)
-      const rateLimitAction = messageData.link ? 'work_link' : 'message';
-      const rateCheck = await checkRateLimit(humanId, rateLimitAction, isPremium);
-      if (!rateCheck.allowed) {
-        return res.status(429).json({
-          message: `You're sending messages fast. Take a breath—back in ${rateCheck.cooldownSeconds} sec.`,
-          code: 'RATE_LIMITED',
-          cooldownSeconds: rateCheck.cooldownSeconds
-        });
-      }
+      // No rate limiting - everyone has unlimited posting
 
       // Advanced content moderation
       const userTrust = await storage.getUserTrustScore(humanId);
@@ -1352,17 +1309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authorRole: userRole || 'verified'
       });
 
-      // Update rate limits (skip for premium users)
-      if (!isPremium) {
-        await storage.incrementRateLimit(humanId, 'message', 'minute');
-        await storage.incrementRateLimit(humanId, 'message', 'hour');
-        await storage.incrementRateLimit(humanId, 'message', 'day');
-
-        if (messageData.link) {
-          await storage.incrementRateLimit(humanId, 'work_link', 'minute');
-          await storage.incrementRateLimit(humanId, 'work_link', 'hour');
-        }
-      }
+      // No rate limit tracking - unlimited for everyone
 
       // Update participation metrics
       const participationUpdate: Partial<any> = {
@@ -1465,20 +1412,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Star a message (requires authentication)
   app.post('/api/stars', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
-      // Check if user is verified
-      if (req.userRole === 'guest') {
-        return res.status(403).json({
-          message: 'Verify with World ID to star messages',
-          code: 'VERIFICATION_REQUIRED'
-        });
-      }
-      
-      const humanId = req.humanId!;
+      // Allow guests to star messages
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
       const starData = insertStarSchema.parse(req.body);
-
-      // Check premium status
-      const premiumStatus = await storage.getPremiumStatus(humanId);
-      const isPremium = premiumStatus?.status === 'active';
 
       // Check if user already starred this message
       const existingStar = await storage.getUserStarForMessage(starData.messageId, humanId);
@@ -1489,26 +1426,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Rate limiting for stars (with premium support)
-      const rateCheck = await checkRateLimit(humanId, 'star', isPremium);
-      if (!rateCheck.allowed) {
-        return res.status(429).json({
-          message: `Slow down on the stars! Try again in ${rateCheck.cooldownSeconds} seconds.`,
-          code: 'RATE_LIMITED',
-          cooldownSeconds: rateCheck.cooldownSeconds
-        });
-      }
+      // No rate limiting - unlimited stars
 
       // Create star
       const star = await storage.createStar({
         ...starData,
         humanId
       });
-
-      // Update rate limit (skip for premium users)
-      if (!isPremium) {
-        await storage.incrementRateLimit(humanId, 'star', 'minute');
-      }
 
       // Update participation metrics for star giver
       const message = await storage.getMessageById(starData.messageId);
@@ -1555,15 +1479,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Report a message (requires authentication)
   app.post('/api/reports', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
-      // Check if user is verified
-      if (req.userRole === 'guest') {
-        return res.status(403).json({
-          message: 'Verify with World ID to report messages',
-          code: 'VERIFICATION_REQUIRED'
-        });
-      }
-      
-      const humanId = req.humanId!;
+      // Allow guests to report messages
+      const userRole = req.userRole || 'guest';
+      const humanId = userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!;
       const reportData = insertReportSchema.parse(req.body);
 
       const report = await storage.createReport({
@@ -2668,19 +2586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const humanId = req.humanId!;
       const { customMessage, maxUsage, expiresAt } = req.body;
 
-      // Check premium status
-      const premiumStatus = await storage.getPremiumStatus(humanId);
-      const isPremium = premiumStatus?.status === 'active';
-
-      // Rate limiting for invite code generation (with premium support)
-      const rateCheck = await checkRateLimit(humanId, 'invite_generate', isPremium);
-      if (!rateCheck.allowed) {
-        return res.status(429).json({
-          message: 'You can only generate 3 invite codes per day. Try again tomorrow.',
-          code: 'RATE_LIMITED',
-          cooldownSeconds: rateCheck.cooldownSeconds
-        });
-      }
+      // No rate limiting - unlimited invite generation
 
       const inviteCode = await storage.createInviteCode({
         creatorHumanId: humanId,
@@ -2692,11 +2598,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           version: 'v1'
         }
       });
-
-      // Update rate limit (skip for premium users)
-      if (!isPremium) {
-        await storage.incrementRateLimit(humanId, 'invite_generate', 'day');
-      }
 
       res.json({
         message: 'Invite code generated successfully',
