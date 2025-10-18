@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { TopicRotationScheduler } from "./topic-scheduler";
@@ -11,8 +12,49 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Configure express-session for WebView compatibility
+// CORS configuration for World Mini App compatibility
 const isProduction = process.env.NODE_ENV === 'production';
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow all origins
+    if (!isProduction) return callback(null, true);
+    
+    // In production, allow World App and Replit domains
+    const allowedOrigins = [
+      /\.worldcoin\.org$/,
+      /\.world\.org$/,
+      /\.replit\.app$/,
+      /\.replit\.dev$/,
+      'https://worldcoin.org',
+      'https://world.org'
+    ];
+    
+    const isAllowed = allowedOrigins.some(pattern => {
+      if (typeof pattern === 'string') {
+        return origin === pattern;
+      }
+      return pattern.test(origin);
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      log(`CORS: Blocked origin ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Allow cookies and session data
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400 // Cache preflight requests for 24 hours
+}));
+
+// Configure express-session for WebView compatibility
+// (isProduction already defined above for CORS config)
 
 // Configure session store based on environment
 const sessionConfig: session.SessionOptions = {
