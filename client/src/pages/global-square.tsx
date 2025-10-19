@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -510,15 +510,14 @@ export default function GlobalSquare() {
   };
 
   // Calculate current user's humanId (for both guests and verified users)
-  const getCurrentUserHumanId = () => {
+  // Use useMemo to recalculate when sessionId or humanId changes
+  const currentUserHumanId = useMemo(() => {
     if (isGuest()) {
       // Use the session ID from state (initialized on mount)
       return sessionId ? `guest_${sessionId}` : null;
     }
     return humanId;
-  };
-
-  const currentUserHumanId = getCurrentUserHumanId();
+  }, [sessionId, humanId, isGuest]);
 
   const handlePremiumUpgrade = async () => {
     if (!isVerified) {
