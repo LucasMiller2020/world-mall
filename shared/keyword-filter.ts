@@ -57,7 +57,6 @@ const FILTERED_KEYWORDS = {
     'ovgpu', // b-word (profanity)
     'onfgneq', // b-word (profanity)
     'qnza', // d-word (profanity)
-    'uryy', // h-word (profanity)
   ],
   
   // Sexual propositions - context-based blocking
