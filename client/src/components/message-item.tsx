@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -306,276 +305,276 @@ export function MessageItem({
   const isOwnMessage = currentUserHumanId && message.authorHumanId === currentUserHumanId;
 
   return (
-    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`max-w-[85%] md:max-w-[70%] ${isOwnMessage ? 'ml-auto' : 'mr-auto'}`}>
-        <Card 
-          className={`message-bubble hover:shadow-md transition-all duration-200 ${
-            isOwnHiddenMessage ? 'opacity-70 bg-muted/30' : 
-            isOwnMessage ? 'bg-blue-100 dark:bg-blue-900/30' : 
-            ''
-          }`} 
-          data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
-        >
-      <CardContent className="pt-4 md:pt-3 md:pb-3">
-        <div className="flex items-start gap-3">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getAvatarColor(message.authorHandle)}`}>
-            <span className="text-xs font-medium" data-testid="text-message-initials">
-              {generateInitials(message.authorHandle)}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <button
-                onClick={onProfileClick}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
-                disabled={isPreview}
-                data-testid="button-profile-handle"
-              >
-                {message.authorHandle}
-              </button>
-              <span className="text-xs text-muted-foreground" data-testid="text-message-timestamp">
-                {formatTimeAgo(message.createdAt)}
-              </span>
-              {isOwnHiddenMessage && (
-                <Badge variant="destructive" className="text-xs h-5 gap-1" data-testid="badge-message-hidden">
-                  <EyeOff className="h-3 w-3" />
-                  Hidden (Reported)
-                </Badge>
-              )}
-            </div>
-            {isEditing ? (
-              <div className="mb-2">
-                <Textarea
-                  value={editedText}
-                  onChange={(e) => setEditedText(e.target.value)}
-                  onKeyDown={handleEditKeyDown}
-                  className="text-sm min-h-[80px] mb-2"
-                  maxLength={240}
-                  placeholder="Edit your message..."
-                  disabled={isSaving}
-                  data-testid="textarea-edit-message"
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleSaveEdit}
-                    disabled={isSaving || !editedText.trim()}
-                    className="h-8"
-                    data-testid="button-save-edit"
-                  >
-                    <Check className="h-4 w-4 mr-1" />
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCancelEdit}
-                    disabled={isSaving}
-                    className="h-8"
-                    data-testid="button-cancel-edit"
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Cancel
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {editedText.length}/240
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-foreground mb-2" data-testid="text-message-content">
-                {message.text}
-                {message.editedAt && (
-                  <span className="text-xs text-muted-foreground ml-2">(edited)</span>
-                )}
-              </p>
+    <>
+      <div 
+        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 ${
+          isOwnHiddenMessage ? 'opacity-70 bg-muted/30' : ''
+        }`}
+        data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
+      >
+        {/* Avatar - 40px */}
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getAvatarColor(message.authorHandle)}`}>
+          <span className="text-sm font-medium" data-testid="text-message-initials">
+            {generateInitials(message.authorHandle)}
+          </span>
+        </div>
+
+        {/* Content area - flex-1 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <button
+              onClick={onProfileClick}
+              className="text-sm font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
+              disabled={isPreview}
+              data-testid="button-profile-handle"
+            >
+              {message.authorHandle}
+            </button>
+            {isOwnHiddenMessage && (
+              <Badge variant="destructive" className="text-xs h-5 gap-1" data-testid="badge-message-hidden">
+                <EyeOff className="h-3 w-3" />
+                Hidden (Reported)
+              </Badge>
             )}
-            {!isPreview && (
-              <div className="flex items-center justify-between mt-2">
-                {/* New compact controls row */}
-                <div className="flex items-center gap-1">
-                  {/* Upvote */}
+          </div>
+          
+          {isEditing ? (
+            <div className="mb-2">
+              <Textarea
+                value={editedText}
+                onChange={(e) => setEditedText(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                className="text-sm min-h-[80px] mb-2"
+                maxLength={240}
+                placeholder="Edit your message..."
+                disabled={isSaving}
+                data-testid="textarea-edit-message"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={isSaving || !editedText.trim()}
+                  className="h-8"
+                  data-testid="button-save-edit"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  className="h-8"
+                  data-testid="button-cancel-edit"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {editedText.length}/240
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-foreground" data-testid="text-message-content">
+              {message.text}
+              {message.editedAt && (
+                <span className="text-xs text-muted-foreground ml-2">(edited)</span>
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* Actions/timestamp on right side */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="text-xs text-muted-foreground mr-2" data-testid="text-message-timestamp">
+            {formatTimeAgo(message.createdAt)}
+          </span>
+          
+          {!isPreview && (
+            <>
+              {/* Upvote */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleUpvote}
+                className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
+                data-testid="button-upvote"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+
+              {/* Downvote */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownvote}
+                className={`h-auto p-1 ${downvoted ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'}`}
+                data-testid="button-downvote"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+
+              {/* Emoji Reaction */}
+              <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
+                <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={handleUpvote}
-                    className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
-                    data-testid="button-upvote"
+                    className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                    data-testid="button-emoji-reaction"
                   >
-                    <ArrowUp className="h-4 w-4" />
+                    {selectedEmoji || <Smile className="h-4 w-4" />}
                   </Button>
-
-                  {/* Downvote */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDownvote}
-                    className={`h-auto p-1 ${downvoted ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'}`}
-                    data-testid="button-downvote"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-
-                  {/* Emoji Reaction Trigger */}
-                  <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto p-1 text-muted-foreground hover:text-foreground"
-                        data-testid="button-emoji-reaction"
-                      >
-                        {selectedEmoji || <Smile className="h-4 w-4" />}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2" align="start">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('❤️')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-heart"
-                        >
-                          <span className="text-base">❤️</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('👍')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-thumbs-up"
-                        >
-                          <span className="text-base">👍</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('👎')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-thumbs-down"
-                        >
-                          <span className="text-base">👎</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('😂')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-laugh"
-                        >
-                          <span className="text-base">😂</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('❗')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-emphasized"
-                        >
-                          <span className="text-base">❗</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('🎉')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-party"
-                        >
-                          <span className="text-base">🎉</span>
-                        </Button>
-                        <div className="border-l pl-1 ml-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleCustomEmoji}
-                                disabled
-                                className="h-auto p-1"
-                                data-testid="button-premium-emoji"
-                              >
-                                <Smile className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Premium emojis coming soon</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Overflow Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" align="start">
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-auto p-1 text-muted-foreground hover:text-foreground"
-                      data-testid="button-overflow-menu"
+                      onClick={() => handleEmojiSelect('❤️')}
+                      className="h-auto p-1"
+                      data-testid="button-emoji-heart"
                     >
-                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="text-base">❤️</span>
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {canEdit && !isEditing && (
-                      <>
-                        <DropdownMenuItem onClick={handleEditClick} data-testid="menuitem-edit">
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit ({Math.ceil((timeRemaining || 0) / 1000)}s)
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    {canDelete && !isEditing && (
-                      <>
-                        <DropdownMenuItem onClick={handleDeleteClick} data-testid="menuitem-delete">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete ({Math.ceil((timeRemainingDelete || 0) / 1000)}s)
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    <DropdownMenuItem onClick={onReportClick} data-testid="menuitem-report">
-                      <Flag className="h-4 w-4 mr-2" />
-                      Report
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={handleMute} 
-                      disabled={muteMutation.isPending}
-                      data-testid="menuitem-mute"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEmojiSelect('👍')}
+                      className="h-auto p-1"
+                      data-testid="button-emoji-thumbs-up"
                     >
-                      <VolumeX className="h-4 w-4 mr-2" />
-                      {muteMutation.isPending ? "Muting..." : "Mute"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={handleBlock}
-                      disabled={blockMutation.isPending}
-                      data-testid="menuitem-block"
+                      <span className="text-base">👍</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEmojiSelect('👎')}
+                      className="h-auto p-1"
+                      data-testid="button-emoji-thumbs-down"
                     >
-                      <Ban className="h-4 w-4 mr-2" />
-                      {blockMutation.isPending ? "Blocking..." : "Block user"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-            {isPreview && (
-              <div className="flex items-center gap-4 mt-2">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <span className="text-base">⭐</span>
-                  <span data-testid="text-preview-stars">{message.starsCount}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
+                      <span className="text-base">👎</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEmojiSelect('😂')}
+                      className="h-auto p-1"
+                      data-testid="button-emoji-laugh"
+                    >
+                      <span className="text-base">😂</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEmojiSelect('❗')}
+                      className="h-auto p-1"
+                      data-testid="button-emoji-emphasized"
+                    >
+                      <span className="text-base">❗</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEmojiSelect('🎉')}
+                      className="h-auto p-1"
+                      data-testid="button-emoji-party"
+                    >
+                      <span className="text-base">🎉</span>
+                    </Button>
+                    <div className="border-l pl-1 ml-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCustomEmoji}
+                            disabled
+                            className="h-auto p-1"
+                            data-testid="button-premium-emoji"
+                          >
+                            <Smile className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Premium emojis coming soon</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
+              {/* Overflow Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                    data-testid="button-overflow-menu"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {canEdit && !isEditing && (
+                    <>
+                      <DropdownMenuItem onClick={handleEditClick} data-testid="menuitem-edit">
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit ({Math.ceil((timeRemaining || 0) / 1000)}s)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  {canDelete && !isEditing && (
+                    <>
+                      <DropdownMenuItem onClick={handleDeleteClick} data-testid="menuitem-delete">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete ({Math.ceil((timeRemainingDelete || 0) / 1000)}s)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={onReportClick} data-testid="menuitem-report">
+                    <Flag className="h-4 w-4 mr-2" />
+                    Report
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleMute} 
+                    disabled={muteMutation.isPending}
+                    data-testid="menuitem-mute"
+                  >
+                    <VolumeX className="h-4 w-4 mr-2" />
+                    {muteMutation.isPending ? "Muting..." : "Mute"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={handleBlock}
+                    disabled={blockMutation.isPending}
+                    data-testid="menuitem-block"
+                  >
+                    <Ban className="h-4 w-4 mr-2" />
+                    {blockMutation.isPending ? "Blocking..." : "Block user"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          
+          {isPreview && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="text-base">⭐</span>
+              <span data-testid="text-preview-stars">{message.starsCount}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* AlertDialog for delete confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -599,8 +598,6 @@ export function MessageItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-        </Card>
-      </div>
-    </div>
+    </>
   );
 }
