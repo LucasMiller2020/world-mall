@@ -784,9 +784,9 @@ export default function GlobalSquare() {
         </div>
       </div>
 
-      {/* Main Content Area: 2-column on desktop, single column on mobile */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Left: Chat Area (Composer + Messages) */}
+      {/* Main Content Area: Single column centered layout */}
+      <div className="flex-1 flex flex-col overflow-hidden max-w-3xl mx-auto w-full">
+        {/* Chat Area (Composer + Messages) */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Composer Section - More Compact */}
           <div className="bg-background border-t border-border p-4">
@@ -891,11 +891,6 @@ export default function GlobalSquare() {
           </Card>
         )}
       </div>
-        </div>
-
-        {/* Right: Online Users Sidebar (hidden on mobile, visible on md+) */}
-        <div className="hidden md:block md:w-64 lg:w-72">
-          <OnlineUsersSidebar presence={presence} />
         </div>
       </div>
 

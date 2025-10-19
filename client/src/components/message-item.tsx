@@ -416,28 +416,14 @@ export function MessageItem({
                     <ArrowDown className="h-4 w-4" />
                   </Button>
 
-                  {/* Star */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setStarred(!starred);
-                      onStarClick();
-                    }}
-                    className={`h-auto p-1 ${starred ? 'text-yellow-500' : 'text-muted-foreground hover:text-yellow-500'}`}
-                    data-testid="button-star"
-                  >
-                    <span className="text-base">⭐</span>
-                  </Button>
-
-                  {/* Emoji Launcher */}
+                  {/* Emoji Reaction Trigger */}
                   <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-auto p-1 text-muted-foreground hover:text-foreground"
-                        data-testid="button-emoji-launcher"
+                        data-testid="button-emoji-reaction"
                       >
                         {selectedEmoji || <Smile className="h-4 w-4" />}
                       </Button>
@@ -506,10 +492,10 @@ export function MessageItem({
                                 size="sm"
                                 onClick={handleCustomEmoji}
                                 disabled
-                                className="h-auto p-1 text-xs"
+                                className="h-auto p-1"
                                 data-testid="button-premium-emoji"
                               >
-                                Premium
+                                <Smile className="h-4 w-4 text-muted-foreground" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
