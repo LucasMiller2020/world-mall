@@ -41,7 +41,8 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Collapsible Sidebar Toggle**: Added ChevronRight button next to online count to optionally show sidebar in slide-in Sheet
 - **Emoji Reaction Updates**: Replaced star icon with grey Smile icon as emoji reaction trigger
 - **6 Free Emojis**: Emoji picker shows ❤️ 👍 👎 😂 ❗ 🎉 followed by premium Smile icon button
-- **Consistent Desktop Experience**: Desktop users now see same centered single-column layout as mobile
+- **Responsive Desktop Layout**: Desktop (≥768px) uses full width for chat and live feed, mobile (<768px) stays centered and narrow
+- **Full-Width Chat Experience**: Message logs, composer, and live feed expand to utilize full screen width on tablets and desktops
 
 ## User Preferences
 
