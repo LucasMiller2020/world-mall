@@ -117,6 +117,22 @@ export function MessageItem({
                     message.authorHumanId === currentUserHumanId &&
                     timeRemainingDelete !== null &&
                     timeRemainingDelete > 0;
+  
+  // Debug logging for edit/delete visibility (after canEdit and canDelete are defined)
+  useEffect(() => {
+    if (!isPreview && currentUserHumanId) {
+      console.log('[MessageItem Debug]', {
+        messageId: message.id,
+        authorHumanId: message.authorHumanId,
+        currentUserHumanId,
+        matches: message.authorHumanId === currentUserHumanId,
+        canEdit,
+        canDelete,
+        timeRemaining,
+        timeRemainingDelete
+      });
+    }
+  }, [currentUserHumanId, message.authorHumanId, canEdit, canDelete, timeRemaining, timeRemainingDelete, isPreview, message.id]);
 
   const handleUpvote = () => {
     setUpvoted(!upvoted);

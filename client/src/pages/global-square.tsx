@@ -96,6 +96,7 @@ export default function GlobalSquare() {
     const initSession = async () => {
       if (isGuest()) {
         const sid = await getSessionId();
+        console.log('[Session Debug] Setting sessionId state:', sid);
         setSessionId(sid);
       }
     };
@@ -514,7 +515,9 @@ export default function GlobalSquare() {
   const currentUserHumanId = useMemo(() => {
     if (isGuest()) {
       // Use the session ID from state (initialized on mount)
-      return sessionId ? `guest_${sessionId}` : null;
+      const guestId = sessionId ? `guest_${sessionId}` : null;
+      console.log('[Session Debug] currentUserHumanId calculated:', { sessionId, guestId, isGuest: isGuest() });
+      return guestId;
     }
     return humanId;
   }, [sessionId, humanId, isGuest]);
