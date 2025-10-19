@@ -194,10 +194,16 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Apply theme to document
   useEffect(() => {
     const root = document.documentElement;
-    // Apply data-theme attribute
+    // Apply data-theme attribute for CSS variables
     root.setAttribute('data-theme', activeTheme);
-    // Remove any old class-based theme
-    root.classList.remove('light', 'dark');
+    // Apply dark class for Tailwind dark mode
+    if (activeTheme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    }
     
     // Update meta theme-color
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
