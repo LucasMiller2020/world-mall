@@ -99,7 +99,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <TooltipProvider>
-            <div className="max-w-md mx-auto bg-background shadow-lg min-h-screen relative">
+            <div className="bg-background min-h-screen relative">
               <div className="h-6 bg-background"></div>
               <Toaster />
               <Router />
