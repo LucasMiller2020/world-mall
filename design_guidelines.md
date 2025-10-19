@@ -27,7 +27,7 @@
 - Muted text (timestamps): 0 0% 45%
 
 **Brand & Interactive**:
-- Primary brand: 210 100% 55% (modern bright blue)
+- Primary brand: 210 100% 45% (modern blue - WCAG AA compliant)
 - Success/online: 142 70% 50% (green)
 - Warning: 42 93% 56% (amber)
 - Error/critical: 0 84% 60% (red)

@@ -11,7 +11,7 @@
   --text: hsl(0, 0%, 10%);
   --muted: hsl(0, 0%, 45%);
   --border: hsl(0, 0%, 90%);
-  --accent: hsl(210, 100%, 55%);
+  --accent: hsl(210, 100%, 45%);
   --success: hsl(142.1, 76.2%, 36.3%);
   --warning: hsl(42.03, 92.83%, 56.27%);
   --error: hsl(0, 84%, 60%);
@@ -22,7 +22,7 @@
   --card-foreground: hsl(0, 0%, 10%);
   --popover: hsl(0, 0%, 100%);
   --popover-foreground: hsl(0, 0%, 10%);
-  --primary: hsl(210, 100%, 55%);
+  --primary: hsl(210, 100%, 45%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(0, 0%, 95%);
   --secondary-foreground: hsl(0, 0%, 10%);
@@ -31,7 +31,7 @@
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
   --input: hsl(0, 0%, 96%);
-  --ring: hsl(210, 100%, 55%);
+  --ring: hsl(210, 100%, 45%);
   --chart-1: hsl(203.8863 88.2845% 53.1373%);
   --chart-2: hsl(159.7826 100% 36.0784%);
   --chart-3: hsl(42.0290 92.8251% 56.2745%);
@@ -39,12 +39,12 @@
   --chart-5: hsl(341.4894 75.2000% 50.9804%);
   --sidebar: hsl(0 0% 100%);
   --sidebar-foreground: hsl(0 0% 10%);
-  --sidebar-primary: hsl(210 100% 55%);
+  --sidebar-primary: hsl(210 100% 45%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
   --sidebar-accent: hsl(210 100% 96%);
-  --sidebar-accent-foreground: hsl(210 100% 55%);
+  --sidebar-accent-foreground: hsl(210 100% 45%);
   --sidebar-border: hsl(0 0% 90%);
-  --sidebar-ring: hsl(210 100% 55%);
+  --sidebar-ring: hsl(210 100% 45%);
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Source Serif Pro', serif;
   --font-mono: 'IBM Plex Mono', monospace;
