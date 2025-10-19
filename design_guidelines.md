@@ -1,54 +1,53 @@
 # Mall Space Design Guidelines
 
 ## Design Approach
-**Reference-Based Approach**: Drawing inspiration from Discord (community chat mastery) and Linear (professional polish with excellent dark mode). This combination delivers a chat platform that feels both approachable and sophisticated, with clear information hierarchy critical for moderation features.
+**Clean & Modern**: Drawing inspiration from modern chat platforms like Chat Ave with emphasis on simplicity, clarity, and content focus. Clean white backgrounds with minimal UI chrome allow conversations to take center stage.
 
 **Key Principles**:
-- Dark-first design with seamless light mode transition
-- Moderation elements should feel authoritative without being aggressive
-- Visual hierarchy that immediately communicates warning levels
-- Maintain conversation flow while clearly displaying moderation UI
+- Light-first design with clean white/gray palette
+- Content over chrome - minimal visual distractions
+- Full-width message rows for natural conversation flow
+- Modern blue accents for interactive elements
+- Simple, scannable layout that prioritizes readability
 
 ---
 
 ## Color Palette
 
-### Dark Mode (Default)
+### Light Mode (Default)
 **Background Layers**:
-- Primary BG: 220 15% 11%
-- Secondary BG (sidebars/panels): 220 15% 14%
-- Elevated surfaces (modals, cards): 220 15% 17%
-- Input fields: 220 15% 8%
+- Primary BG: 0 0% 98% (very light gray)
+- Cards/Elevated: 0 0% 100% (pure white)
+- Panels: 0 0% 96% (light gray)
+- Input fields: 0 0% 96%
 
 **Text Colors**:
-- Primary text: 220 10% 95%
-- Secondary text: 220 8% 70%
-- Muted text (timestamps): 220 8% 50%
+- Primary text: 0 0% 10% (near black)
+- Secondary text: 0 0% 45% (medium gray)
+- Muted text (timestamps): 0 0% 45%
 
 **Brand & Interactive**:
-- Primary brand: 262 80% 60% (vibrant purple for CTAs, active states)
-- Link/clickable: 215 90% 65% (bright blue)
-- Success/online: 142 70% 50%
+- Primary brand: 210 100% 55% (modern bright blue)
+- Success/online: 142 70% 50% (green)
+- Warning: 42 93% 56% (amber)
+- Error/critical: 0 84% 60% (red)
 
-**Moderation Palette**:
-- Critical warning: 0 85% 60% (red for bans, severe violations)
-- Standard warning: 38 95% 55% (amber for cautions)
-- Info/guideline: 215 80% 55% (blue for educational)
-- Blocked content overlay: 220 15% 20% with 85% opacity
+**Borders & Dividers**:
+- Border: 0 0% 90% (light gray)
 
-### Light Mode
+### Dark Mode
 **Background Layers**:
-- Primary BG: 220 20% 98%
-- Secondary BG: 220 20% 94%
-- Elevated surfaces: 0 0% 100%
-- Input fields: 220 15% 96%
+- Primary BG: 0 0% 0% (pure black)
+- Cards: 228 10% 10% (dark gray)
+- Panels: 228 10% 8%
+- Input fields: 208 28% 18%
 
 **Text Colors**:
-- Primary: 220 20% 15%
-- Secondary: 220 15% 35%
-- Muted: 220 10% 55%
+- Primary: 200 7% 91% (light gray)
+- Secondary: 210 3% 46%
+- Muted: 210 3% 46%
 
-**Brand & Interactive**: Same hues as dark mode, adjusted lightness for contrast
+**Brand & Interactive**: Modern blue 204 88% 53% with adjusted contrast for dark backgrounds
 
 ---
 
@@ -86,9 +85,15 @@
 ## Component Library
 
 ### Core Chat Elements
-**Message Bubbles**: Alternate sender highlighting, no bubble UI—flat design with subtle hover states (bg opacity change). Avatar (40px rounded-full) + username + timestamp + message content in horizontal flow.
+**Message Rows** (Chat Ave Style): Clean full-width rows without card containers
+- Layout: `flex items-start gap-3 px-4 py-3 hover:bg-muted/5`
+- Avatar (40px rounded-full) on left
+- Content area (flex-1): Username (font-semibold) + message text
+- Timestamp + actions on right (text-xs text-muted-foreground)
+- Subtle hover state for entire row
+- No card borders, no shadows - flat minimal design
 
-**Input Field**: Rounded-lg with p-3, elevated surface color, focus ring in brand purple (ring-2 ring-primary).
+**Input Field**: Rounded-lg with p-3, light gray background (input color), focus ring in modern blue (ring-2 ring-primary).
 
 ### Navigation
 **Sidebar**: Server/channel list with icon-first design, active state uses primary brand color with subtle bg highlight. Nested channels indent with pl-6.
