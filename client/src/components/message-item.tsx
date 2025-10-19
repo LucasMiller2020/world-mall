@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X, Trash2, EyeOff } from "lucide-react";
+import { MoreHorizontal, Flag, VolumeX, Ban, Pencil, Check, X, Trash2, EyeOff, ArrowUp, ArrowDown, Smile } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -117,22 +117,6 @@ export function MessageItem({
                     message.authorHumanId === currentUserHumanId &&
                     timeRemainingDelete !== null &&
                     timeRemainingDelete > 0;
-  
-  // Debug logging for edit/delete visibility (after canEdit and canDelete are defined)
-  useEffect(() => {
-    if (!isPreview && currentUserHumanId) {
-      console.log('[MessageItem Debug]', {
-        messageId: message.id,
-        authorHumanId: message.authorHumanId,
-        currentUserHumanId,
-        matches: message.authorHumanId === currentUserHumanId,
-        canEdit,
-        canDelete,
-        timeRemaining,
-        timeRemainingDelete
-      });
-    }
-  }, [currentUserHumanId, message.authorHumanId, canEdit, canDelete, timeRemaining, timeRemainingDelete, isPreview, message.id]);
 
   const handleUpvote = () => {
     setUpvoted(!upvoted);
@@ -318,9 +302,21 @@ export function MessageItem({
                               currentUserHumanId && 
                               message.authorHumanId === currentUserHumanId;
 
+  // Check if this message belongs to the current user
+  const isOwnMessage = currentUserHumanId && message.authorHumanId === currentUserHumanId;
+
   return (
-    <Card className={`message-bubble hover:shadow-md transition-all duration-200 ${isOwnHiddenMessage ? 'opacity-70 bg-muted/30' : ''}`} data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}>
-      <CardContent className="pt-4">
+    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div className={`max-w-[85%] md:max-w-[70%] ${isOwnMessage ? 'ml-auto' : 'mr-auto'}`}>
+        <Card 
+          className={`message-bubble hover:shadow-md transition-all duration-200 ${
+            isOwnHiddenMessage ? 'opacity-70 bg-muted/30' : 
+            isOwnMessage ? 'bg-blue-100 dark:bg-blue-900/30' : 
+            ''
+          }`} 
+          data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
+        >
+      <CardContent className="pt-4 md:pt-3 md:pb-3">
         <div className="flex items-start gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getAvatarColor(message.authorHandle)}`}>
             <span className="text-xs font-medium" data-testid="text-message-initials">
@@ -406,7 +402,7 @@ export function MessageItem({
                     className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
                     data-testid="button-upvote"
                   >
-                    <span className="text-base">⬆️</span>
+                    <ArrowUp className="h-4 w-4" />
                   </Button>
 
                   {/* Downvote */}
@@ -417,7 +413,7 @@ export function MessageItem({
                     className={`h-auto p-1 ${downvoted ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'}`}
                     data-testid="button-downvote"
                   >
-                    <span className="text-base">⬇️</span>
+                    <ArrowDown className="h-4 w-4" />
                   </Button>
 
                   {/* Star */}
@@ -443,11 +439,20 @@ export function MessageItem({
                         className="h-auto p-1 text-muted-foreground hover:text-foreground"
                         data-testid="button-emoji-launcher"
                       >
-                        {selectedEmoji || '🙂'}
+                        {selectedEmoji || <Smile className="h-4 w-4" />}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-2" align="start">
                       <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('❤️')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-heart"
+                        >
+                          <span className="text-base">❤️</span>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -460,11 +465,11 @@ export function MessageItem({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEmojiSelect('❤️')}
+                          onClick={() => handleEmojiSelect('👎')}
                           className="h-auto p-1"
-                          data-testid="button-emoji-heart"
+                          data-testid="button-emoji-thumbs-down"
                         >
-                          <span className="text-base">❤️</span>
+                          <span className="text-base">👎</span>
                         </Button>
                         <Button
                           variant="ghost"
@@ -478,11 +483,20 @@ export function MessageItem({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEmojiSelect('🔥')}
+                          onClick={() => handleEmojiSelect('❗')}
                           className="h-auto p-1"
-                          data-testid="button-emoji-fire"
+                          data-testid="button-emoji-emphasized"
                         >
-                          <span className="text-base">🔥</span>
+                          <span className="text-base">❗</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('🎉')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-party"
+                        >
+                          <span className="text-base">🎉</span>
                         </Button>
                         <div className="border-l pl-1 ml-1">
                           <Tooltip>
@@ -493,13 +507,13 @@ export function MessageItem({
                                 onClick={handleCustomEmoji}
                                 disabled
                                 className="h-auto p-1 text-xs"
-                                data-testid="button-custom-emoji"
+                                data-testid="button-premium-emoji"
                               >
-                                + custom
+                                Premium
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Coming soon</p>
+                              <p>Premium emojis coming soon</p>
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -599,6 +613,8 @@ export function MessageItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+        </Card>
+      </div>
+    </div>
   );
 }

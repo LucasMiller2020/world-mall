@@ -9,6 +9,7 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
+import { OnlineUsersSidebar } from "@/components/online-users-sidebar";
 import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus, Crown, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -96,7 +97,6 @@ export default function GlobalSquare() {
     const initSession = async () => {
       if (isGuest()) {
         const sid = await getSessionId();
-        console.log('[Session Debug] Setting sessionId state:', sid);
         setSessionId(sid);
       }
     };
@@ -516,7 +516,6 @@ export default function GlobalSquare() {
     if (isGuest()) {
       // Use the session ID from state (initialized on mount)
       const guestId = sessionId ? `guest_${sessionId}` : null;
-      console.log('[Session Debug] currentUserHumanId calculated:', { sessionId, guestId, isGuest: isGuest() });
       return guestId;
     }
     return humanId;
@@ -785,8 +784,12 @@ export default function GlobalSquare() {
         </div>
       </div>
 
-      {/* Composer Section - More Compact */}
-      <div className="bg-background border-t border-border p-4">
+      {/* Main Content Area: 2-column on desktop, single column on mobile */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Left: Chat Area (Composer + Messages) */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Composer Section - More Compact */}
+          <div className="bg-background border-t border-border p-4">
         {showVerifyPrompt ? (
           <Card className="mb-4">
             <CardContent className="pt-4 text-center">
@@ -858,7 +861,7 @@ export default function GlobalSquare() {
       </div>
 
       {/* Messages Feed */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" data-testid="list-messages">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-3 md:py-4 space-y-3 md:space-y-2" data-testid="list-messages">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <SkeletonLoader key={i} />
@@ -887,6 +890,13 @@ export default function GlobalSquare() {
             </CardContent>
           </Card>
         )}
+      </div>
+        </div>
+
+        {/* Right: Online Users Sidebar (hidden on mobile, visible on md+) */}
+        <div className="hidden md:block md:w-64 lg:w-72">
+          <OnlineUsersSidebar presence={presence} />
+        </div>
       </div>
 
       {/* Modals */}
