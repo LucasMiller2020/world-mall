@@ -53,13 +53,22 @@ const FILTERED_KEYWORDS = {
     'qvpx', // d-word (explicit)
     'pbpx', // c-word (explicit)
     'chffl', // p-word (explicit)
-    'shpx', // f-word (explicit)
     'fuvg', // s-word (profanity)
-    'nff', // a-word (profanity)
     'ovgpu', // b-word (profanity)
     'onfgneq', // b-word (profanity)
     'qnza', // d-word (profanity)
     'uryy', // h-word (profanity)
+  ],
+  
+  // Sexual propositions - context-based blocking
+  sexual_propositions: [
+    'jnaan shpx', // wanna f***
+    'yrgf shpx', // let's f***
+    'shpx zr', // f*** me
+    'shpx lbh', // f*** you (in sexual context)
+    'gb shpx', // to f***
+    'shpx ure', // f*** her
+    'shpx uvz', // f*** him
   ],
   
   // Hate speech terms
@@ -148,18 +157,35 @@ export function containsFilteredKeyword(text: string): KeywordFilterResult {
   for (const [categoryKey, encodedWords] of Object.entries(FILTERED_KEYWORDS)) {
     for (const encodedWord of encodedWords) {
       const keyword = rot13(encodedWord);
-      const pattern = buildPattern(keyword);
       
-      // Check both normalized and original text
-      if (pattern.test(normalizedText) || pattern.test(lowerText)) {
-        const category = categoryKey.replace('_slurs', '_slur').replace('_content', '_content').replace('_speech', '_speech') as KeywordFilterResult['category'];
+      // For sexual propositions, check as phrase patterns (no word boundaries)
+      if (categoryKey === 'sexual_propositions') {
+        // Create a simpler pattern for multi-word phrases
+        const phrasePattern = new RegExp(keyword.split(' ').join('\\s+'), 'i');
         
-        return {
-          blocked: true,
-          reason: 'Message contains prohibited content',
-          matchedWord: keyword.substring(0, 2) + '***', // Partially censored for logging
-          category
-        };
+        if (phrasePattern.test(normalizedText) || phrasePattern.test(lowerText)) {
+          return {
+            blocked: true,
+            reason: 'Message contains prohibited content',
+            matchedWord: keyword.substring(0, 3) + '***', // Partially censored for logging
+            category: 'sexual_content'
+          };
+        }
+      } else {
+        // For single words, use word boundary pattern
+        const pattern = buildPattern(keyword);
+        
+        // Check both normalized and original text
+        if (pattern.test(normalizedText) || pattern.test(lowerText)) {
+          const category = categoryKey.replace('_slurs', '_slur').replace('_content', '_content').replace('_speech', '_speech') as KeywordFilterResult['category'];
+          
+          return {
+            blocked: true,
+            reason: 'Message contains prohibited content',
+            matchedWord: keyword.substring(0, 2) + '***', // Partially censored for logging
+            category
+          };
+        }
       }
     }
   }

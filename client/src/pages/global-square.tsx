@@ -884,10 +884,11 @@ export default function GlobalSquare() {
             <SkeletonLoader key={i} />
           ))
         ) : messages.length > 0 ? (
-          messages.slice().reverse().map((msg) => (
+          messages.slice().reverse().map((msg, idx) => (
             <MessageItem
               key={msg.id}
               message={msg}
+              index={idx}
               currentUserHumanId={currentUserHumanId}
               onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
               onStarClick={() => handleStarMessage(msg.id)}

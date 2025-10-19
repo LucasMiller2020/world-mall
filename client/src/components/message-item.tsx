@@ -14,6 +14,7 @@ import type { MessageWithAuthor } from "@shared/schema";
 
 interface MessageItemProps {
   message: MessageWithAuthor;
+  index?: number;
   isPreview?: boolean;
   currentUserHumanId?: string | null;
   onProfileClick: () => void;
@@ -26,6 +27,7 @@ interface MessageItemProps {
 
 export function MessageItem({
   message,
+  index,
   isPreview = false,
   currentUserHumanId,
   onProfileClick,
@@ -296,6 +298,19 @@ export function MessageItem({
     return colors[hash % colors.length];
   };
 
+  const getUsernameColor = (handle: string) => {
+    const colors = [
+      'text-blue-600',
+      'text-green-600',
+      'text-purple-600',
+      'text-orange-600',
+      'text-pink-600',
+      'text-indigo-600',
+    ];
+    const hash = handle.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   // Check if this is a hidden message that belongs to the current user
   const isOwnHiddenMessage = message.isHidden && 
                               currentUserHumanId && 
@@ -304,12 +319,22 @@ export function MessageItem({
   // Check if this message belongs to the current user
   const isOwnMessage = currentUserHumanId && message.authorHumanId === currentUserHumanId;
 
+  // Determine background color based on index (alternating rows)
+  const getBackgroundClass = () => {
+    if (isOwnHiddenMessage) {
+      return 'opacity-70 bg-muted/30';
+    }
+    // Apply alternating backgrounds only if index is provided
+    if (index !== undefined) {
+      return index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+    }
+    return '';
+  };
+
   return (
     <>
       <div 
-        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 ${
-          isOwnHiddenMessage ? 'opacity-70 bg-muted/30' : ''
-        }`}
+        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 ${getBackgroundClass()}`}
         data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
       >
         {/* Avatar - 40px */}
@@ -324,7 +349,7 @@ export function MessageItem({
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <button
               onClick={onProfileClick}
-              className="text-sm font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
+              className={`text-sm font-semibold ${getUsernameColor(message.authorHandle)} hover:opacity-80 transition-opacity cursor-pointer`}
               disabled={isPreview}
               data-testid="button-profile-handle"
             >
