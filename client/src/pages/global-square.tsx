@@ -562,7 +562,7 @@ export default function GlobalSquare() {
       
       {/* Header */}
       <div className="bg-card border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="relative flex items-center justify-between mb-2">
           <Button 
             variant="ghost" 
             size="sm"
@@ -571,7 +571,7 @@ export default function GlobalSquare() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">
+          <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-foreground" data-testid="text-page-title">
             Global Square
           </h1>
           <div className="flex items-center space-x-1">

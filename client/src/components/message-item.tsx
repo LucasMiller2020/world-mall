@@ -344,7 +344,7 @@ export function MessageItem({
     }
     // Apply alternating backgrounds only if index is provided
     if (index !== undefined) {
-      return index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-900/30';
+      return index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900';
     }
     return '';
   };
@@ -352,7 +352,7 @@ export function MessageItem({
   return (
     <>
       <div 
-        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 border-2 border-gray-200 dark:border-gray-600 ${getBackgroundClass()}`}
+        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 border-2 border-gray-200 dark:border-gray-700/30 ${getBackgroundClass()}`}
         data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
       >
         {/* Avatar - 40px */}
