@@ -802,7 +802,7 @@ export default function GlobalSquare() {
       </div>
 
       {/* Main Content Area: Single column centered layout on mobile, full-width on desktop */}
-      <div className="flex-1 flex flex-col overflow-hidden max-w-3xl mx-auto md:mx-0 w-full md:max-w-none md:px-8">
+      <div className="flex-1 flex flex-col overflow-hidden max-w-md mx-auto px-6 md:mx-0 md:px-8 w-full md:max-w-none">
         {/* Chat Area (Composer + Messages) */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Composer Section - More Compact */}
