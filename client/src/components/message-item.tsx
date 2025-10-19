@@ -344,7 +344,10 @@ export function MessageItem({
     }
     // Apply alternating backgrounds only if index is provided
     if (index !== undefined) {
-      return index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900';
+      // Use solid colors for better visibility in dark mode
+      return index % 2 === 0 
+        ? 'bg-gray-50 dark:bg-gray-800' 
+        : 'bg-white dark:bg-gray-900';
     }
     return '';
   };
