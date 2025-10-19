@@ -35,6 +35,14 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Security**: Dynamic origin validation with logging, no wildcard origins in production
 - **Session Compatibility**: Works with SameSite=None, Secure cookies for cross-origin authenticated requests
 
+### Phase 6 UI Improvements (Completed - October 19, 2025)
+- **Single-Column Centered Layout**: Restored global square to clean centered layout (max-w-3xl) removing 2-column desktop grid
+- **Hidden Default Sidebar**: OnlineUsersSidebar removed from default view for cleaner mobile-first experience
+- **Collapsible Sidebar Toggle**: Added ChevronRight button next to online count to optionally show sidebar in slide-in Sheet
+- **Emoji Reaction Updates**: Replaced star icon with grey Smile icon as emoji reaction trigger
+- **6 Free Emojis**: Emoji picker shows ❤️ 👍 👎 😂 ❗ 🎉 followed by premium Smile icon button
+- **Consistent Desktop Experience**: Desktop users now see same centered single-column layout as mobile
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
