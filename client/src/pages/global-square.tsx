@@ -89,6 +89,18 @@ export default function GlobalSquare() {
   const { isConnected } = useWebSocket(humanId, 'global');
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
   const [guestStats, setGuestStats] = useState<{ messagesRemaining: number; nextMessageIn: number } | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(getSessionIdSync());
+
+  // Initialize session on mount for guests
+  useEffect(() => {
+    const initSession = async () => {
+      if (isGuest()) {
+        const sid = await getSessionId();
+        setSessionId(sid);
+      }
+    };
+    initSession();
+  }, [isGuest]);
 
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery<MessageWithAuthor[]>({
@@ -500,8 +512,7 @@ export default function GlobalSquare() {
   // Calculate current user's humanId (for both guests and verified users)
   const getCurrentUserHumanId = () => {
     if (isGuest()) {
-      // For guests, we need to get the session ID synchronously from cookie/localStorage
-      const sessionId = getSessionIdSync();
+      // Use the session ID from state (initialized on mount)
       return sessionId ? `guest_${sessionId}` : null;
     }
     return humanId;
