@@ -63,11 +63,19 @@ export default function GlobalSquare() {
   const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [usernameColor, setUsernameColor] = useState<string>(
+    localStorage.getItem('username_color') || ''
+  );
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   const { payForPremium, isPaying } = usePayment();
   const { isPremium } = usePremiumStatus();
+  
+  const handleColorSelect = (color: string) => {
+    setUsernameColor(color);
+    localStorage.setItem('username_color', color);
+  };
   
   // Check if developer menu should be shown
   const showDevMenu = () => {
@@ -549,6 +557,9 @@ export default function GlobalSquare() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Orange/Gold Color Bar at Top */}
+      <div className="h-1 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-400" style={{ height: '4px' }} />
+      
       {/* Header */}
       <div className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between mb-2">
@@ -651,6 +662,38 @@ export default function GlobalSquare() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Username Color Picker */}
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <Label className="text-sm font-medium mb-3 block">Username Color</Label>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Choose a color for your username display
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { name: 'Blue', class: 'bg-blue-600', value: 'blue' },
+                        { name: 'Green', class: 'bg-green-600', value: 'green' },
+                        { name: 'Purple', class: 'bg-purple-600', value: 'purple' },
+                        { name: 'Orange', class: 'bg-orange-600', value: 'orange' },
+                        { name: 'Pink', class: 'bg-pink-600', value: 'pink' },
+                        { name: 'Indigo', class: 'bg-indigo-600', value: 'indigo' },
+                      ].map((color) => (
+                        <button
+                          key={color.value}
+                          onClick={() => handleColorSelect(color.value)}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${
+                            usernameColor === color.value
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                          data-testid={`button-username-color-${color.value}`}
+                        >
+                          <div className={`w-8 h-8 rounded-full ${color.class}`} />
+                          <span className="text-xs">{color.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
@@ -851,7 +894,7 @@ export default function GlobalSquare() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="resize-none"
+                className="resize-none border border-gray-200 dark:border-gray-700"
                 rows={2}
                 maxLength={maxChars}
                 disabled={cooldownSeconds > 0}
@@ -1074,6 +1117,9 @@ export default function GlobalSquare() {
           <OnlineUsersSidebar presence={presence} />
         </SheetContent>
       </Sheet>
+      
+      {/* Orange/Gold Color Bar at Bottom */}
+      <div className="h-1 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-400" style={{ height: '4px' }} />
     </div>
   );
 }

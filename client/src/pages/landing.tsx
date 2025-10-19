@@ -28,9 +28,17 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
+  const [usernameColor, setUsernameColor] = useState<string>(
+    localStorage.getItem('username_color') || ''
+  );
   const isInMiniApp = isMiniApp();
   const lastMessageIdRef = useRef<string | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout>();
+  
+  const handleColorSelect = (color: string) => {
+    setUsernameColor(color);
+    localStorage.setItem('username_color', color);
+  };
 
   // Fetch latest messages for preview (no auth required)
   const { data: messages, isLoading, refetch } = useQuery<MessageWithAuthor[]>({
@@ -84,8 +92,11 @@ export default function Landing() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Orange/Gold Color Bar at Top */}
+      <div className="h-1 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-400" style={{ height: '4px' }} />
+      
       {/* Header with Theme and Language Switchers */}
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+      <div className="absolute top-5 left-4 right-4 flex justify-between items-center">
         <div className="flex items-center space-x-1">
           <Button
             variant="ghost"
@@ -174,6 +185,38 @@ export default function Landing() {
                     </div>
                   </div>
                 )}
+                
+                {/* Username Color Picker */}
+                <div className="mt-6 pt-6 border-t border-border">
+                  <Label className="text-sm font-medium mb-3 block">Username Color</Label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Choose a color for your username display
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { name: 'Blue', class: 'bg-blue-600', value: 'blue' },
+                      { name: 'Green', class: 'bg-green-600', value: 'green' },
+                      { name: 'Purple', class: 'bg-purple-600', value: 'purple' },
+                      { name: 'Orange', class: 'bg-orange-600', value: 'orange' },
+                      { name: 'Pink', class: 'bg-pink-600', value: 'pink' },
+                      { name: 'Indigo', class: 'bg-indigo-600', value: 'indigo' },
+                    ].map((color) => (
+                      <button
+                        key={color.value}
+                        onClick={() => handleColorSelect(color.value)}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${
+                          usernameColor === color.value
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        data-testid={`button-username-color-${color.value}`}
+                      >
+                        <div className={`w-8 h-8 rounded-full ${color.class}`} />
+                        <span className="text-xs">{color.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -221,7 +264,7 @@ export default function Landing() {
           </div>
           
           {/* Message Preview List */}
-          <div className="space-y-3" data-testid="list-preview-messages">
+          <div className="space-y-3 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-testid="list-preview-messages">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <SkeletonLoader key={i} />
@@ -259,6 +302,9 @@ export default function Landing() {
           )}
         </div>
       </div>
+      
+      {/* Orange/Gold Color Bar at Bottom */}
+      <div className="h-1 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-400" style={{ height: '4px' }} />
     </div>
   );
 }

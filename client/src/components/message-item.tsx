@@ -299,6 +299,24 @@ export function MessageItem({
   };
 
   const getUsernameColor = (handle: string) => {
+    // Check localStorage first for custom color
+    const savedColor = localStorage.getItem('username_color');
+    if (savedColor) {
+      const colorMap: { [key: string]: string } = {
+        'blue': 'text-blue-600',
+        'green': 'text-green-600',
+        'purple': 'text-purple-600',
+        'orange': 'text-orange-600',
+        'pink': 'text-pink-600',
+        'indigo': 'text-indigo-600',
+      };
+      // Only apply custom color if this is the current user's message
+      if (currentUserHumanId && message.authorHumanId === currentUserHumanId && colorMap[savedColor]) {
+        return colorMap[savedColor];
+      }
+    }
+    
+    // Fallback to hash-based color for other users
     const colors = [
       'text-blue-600',
       'text-green-600',
@@ -326,7 +344,7 @@ export function MessageItem({
     }
     // Apply alternating backgrounds only if index is provided
     if (index !== undefined) {
-      return index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+      return index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : 'bg-white dark:bg-gray-900/30';
     }
     return '';
   };
@@ -334,7 +352,7 @@ export function MessageItem({
   return (
     <>
       <div 
-        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 ${getBackgroundClass()}`}
+        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 border-b border-gray-200 dark:border-gray-700 ${getBackgroundClass()}`}
         data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
       >
         {/* Avatar - 40px */}
@@ -588,13 +606,6 @@ export function MessageItem({
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
-          )}
-          
-          {isPreview && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span className="text-base">⭐</span>
-              <span data-testid="text-preview-stars">{message.starsCount}</span>
-            </div>
           )}
         </div>
       </div>
