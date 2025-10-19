@@ -264,7 +264,7 @@ export default function Landing() {
           </div>
           
           {/* Message Preview List */}
-          <div className="space-y-3 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-testid="list-preview-messages">
+          <div className="space-y-0 border border-gray-300/50 dark:border-gray-600/50 rounded-lg overflow-hidden" data-testid="list-preview-messages">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <SkeletonLoader key={i} />
