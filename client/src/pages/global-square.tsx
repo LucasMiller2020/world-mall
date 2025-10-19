@@ -9,7 +9,8 @@ import { MessageItem } from "@/components/message-item";
 import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
-import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus, Crown, Check } from "lucide-react";
+import { OnlineUsersSidebar } from "@/components/online-users-sidebar";
+import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus, Crown, Check, ChevronRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
@@ -61,6 +62,7 @@ export default function GlobalSquare() {
   const [devMenuOpen, setDevMenuOpen] = useState(false);
   const [friendsDialogOpen, setFriendsDialogOpen] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
@@ -780,6 +782,22 @@ export default function GlobalSquare() {
           <span className="text-xs text-muted-foreground" data-testid="text-online-count">
             {presence?.roundedCount || '0'} humans online
           </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(true)}
+                className="h-auto p-1 ml-1"
+                data-testid="button-toggle-sidebar"
+              >
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>View online users</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -1048,6 +1066,13 @@ export default function GlobalSquare() {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      {/* Online Users Sidebar Sheet */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="right" className="w-[300px] sm:w-[350px] p-0">
+          <OnlineUsersSidebar presence={presence} />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
