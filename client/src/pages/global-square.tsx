@@ -894,7 +894,7 @@ export default function GlobalSquare() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="resize-none border border-gray-200 dark:border-gray-700"
+                className="resize-none border-2 border-gray-200 dark:border-gray-600"
                 rows={2}
                 maxLength={maxChars}
                 disabled={cooldownSeconds > 0}

@@ -253,7 +253,7 @@ export default function Landing() {
       
       {/* Read-only Preview Section */}
       <div className="flex-1 pb-6">
-        <div className="max-w-md mx-auto px-6 md:max-w-none md:mx-0 md:px-8">
+        <div className="max-w-3xl mx-auto px-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-foreground mb-2" data-testid="text-preview-header">
               {t('landing.previewHeader')}

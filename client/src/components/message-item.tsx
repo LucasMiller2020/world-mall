@@ -352,7 +352,7 @@ export function MessageItem({
   return (
     <>
       <div 
-        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 border-b border-gray-200 dark:border-gray-700 ${getBackgroundClass()}`}
+        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 border-2 border-gray-200 dark:border-gray-600 ${getBackgroundClass()}`}
         data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
       >
         {/* Avatar - 40px */}
