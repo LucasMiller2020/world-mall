@@ -181,13 +181,13 @@ export default function Landing() {
         <LanguageSwitcher />
       </div>
       
-      {/* Hero Section */}
-      <div className="px-6 pt-12 pb-8 text-center">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-3" data-testid="hero-title">
+      {/* Hero Section - Improved spacing and centering */}
+      <div className="max-w-md mx-auto px-6 md:max-w-2xl pt-16 md:pt-24 pb-12 text-center">
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-testid="hero-title">
             {t('app.name')}
           </h1>
-          <p className="text-lg text-muted-foreground leading-relaxed" data-testid="hero-subtitle">
+          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-2" data-testid="hero-subtitle">
             {t('app.tagline')}
           </p>
           <p className="text-base text-muted-foreground" data-testid="hero-description">
@@ -196,17 +196,16 @@ export default function Landing() {
         </div>
         
         {/* CTA Button */}
-        <div className="mb-8">
+        <div className="mb-12">
           <Button 
             onClick={handleEnterGlobalSquare}
-            className="w-full py-4 text-lg"
+            className="w-full md:w-auto md:px-12 py-6 text-lg font-semibold"
             size="lg"
             data-testid="button-enter-global-square"
           >
             {t('landing.enterGlobalSquare')}
           </Button>
         </div>
-
       </div>
       
       {/* Read-only Preview Section */}
