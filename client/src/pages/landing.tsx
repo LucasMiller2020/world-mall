@@ -211,17 +211,18 @@ export default function Landing() {
       
       {/* Read-only Preview Section */}
       <div className="flex-1 px-6 pb-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-foreground mb-2" data-testid="text-preview-header">
-            {t('landing.previewHeader')}
-          </h2>
-          <p className="text-sm text-muted-foreground" data-testid="text-preview-subtitle">
-            {t('landing.previewSubtitle')}
-          </p>
-        </div>
-        
-        {/* Message Preview List */}
-        <div className="space-y-3" data-testid="list-preview-messages">
+        <div className="max-w-3xl mx-auto md:max-w-none md:mx-0">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-foreground mb-2" data-testid="text-preview-header">
+              {t('landing.previewHeader')}
+            </h2>
+            <p className="text-sm text-muted-foreground" data-testid="text-preview-subtitle">
+              {t('landing.previewSubtitle')}
+            </p>
+          </div>
+          
+          {/* Message Preview List */}
+          <div className="space-y-3" data-testid="list-preview-messages">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <SkeletonLoader key={i} />
@@ -249,14 +250,15 @@ export default function Landing() {
           )}
         </div>
         
-        {/* Show More Indicator */}
-        {messages && messages.length > 0 && (
-          <div className="text-center mt-6">
-            <p className="text-sm text-muted-foreground" data-testid="text-join-conversation">
-              {t('landing.joinConversation')}
-            </p>
-          </div>
-        )}
+          {/* Show More Indicator */}
+          {messages && messages.length > 0 && (
+            <div className="text-center mt-6">
+              <p className="text-sm text-muted-foreground" data-testid="text-join-conversation">
+                {t('landing.joinConversation')}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
