@@ -210,7 +210,7 @@ export default function Landing() {
       </div>
       
       {/* Read-only Preview Section */}
-      <div className="flex-1 px-6 pb-6">
+      <div className="flex-1 px-6 md:px-8 pb-6">
         <div className="max-w-3xl mx-auto md:max-w-none md:mx-0">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-foreground mb-2" data-testid="text-preview-header">

@@ -802,7 +802,7 @@ export default function GlobalSquare() {
       </div>
 
       {/* Main Content Area: Single column centered layout on mobile, full-width on desktop */}
-      <div className="flex-1 flex flex-col overflow-hidden max-w-3xl mx-auto w-full md:max-w-none md:px-8">
+      <div className="flex-1 flex flex-col overflow-hidden max-w-3xl mx-auto md:mx-0 w-full md:max-w-none md:px-8">
         {/* Chat Area (Composer + Messages) */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Composer Section - More Compact */}
@@ -878,7 +878,7 @@ export default function GlobalSquare() {
       </div>
 
       {/* Messages Feed */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-3 md:py-4 space-y-3 md:space-y-2" data-testid="list-messages">
+      <div className="flex-1 overflow-y-auto py-3 md:py-4 space-y-3 md:space-y-2" data-testid="list-messages">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <SkeletonLoader key={i} />
