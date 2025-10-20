@@ -8,37 +8,14 @@
  * @returns true if running as Mini App, false if running in regular browser
  */
 export function isMiniApp(): boolean {
-  // Primary check: MiniKit bridge is injected by World App
+  // ONLY trust the MiniKit bridge - this is the definitive way to detect World App
+  // User agent checks and other heuristics cause false positives on Safari
   if (typeof window !== 'undefined' && window.minikit) {
+    console.log('[Platform] Detected as Mini App - window.minikit is present');
     return true;
   }
 
-  // Fallback: User agent detection for World App
-  if (typeof navigator !== 'undefined') {
-    const userAgent = navigator.userAgent.toLowerCase();
-    
-    // Check for World App user agent strings
-    if (userAgent.includes('world app') || 
-        userAgent.includes('worldapp') ||
-        userAgent.includes('world-app')) {
-      return true;
-    }
-
-    // Check for MiniKit in user agent
-    if (userAgent.includes('minikit')) {
-      return true;
-    }
-  }
-
-  // Additional check: Look for World App specific properties
-  if (typeof window !== 'undefined') {
-    // Check for any World App specific global properties that might be set
-    const globalAny = window as any;
-    if (globalAny.isWorldApp || globalAny.worldapp || globalAny.WorldApp) {
-      return true;
-    }
-  }
-
+  // Not a Mini App - use WebSocket for real-time sync
   return false;
 }
 
