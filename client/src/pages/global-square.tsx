@@ -751,57 +751,8 @@ export default function GlobalSquare() {
             className="absolute left-1/2 transform -translate-x-1/2 hover:opacity-80 transition-opacity"
             data-testid="button-title-home"
           >
-            <h1 className="text-lg font-semibold text-foreground flex items-center" data-testid="text-page-title">
+            <h1 className="text-lg font-semibold text-foreground" data-testid="text-page-title">
               Global Square
-              {/* Enhanced connection status indicator with pulsing animation */}
-              <Tooltip>
-                <TooltipTrigger>
-                  <span 
-                    className={`ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                      isConnected && !usePollingFallback 
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
-                        : secondsSinceLastPoll > 10 
-                        ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                        : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                    }`}
-                    data-testid="badge-connection-status"
-                  >
-                    <span className={`h-2 w-2 rounded-full ${
-                      isConnected && !usePollingFallback 
-                        ? 'bg-green-500 animate-pulse' 
-                        : secondsSinceLastPoll > 10
-                        ? 'bg-red-500'
-                        : 'bg-blue-500 animate-pulse'
-                    }`} />
-                    {isConnected && !usePollingFallback ? 'Live' : 
-                      secondsSinceLastPoll > 10 ? 'Syncing...' :
-                      lastPollTime ? `Synced ${secondsSinceLastPoll}s ago` : 'Syncing'
-                    }
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {usePollingFallback && (
-                    <div className="text-xs space-y-1">
-                      <p className="font-medium">📡 Universal Polling Mode</p>
-                      <p>Checking for new messages every 2.5s</p>
-                      {lastPollTime && (
-                        <p className="text-muted-foreground">
-                          Last sync: {lastPollTime.toLocaleTimeString()}
-                        </p>
-                      )}
-                      <p className="text-muted-foreground">
-                        Messages sync across all your devices
-                      </p>
-                    </div>
-                  )}
-                  {!usePollingFallback && isConnected && (
-                    <div className="text-xs">
-                      <p className="font-medium">⚡ Real-time Connection</p>
-                      <p className="text-muted-foreground">Messages appear instantly</p>
-                    </div>
-                  )}
-                </TooltipContent>
-              </Tooltip>
             </h1>
           </button>
           <div className="flex items-center space-x-1">
@@ -1170,6 +1121,57 @@ export default function GlobalSquare() {
               </Sheet>
             )}
           </div>
+        </div>
+        {/* Sync indicator - now below title */}
+        <div className="flex justify-center mb-2">
+          <Tooltip>
+            <TooltipTrigger>
+              <span 
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                  isConnected && !usePollingFallback 
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                    : secondsSinceLastPoll > 10 
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                }`}
+                data-testid="badge-connection-status"
+              >
+                <span className={`h-2 w-2 rounded-full ${
+                  isConnected && !usePollingFallback 
+                    ? 'bg-green-500 animate-pulse' 
+                    : secondsSinceLastPoll > 10
+                    ? 'bg-red-500'
+                    : 'bg-blue-500 animate-pulse'
+                }`} />
+                {isConnected && !usePollingFallback ? 'Live' : 
+                  secondsSinceLastPoll > 10 ? 'Syncing...' :
+                  lastPollTime ? `Synced ${secondsSinceLastPoll}s ago` : 'Syncing'
+                }
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {usePollingFallback && (
+                <div className="text-xs space-y-1">
+                  <p className="font-medium">📡 Universal Polling Mode</p>
+                  <p>Checking for new messages every 2.5s</p>
+                  {lastPollTime && (
+                    <p className="text-muted-foreground">
+                      Last sync: {lastPollTime.toLocaleTimeString()}
+                    </p>
+                  )}
+                  <p className="text-muted-foreground">
+                    Messages sync across all your devices
+                  </p>
+                </div>
+              )}
+              {!usePollingFallback && isConnected && (
+                <div className="text-xs">
+                  <p className="font-medium">⚡ Real-time Connection</p>
+                  <p className="text-muted-foreground">Messages appear instantly</p>
+                </div>
+              )}
+            </TooltipContent>
+          </Tooltip>
         </div>
         <div className="text-center space-y-2">
           {currentTopic ? (
