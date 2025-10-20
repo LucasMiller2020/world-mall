@@ -865,8 +865,10 @@ export type DmMessage = typeof dmMessages.$inferSelect;
 // Extended types for frontend
 export type MessageWithAuthor = Message & {
   authorHandle: string;
+  handle?: string; // Alias for authorHandle for backwards compatibility
   isStarredByUser?: boolean;
   userVote?: number | null; // 1 for upvote, -1 for downvote, null for no vote
+  reactions?: Record<string, { count: number; hasReacted: boolean }>; // Emoji reactions with counts and user state
 };
 
 export type HumanProfile = {

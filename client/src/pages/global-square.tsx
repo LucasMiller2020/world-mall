@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { queryClient as importedQueryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -713,24 +714,22 @@ export default function GlobalSquare() {
   const handleVoteMessage = async (messageId: string, voteType: number) => {
     try {
       const response = await apiRequest("POST", `/api/messages/${messageId}/vote`, { voteType });
+      const data = await response.json();
       
       // Update the message in the cache with new vote counts
-      queryClient.setQueryData(["/api/messages/global"], (oldData: any) => {
-        if (!oldData || !oldData.messages) return oldData;
+      queryClient.setQueryData(["/api/messages", "global"], (oldData: any) => {
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
-        return {
-          ...oldData,
-          messages: oldData.messages.map((msg: any) => 
-            msg.id === messageId 
-              ? { 
-                  ...msg, 
-                  upvotes: response.upvotes,
-                  downvotes: response.downvotes,
-                  userVote: response.userVote
-                }
-              : msg
-          )
-        };
+        return oldData.map((msg: any) => 
+          msg.id === messageId 
+            ? { 
+                ...msg, 
+                upvotes: data.upvotes,
+                downvotes: data.downvotes,
+                userVote: data.userVote
+              }
+            : msg
+        );
       });
     } catch (error: any) {
       toast({
@@ -745,22 +744,20 @@ export default function GlobalSquare() {
   const handleReactMessage = async (messageId: string, reactionType: string, action: 'add' | 'remove') => {
     try {
       const response = await apiRequest("POST", `/api/messages/${messageId}/react`, { reactionType, action });
+      const data = await response.json();
       
       // Update the message in the cache with new reaction data
-      queryClient.setQueryData(["/api/messages/global"], (oldData: any) => {
-        if (!oldData || !oldData.messages) return oldData;
+      queryClient.setQueryData(["/api/messages", "global"], (oldData: any) => {
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
-        return {
-          ...oldData,
-          messages: oldData.messages.map((msg: any) => 
-            msg.id === messageId 
-              ? { 
-                  ...msg, 
-                  reactions: response.reactions
-                }
-              : msg
-          )
-        };
+        return oldData.map((msg: any) => 
+          msg.id === messageId 
+            ? { 
+                ...msg, 
+                reactions: data.reactions
+              }
+            : msg
+        );
       });
     } catch (error: any) {
       toast({
@@ -1153,7 +1150,7 @@ export default function GlobalSquare() {
                       <Button 
                         onClick={() => {
                           // Find zoe_builder's humanId from messages 
-                          const zoeMsgs = messages.filter(m => m.handle === 'zoe_builder');
+                          const zoeMsgs = messages.filter(m => m.authorHandle === 'zoe_builder');
                           if (zoeMsgs.length > 0 && zoeMsgs[0].authorHumanId) {
                             unblockMutation.mutate(zoeMsgs[0].authorHumanId);
                           } else {
