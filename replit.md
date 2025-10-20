@@ -85,6 +85,14 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Debug Panel Enhancement**: Settings sheet now shows both window.WorldApp and window.minikit status for troubleshooting
 - **Reliable Detection**: Platform detection now works consistently on initial page load without async dependencies
 
+### Message Layout Redesign (Completed - October 20, 2025)
+- **3-Row Structure**: Reorganized message layout with username on top, full-width text, and actions/timestamp separated
+- **Action Buttons Left**: Upvote, downvote, and emoji reaction buttons grouped together on the left side for easier access
+- **Timestamp & Menu Right**: Message timestamp and overflow menu (...) positioned at bottom right corner
+- **Full-Width Text**: Message text now spans the full available width for better readability
+- **Improved Visual Hierarchy**: Clear separation between message content and interactive elements
+- **Maintained Functionality**: All existing features preserved (edit, delete, report, mute, block, emoji reactions)
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
