@@ -119,15 +119,6 @@ export function filterContent(text: string): ContentFilterResult {
     };
   }
 
-  // Check for excessive caps
-  if (hasExcessiveCaps(text)) {
-    return {
-      isValid: false,
-      reason: 'Please avoid excessive use of capital letters',
-      severity: 'low'
-    };
-  }
-
   return { isValid: true };
 }
 
@@ -278,15 +269,6 @@ function hasExcessiveRepetition(text: string): boolean {
   return false;
 }
 
-function hasExcessiveCaps(text: string): boolean {
-  const letters = text.replace(/[^a-zA-Z]/g, '');
-  if (letters.length < 5) return false; // Too short to judge
-  
-  const caps = text.replace(/[^A-Z]/g, '');
-  const capsRatio = caps.length / letters.length;
-  
-  return capsRatio > 0.7; // More than 70% caps
-}
 
 // Utility function to sanitize text for display
 export function sanitizeText(text: string): string {

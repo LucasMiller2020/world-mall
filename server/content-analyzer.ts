@@ -346,11 +346,6 @@ export class AdvancedContentAnalyzer {
       score += 30;
     }
     
-    // Check for excessive capitalization
-    if (this.hasExcessiveCapitalization(content)) {
-      score += 15;
-    }
-    
     return Math.min(score, 100);
   }
   
@@ -736,18 +731,6 @@ export class AdvancedContentAnalyzer {
     return false;
   }
   
-  /**
-   * Checks for excessive capitalization
-   */
-  private hasExcessiveCapitalization(content: string): boolean {
-    const letters = content.replace(/[^a-zA-Z]/g, '');
-    if (letters.length < 10) return false;
-    
-    const caps = content.replace(/[^A-Z]/g, '');
-    const capsRatio = caps.length / letters.length;
-    
-    return capsRatio > 0.7; // More than 70% caps
-  }
   
   /**
    * Generates semantic hash for similarity detection
