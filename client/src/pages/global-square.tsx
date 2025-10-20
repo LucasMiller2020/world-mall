@@ -107,10 +107,11 @@ export default function GlobalSquare() {
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
   
   // Version to force cache refresh
-  const appVersion = 'v2.1.0-debug-in-settings';
+  const appVersion = 'v2.2.1-worldapp-detection';
   
   // Platform debug info (shown in settings)
   const platformInfo = {
+    hasWorldApp: typeof window !== 'undefined' && !!(window as any).WorldApp,
     hasMinikit: typeof window !== 'undefined' && !!(window as any).minikit,
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
     isConnected,
@@ -801,6 +802,9 @@ export default function GlobalSquare() {
                   <div className="mt-6 pt-6 border-t border-border">
                     <Label className="text-sm font-medium mb-3 block">🔍 Debug Info</Label>
                     <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-400 rounded-lg text-xs font-mono space-y-1">
+                      <div className="text-yellow-900 dark:text-yellow-100">
+                        <strong>window.WorldApp:</strong> {platformInfo.hasWorldApp ? 'YES ✓' : 'NO ✗'}
+                      </div>
                       <div className="text-yellow-900 dark:text-yellow-100">
                         <strong>window.minikit:</strong> {platformInfo.hasMinikit ? 'YES ✓' : 'NO ✗'}
                       </div>

@@ -78,6 +78,13 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Bidirectional Sync**: Mac ↔ iPhone message synchronization now works in both directions
 - **Comprehensive Debugging**: Added platform detection logging and connection state monitoring
 
+### Platform Detection Fix (Completed - October 20, 2025)
+- **window.WorldApp Detection**: Updated platform.ts to detect World App using window.WorldApp object instead of window.minikit
+- **Immediate Availability**: window.WorldApp is set by World App on load, works without waiting for MiniKit.install()
+- **Race Condition Resolved**: Previous MiniKit.isInstalled() approach failed due to timing - required install() to complete first
+- **Debug Panel Enhancement**: Settings sheet now shows both window.WorldApp and window.minikit status for troubleshooting
+- **Reliable Detection**: Platform detection now works consistently on initial page load without async dependencies
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

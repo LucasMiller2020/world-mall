@@ -5,16 +5,26 @@
 
 /**
  * Checks if the app is running as a Mini App inside World App
+ * Uses window.WorldApp object which World App sets on initialization
+ * This works immediately without waiting for MiniKit.install()
  * @returns true if running as Mini App, false if running in regular browser
  */
 export function isMiniApp(): boolean {
-  // ONLY trust the MiniKit bridge - this is the definitive way to detect World App
-  // User agent checks and other heuristics cause false positives on Safari
-  if (typeof window !== 'undefined' && window.minikit) {
-    console.log('[Platform] Detected as Mini App - window.minikit is present');
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  
+  const globalAny = window as any;
+  
+  // World App sets window.WorldApp object when loading mini apps
+  // This is available immediately, unlike MiniKit.isInstalled() which requires install() first
+  const hasWorldApp = !!globalAny.WorldApp;
+  
+  if (hasWorldApp) {
+    console.log('[Platform] Detected as Mini App - window.WorldApp is present');
     return true;
   }
-
+  
   // Not a Mini App - use WebSocket for real-time sync
   return false;
 }
@@ -46,12 +56,13 @@ export function getPlatformDebugInfo(): string {
   const info: string[] = [];
   
   if (typeof window !== 'undefined') {
-    info.push(`window.minikit: ${!!window.minikit}`);
-    
     const globalAny = window as any;
+    // Primary detection method
+    info.push(`window.WorldApp: ${!!globalAny.WorldApp}`);
+    // Other potential indicators
+    info.push(`window.minikit: ${!!globalAny.minikit}`);
     info.push(`window.isWorldApp: ${!!globalAny.isWorldApp}`);
     info.push(`window.worldapp: ${!!globalAny.worldapp}`);
-    info.push(`window.WorldApp: ${!!globalAny.WorldApp}`);
   }
   
   if (typeof navigator !== 'undefined') {
