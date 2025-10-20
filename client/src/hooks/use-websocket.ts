@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { isMiniApp, getMiniAppPollInterval } from "@/lib/platform";
+import { fetchWithXHR } from "@/lib/xhr-fetch";
 
 export function useWebSocket(humanId?: string | null, room: string = 'global') {
   const [isConnected, setIsConnected] = useState(false);
@@ -15,6 +16,9 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
   const heartbeatTimeoutRef = useRef<NodeJS.Timeout>();
   const lastHeartbeatRef = useRef<number>(Date.now());
   const [usePollingFallback, setUsePollingFallback] = useState(false);
+  const rafIdRef = useRef<number>();
+  const pollCountRef = useRef(0);
+  const lastMessageHashRef = useRef<string>('');
   
   // Debug logging to diagnose platform detection issues
   useEffect(() => {
@@ -173,13 +177,81 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     }
   };
 
-  // Polling function for Mini App and fallback
-  const pollMessages = async () => {
+  // AGGRESSIVE POLLING WITH ALL FIXES
+  const pollMessages = async (source: string = 'interval') => {
+    const pollId = ++pollCountRef.current;
+    const timestamp = Date.now();
+    
     try {
-      console.log('[Polling] Executing poll at', new Date().toISOString());
+      console.log(`[POLL #${pollId}] ${source} - Starting at ${new Date().toISOString()}`);
       
-      // Force actual refetch, not just invalidation
-      // This is more aggressive and ensures the fetch actually happens
+      // FIX 1 & 2: Cache busting + XMLHttpRequest
+      const messagesUrl = `/api/messages/${room}?t=${timestamp}&r=${Math.random()}&poll=${pollId}&src=${source}`;
+      const presenceUrl = `/api/presence?t=${timestamp}&r=${Math.random()}&poll=${pollId}`;
+      
+      // Use XMLHttpRequest for better WebView support
+      const messagesResponse = await fetchWithXHR(messagesUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'X-Poll-ID': String(pollId),
+          'X-Source': source
+        }
+      });
+      
+      if (messagesResponse.ok) {
+        const messages = await messagesResponse.json();
+        console.log(`[POLL #${pollId}] Fetched ${messages?.length || 0} messages`);
+        
+        // FIX 4: Manual cache manipulation
+        queryClient.setQueryData(['/api/messages', room], messages);
+        
+        // FIX 7: LocalStorage sync
+        const messageHash = JSON.stringify(messages?.slice(0, 5)?.map((m: any) => m.id));
+        if (messageHash !== lastMessageHashRef.current) {
+          console.log(`[POLL #${pollId}] NEW MESSAGES DETECTED!`);
+          lastMessageHashRef.current = messageHash;
+          localStorage.setItem(`wm_messages_${room}`, JSON.stringify(messages));
+          localStorage.setItem(`wm_messages_time_${room}`, String(timestamp));
+          localStorage.setItem('wm_last_poll_success', String(timestamp));
+          
+          // Trigger storage event
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: `wm_messages_${room}`,
+            newValue: JSON.stringify(messages),
+            url: window.location.href
+          }));
+        }
+      } else {
+        console.error(`[POLL #${pollId}] Failed with status ${messagesResponse.status}`);
+        
+        // Fallback to localStorage
+        const cached = localStorage.getItem(`wm_messages_${room}`);
+        if (cached) {
+          queryClient.setQueryData(['/api/messages', room], JSON.parse(cached));
+        }
+      }
+      
+      // Fetch presence
+      const presenceResponse = await fetchWithXHR(presenceUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (presenceResponse.ok) {
+        const presence = await presenceResponse.json();
+        queryClient.setQueryData(['/api/presence'], presence);
+        localStorage.setItem('wm_presence', JSON.stringify(presence));
+      }
+      
+      // Also do traditional refetch as backup
       await Promise.all([
         queryClient.refetchQueries({ 
           queryKey: ['/api/messages', room],
@@ -191,9 +263,33 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
         })
       ]);
       
-      console.log('[Polling] Poll completed successfully');
+      console.log(`[POLL #${pollId}] Completed from ${source}`);
+      return true;
     } catch (error) {
-      console.error('[Polling] Error polling messages:', error);
+      console.error(`[POLL #${pollId}] Error from ${source}:`, error);
+      return false;
+    }
+  };
+  
+  // FIX 6: RequestAnimationFrame polling (runs in parallel)
+  const rafPolling = () => {
+    const now = Date.now();
+    const lastPoll = parseInt(localStorage.getItem('wm_last_raf_poll') || '0');
+    
+    // Poll every 2 seconds using RAF
+    if (now - lastPoll > 2000) {
+      localStorage.setItem('wm_last_raf_poll', String(now));
+      pollMessages('raf').then(() => {
+        // Continue RAF polling
+        if (isInMiniApp || usePollingFallback) {
+          rafIdRef.current = requestAnimationFrame(rafPolling);
+        }
+      });
+    } else {
+      // Continue checking
+      if (isInMiniApp || usePollingFallback) {
+        rafIdRef.current = requestAnimationFrame(rafPolling);
+      }
     }
   };
 
@@ -227,11 +323,14 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       
       startPolling();
       
+      // FIX 6: Start RequestAnimationFrame polling
+      rafPolling();
+      
       // Add visibility/focus handlers to restart polling when app comes back
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
           console.log('[Polling] App became visible, forcing immediate poll');
-          pollMessages();
+          pollMessages('visibility');
           startPolling(); // Restart interval
         } else {
           console.log('[Polling] App hidden, pausing polls');
@@ -243,12 +342,26 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       
       const handleFocus = () => {
         console.log('[Polling] Window focused, forcing immediate poll');
-        pollMessages();
+        pollMessages('focus');
         startPolling();
+      };
+      
+      // FIX 7: Listen for storage events from other tabs
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === `wm_messages_${room}` && e.newValue) {
+          console.log('[Storage] Messages updated from another tab');
+          try {
+            const messages = JSON.parse(e.newValue);
+            queryClient.setQueryData(['/api/messages', room], messages);
+          } catch (err) {
+            console.error('[Storage] Failed to parse messages:', err);
+          }
+        }
       };
       
       document.addEventListener('visibilitychange', handleVisibilityChange);
       window.addEventListener('focus', handleFocus);
+      window.addEventListener('storage', handleStorageChange);
       
       // Mark as connected for polling mode
       setIsConnected(true);
@@ -273,8 +386,12 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current);
         }
+        if (rafIdRef.current) {
+          cancelAnimationFrame(rafIdRef.current);
+        }
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('storage', handleStorageChange);
       };
     } else {
       // Use WebSocket for regular web

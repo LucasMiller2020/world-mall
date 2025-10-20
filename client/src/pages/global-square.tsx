@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { SkeletonLoader } from "@/components/skeleton-loader";
 import { ProfileModal } from "@/components/profile-modal";
 import { ReportModal } from "@/components/report-modal";
 import { OnlineUsersSidebar } from "@/components/online-users-sidebar";
-import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus, Crown, Check, ChevronRight } from "lucide-react";
+import { ArrowLeft, Briefcase, Shield, Users, Sun, Moon, Settings, MoreVertical, UserPlus, Crown, Check, ChevronRight, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
@@ -108,6 +108,12 @@ export default function GlobalSquare() {
   const [lastPollTime, setLastPollTime] = useState<Date | null>(null);
   const [pollStatus, setPollStatus] = useState<'active' | 'paused'>('active');
   const [secondsSinceLastPoll, setSecondsSinceLastPoll] = useState(0);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const lastMessageCountRef = useRef(0);
+  const pageLoadTimeRef = useRef(Date.now());
+  const autoReloadTimeoutRef = useRef<NodeJS.Timeout>();
+  const fetchCountRef = useRef(0);
   
   // Version to force cache refresh
   const appVersion = 'v2.2.1-worldapp-detection';
@@ -135,15 +141,45 @@ export default function GlobalSquare() {
     initSession();
   }, [isGuest]);
 
+  // FIX 8: Manual refresh function
+  const manualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setRefreshCount(prev => prev + 1);
+    console.log(`[MANUAL REFRESH #${refreshCount + 1}] User triggered refresh`);
+    
+    // Clear all caches
+    queryClient.clear();
+    
+    // Force refetch everything with cache busting
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['/api/messages', 'global'] }),
+      queryClient.refetchQueries({ queryKey: ['/api/presence'] }),
+      queryClient.refetchQueries({ queryKey: ['/api/me'] }),
+      queryClient.refetchQueries({ queryKey: ['/api/theme'] })
+    ]);
+    
+    toast({
+      title: "Refreshed",
+      description: `Force refreshed all data (attempt #${refreshCount + 1})`,
+      duration: 2000
+    });
+    
+    setTimeout(() => setIsRefreshing(false), 1000);
+  }, [queryClient, refreshCount, toast]);
+  
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery<MessageWithAuthor[]>({
     queryKey: ['/api/messages', 'global'],
     queryFn: async () => {
+      fetchCountRef.current++;
+      console.log(`[FETCH #${fetchCountRef.current}] Fetching messages...`);
       const res = await fetch('/api/messages/global');
       if (!res.ok) throw new Error('Failed to fetch messages');
       setLastPollTime(new Date()); // Update last poll time
-      console.log('[GlobalSquare] Messages fetched at', new Date().toISOString());
-      return res.json();
+      console.log(`[FETCH #${fetchCountRef.current}] Success - got messages at ${new Date().toISOString()}`);
+      const data = await res.json();
+      lastMessageCountRef.current = data?.length || 0;
+      return data;
     },
   });
 
@@ -190,6 +226,73 @@ export default function GlobalSquare() {
     
     return () => clearInterval(interval);
   }, [lastPollTime]);
+  
+  // FIX 5: Aggressive event-based polling
+  useEffect(() => {
+    let lastInteraction = Date.now();
+    let throttleTimeout: NodeJS.Timeout;
+    
+    const triggerPoll = (event: string) => {
+      const now = Date.now();
+      // Throttle to max once per second
+      if (now - lastInteraction > 1000) {
+        lastInteraction = now;
+        console.log(`[EVENT POLL] Triggered by ${event}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/messages', 'global'] });
+      }
+    };
+    
+    const handleTouch = () => triggerPoll('touch');
+    const handleClick = () => triggerPoll('click'); 
+    const handleFocus = () => triggerPoll('focus');
+    const handleScroll = () => {
+      clearTimeout(throttleTimeout);
+      throttleTimeout = setTimeout(() => triggerPoll('scroll'), 500);
+    };
+    
+    // Add event listeners
+    document.addEventListener('touchstart', handleTouch);
+    document.addEventListener('touchend', handleTouch); 
+    document.addEventListener('click', handleClick);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      document.removeEventListener('touchstart', handleTouch);
+      document.removeEventListener('touchend', handleTouch);
+      document.removeEventListener('click', handleClick);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('scroll', handleScroll);
+      clearTimeout(throttleTimeout);
+    };
+  }, [queryClient]);
+  
+  // FIX 10: Periodic page reload (nuclear option) - only for mobile WebView
+  useEffect(() => {
+    const isMobileWebView = /World App|worldapp|minikit/i.test(navigator.userAgent);
+    if (!isMobileWebView) return;
+    
+    const checkForStaleData = () => {
+      const now = Date.now();
+      const timeSinceLoad = now - pageLoadTimeRef.current;
+      
+      // After 30 seconds, if no new messages, reload
+      if (timeSinceLoad > 30000 && lastMessageCountRef.current === 0) {
+        console.warn('[NUCLEAR RELOAD] No messages after 30s, reloading page...');
+        localStorage.setItem('wm_reload_reason', 'no_messages_timeout');
+        window.location.reload();
+      }
+    };
+    
+    // Check every 30 seconds
+    autoReloadTimeoutRef.current = setInterval(checkForStaleData, 30000);
+    
+    return () => {
+      if (autoReloadTimeoutRef.current) {
+        clearInterval(autoReloadTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -639,6 +742,23 @@ export default function GlobalSquare() {
             </Tooltip>
           </h1>
           <div className="flex items-center space-x-1">
+            {/* FIX 8: Manual refresh button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={manualRefresh}
+              disabled={isRefreshing}
+              data-testid="button-refresh"
+              className={`relative ${isRefreshing ? 'animate-spin' : ''}`}
+            >
+              <RefreshCw className="h-4 w-4" />
+              {refreshCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {refreshCount}
+                </span>
+              )}
+            </Button>
+            
             {/* Mobile: Dark mode toggle button visible on mobile */}
             <Button
               variant="ghost"

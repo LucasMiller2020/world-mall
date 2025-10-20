@@ -121,6 +121,23 @@ function escapeHtml(value: string): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // FIX 3: Add aggressive cache headers to ALL responses
+  app.use((req, res, next) => {
+    // Force no caching on all API endpoints
+    if (req.path.startsWith('/api')) {
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Vary': 'Origin'
+      });
+    }
+    next();
+  });
+  
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
