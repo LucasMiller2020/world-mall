@@ -107,10 +107,9 @@ export default function GlobalSquare() {
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
   
   // Version to force cache refresh
-  const appVersion = 'v2.1.0-debug-platform';
+  const appVersion = 'v2.1.0-debug-in-settings';
   
-  // Platform debug info
-  const [showDebug, setShowDebug] = useState(false);
+  // Platform debug info (shown in settings)
   const platformInfo = {
     hasMinikit: typeof window !== 'undefined' && !!(window as any).minikit,
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
@@ -593,12 +592,11 @@ export default function GlobalSquare() {
           </Button>
           <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-foreground" data-testid="text-page-title">
             Global Square
-            {/* Connection status indicator */}
+            {/* Connection status indicator - check Settings for debug info */}
             <span 
-              className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer ${
+              className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                 isConnected && !usePollingFallback ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
               }`}
-              onClick={() => setShowDebug(!showDebug)}
               data-testid="badge-connection-status"
             >
               {isConnected && !usePollingFallback ? 'Live' : 'Polling'}
@@ -626,7 +624,7 @@ export default function GlobalSquare() {
               {activeTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
-            {/* Mobile: Dropdown menu with settings and friends */}
+            {/* Mobile: Dropdown menu with theme, settings, and more */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="md:hidden">
                 <Button variant="ghost" size="sm" data-testid="button-mobile-menu">
@@ -635,21 +633,36 @@ export default function GlobalSquare() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
+                  onClick={() => {
+                    // Quick theme toggle
+                    if (mode === 'light') {
+                      setMode('dark');
+                    } else if (mode === 'dark') {
+                      setMode('light');
+                    } else {
+                      setMode(activeTheme === 'light' ? 'dark' : 'light');
+                    }
+                  }}
+                  data-testid="dropdown-theme-toggle"
+                >
+                  {activeTheme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+                  Theme
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setThemeSheetOpen(true)}
+                  data-testid="dropdown-settings"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
                   onClick={() => setLocation('/room/work')}
                   data-testid="dropdown-work-mode"
                 >
                   <Briefcase className="h-4 w-4 mr-2" />
                   Work Mode
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setThemeSheetOpen(true)}
-                  data-testid="dropdown-theme-settings"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Theme Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setFriendsDialogOpen(true)}
                   data-testid="dropdown-friends"
@@ -783,6 +796,28 @@ export default function GlobalSquare() {
                       ))}
                     </div>
                   </div>
+                  
+                  {/* Platform Debug Info */}
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <Label className="text-sm font-medium mb-3 block">🔍 Debug Info</Label>
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-400 rounded-lg text-xs font-mono space-y-1">
+                      <div className="text-yellow-900 dark:text-yellow-100">
+                        <strong>window.minikit:</strong> {platformInfo.hasMinikit ? 'YES ✓' : 'NO ✗'}
+                      </div>
+                      <div className="text-yellow-900 dark:text-yellow-100">
+                        <strong>isConnected:</strong> {platformInfo.isConnected ? 'YES' : 'NO'}
+                      </div>
+                      <div className="text-yellow-900 dark:text-yellow-100">
+                        <strong>usePollingFallback:</strong> {platformInfo.usePollingFallback ? 'YES' : 'NO'}
+                      </div>
+                      <div className="text-yellow-900 dark:text-yellow-100">
+                        <strong>Badge should show:</strong> {platformInfo.usePollingFallback ? 'Polling (yellow)' : 'Live (green)'}
+                      </div>
+                      <div className="text-yellow-800 dark:text-yellow-200 truncate">
+                        <strong>User Agent:</strong> {platformInfo.userAgent.substring(0, 50)}...
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
@@ -910,21 +945,6 @@ export default function GlobalSquare() {
             </p>
           )}
         </div>
-        
-        {/* Debug Panel */}
-        {showDebug && (
-          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 rounded-lg text-xs font-mono">
-            <div className="font-bold mb-2 text-yellow-900 dark:text-yellow-100">🔍 Platform Debug Info (Click badge to hide)</div>
-            <div className="space-y-1 text-yellow-800 dark:text-yellow-200">
-              <div>window.minikit: <strong>{platformInfo.hasMinikit ? 'YES ✓' : 'NO ✗'}</strong></div>
-              <div>isConnected: <strong>{platformInfo.isConnected ? 'YES' : 'NO'}</strong></div>
-              <div>usePollingFallback: <strong>{platformInfo.usePollingFallback ? 'YES (should show Polling badge)' : 'NO (should show Live badge)'}</strong></div>
-              <div className="truncate">User Agent: <strong>{platformInfo.userAgent}</strong></div>
-              <div className="text-[10px] mt-2">Updated: {platformInfo.timestamp}</div>
-            </div>
-          </div>
-        )}
-        
         <div className="flex items-center justify-center gap-2 mt-2">
           <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'} ${isConnected ? 'animate-pulse' : ''}`} />
           <span className="text-xs text-muted-foreground" data-testid="text-online-count">
