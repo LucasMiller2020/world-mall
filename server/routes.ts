@@ -1173,26 +1173,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Get messages for a room
+  // Get messages for a room - ENHANCED WITH SYNC DIAGNOSTICS
   app.get('/api/messages/:room', async (req: AuthenticatedRequest, res) => {
+    const requestStartTime = Date.now();
+    const pollId = req.headers['x-poll-id'] as string || 'unknown';
+    const pollSource = req.headers['x-source'] as string || 'unknown';
+    
     try {
       const { room } = req.params;
       const limit = parseInt(req.query.limit as string) || 50;
       
-      if (!['global', 'work'].includes(room)) {
-        return res.status(400).json({ message: 'Invalid room' });
-      }
-
-      // Determine current user ID for filtering hidden messages
+      // Determine current user ID and session for logging
       const userRole = req.userRole || 'guest';
       const currentUserHumanId = req.humanId || req.guestSessionId 
         ? (userRole === 'guest' ? `guest_${req.guestSessionId}` : req.humanId!)
         : undefined;
+      const sessionId = req.guestSessionId || req.sessionID || 'NO_SESSION';
+      
+      // LOG: Incoming request details
+      console.log(`[GET /api/messages/${room}] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`[GET /api/messages/${room}] 📥 INCOMING REQUEST:`);
+      console.log(`[GET /api/messages/${room}]    Poll ID:   ${pollId}`);
+      console.log(`[GET /api/messages/${room}]    Source:    ${pollSource}`);
+      console.log(`[GET /api/messages/${room}]    Session:   ${sessionId.substring(0, 20)}...`);
+      console.log(`[GET /api/messages/${room}]    User:      ${currentUserHumanId?.substring(0, 30) || 'anonymous'}`);
+      console.log(`[GET /api/messages/${room}]    Role:      ${userRole}`);
+      console.log(`[GET /api/messages/${room}]    Timestamp: ${new Date().toISOString()}`);
+      
+      if (!['global', 'work'].includes(room)) {
+        console.log(`[GET /api/messages/${room}] ❌ Invalid room`);
+        return res.status(400).json({ message: 'Invalid room' });
+      }
 
       // For global room, fetch more messages to ensure we have recent activity for landing page
       // The storage.getMessages already returns the most recent messages
       const fetchLimit = room === 'global' ? Math.min(limit, 10) : limit;
+      
+      // LOG: Query execution details
+      console.log(`[GET /api/messages/${room}] 🔍 EXECUTING QUERY:`);
+      console.log(`[GET /api/messages/${room}]    Room:  ${room}`);
+      console.log(`[GET /api/messages/${room}]    Limit: ${fetchLimit}`);
+      
+      const queryStartTime = Date.now();
       let messages = await storage.getMessages(room, fetchLimit, currentUserHumanId);
+      const queryDuration = Date.now() - queryStartTime;
+      
+      // LOG: Query results before filtering
+      console.log(`[GET /api/messages/${room}] 📊 QUERY RESULTS (before filtering):`);
+      console.log(`[GET /api/messages/${room}]    Count:    ${messages.length}`);
+      console.log(`[GET /api/messages/${room}]    Duration: ${queryDuration}ms`);
+      
+      const preFilterCount = messages.length;
       
       // Filter messages based on mutes and blocks if user is authenticated
       if (req.humanId || req.guestSessionId) {
@@ -1212,7 +1243,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
                  !blockedUsers.includes(authorId) && 
                  !blockingUsers.includes(authorId);
         });
+        
+        // LOG: Filtering results
+        if (messages.length !== preFilterCount) {
+          console.log(`[GET /api/messages/${room}] 🔒 FILTERING APPLIED:`);
+          console.log(`[GET /api/messages/${room}]    Filtered out: ${preFilterCount - messages.length} messages`);
+        }
       }
+      
+      // LOG: Final response details
+      const messageIds = messages.slice(0, 5).map(m => m.id.substring(0, 8)).join(', ');
+      const messageAuthors = messages.slice(0, 5).map(m => m.authorHumanId?.substring(0, 20) || 'unknown').join(', ');
+      const totalDuration = Date.now() - requestStartTime;
+      
+      console.log(`[GET /api/messages/${room}] ✅ SENDING RESPONSE:`);
+      console.log(`[GET /api/messages/${room}]    Total Messages: ${messages.length}`);
+      console.log(`[GET /api/messages/${room}]    Message IDs (first 5): ${messageIds || 'none'}`);
+      console.log(`[GET /api/messages/${room}]    Authors (first 5): ${messageAuthors || 'none'}`);
+      console.log(`[GET /api/messages/${room}]    Total Duration: ${totalDuration}ms`);
+      console.log(`[GET /api/messages/${room}] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       
       // Disable caching to ensure fresh data on every poll
       res.set({
@@ -1224,7 +1273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(messages);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error(`[GET /api/messages/${room}] ❌ ERROR:`, error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });

@@ -177,13 +177,21 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     }
   };
 
-  // AGGRESSIVE POLLING WITH ALL FIXES
+  // AGGRESSIVE POLLING WITH ALL FIXES - ENHANCED WITH SYNC DIAGNOSTICS
   const pollMessages = async (source: string = 'interval') => {
     const pollId = ++pollCountRef.current;
     const timestamp = Date.now();
+    const sessionId = localStorage.getItem('wm_sid') || 'NO_SESSION';
     
     console.log(`[POLL #${pollId}] ========== STARTING POLL FROM ${source.toUpperCase()} ==========`);
-    console.log(`[POLL #${pollId}] Room: ${room}, Timestamp: ${timestamp}`);
+    console.log(`[POLL #${pollId}] 🕐 Timestamp: ${new Date(timestamp).toISOString()}`);
+    console.log(`[POLL #${pollId}] 🔑 Session ID: ${sessionId.substring(0, 20)}...`);
+    console.log(`[POLL #${pollId}] 📍 Room: ${room}`);
+    
+    // Get current local state count before poll
+    const currentLocalMessages = queryClient.getQueryData(['/api/messages', room]) as any[];
+    const localCount = currentLocalMessages?.length || 0;
+    console.log(`[POLL #${pollId}] 📊 Local state: ${localCount} messages`);
     
     try {
       // FIX 1 & 2: Cache busting + XMLHttpRequest with ABSOLUTE URL
@@ -258,6 +266,24 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       
       // Process messages if we got any
       if (messages) {
+        // ENHANCED DIAGNOSTICS: Log full response details
+        const backendCount = messages.length;
+        const messageIds = messages.map((m: any) => m.id.substring(0, 8)).join(', ');
+        const messageAuthors = messages.map((m: any) => {
+          const author = m.authorHumanId?.substring(0, 20) || 'unknown';
+          const isOtherSession = m.authorHumanId && m.authorHumanId !== sessionId && !m.authorHumanId.includes(sessionId);
+          return `${author}${isOtherSession ? '*' : ''}`;
+        }).join(', ');
+        
+        console.log(`[POLL #${pollId}] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`[POLL #${pollId}] 📊 SYNC COMPARISON:`);
+        console.log(`[POLL #${pollId}]    Local State:  ${localCount} messages`);
+        console.log(`[POLL #${pollId}]    Backend API:  ${backendCount} messages`);
+        console.log(`[POLL #${pollId}]    Diff:         ${backendCount - localCount > 0 ? '+' : ''}${backendCount - localCount}`);
+        console.log(`[POLL #${pollId}] 🆔 Message IDs: ${messageIds || 'none'}`);
+        console.log(`[POLL #${pollId}] 👤 Authors (* = other session): ${messageAuthors || 'none'}`);
+        console.log(`[POLL #${pollId}] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        
         console.log(`[POLL #${pollId}] 📝 Updating query cache with ${messages.length} messages`);
         
         // FIX 4: Manual cache manipulation
@@ -267,6 +293,8 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
         const messageHash = JSON.stringify(messages?.slice(0, 5)?.map((m: any) => m.id));
         if (messageHash !== lastMessageHashRef.current) {
           console.log(`[POLL #${pollId}] 🆕 NEW MESSAGES DETECTED! Hash changed`);
+          console.log(`[POLL #${pollId}]    Previous hash: ${lastMessageHashRef.current.substring(0, 50)}...`);
+          console.log(`[POLL #${pollId}]    New hash:      ${messageHash.substring(0, 50)}...`);
           lastMessageHashRef.current = messageHash;
           localStorage.setItem(`wm_messages_${room}`, JSON.stringify(messages));
           localStorage.setItem(`wm_messages_time_${room}`, String(timestamp));
@@ -279,7 +307,7 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
             url: window.location.href
           }));
         } else {
-          console.log(`[POLL #${pollId}] No new messages (hash unchanged)`);
+          console.log(`[POLL #${pollId}] ℹ️ No new messages detected (hash unchanged)`);
         }
       } else {
         console.error(`[POLL #${pollId}] ⚠️ No messages received from any source`);

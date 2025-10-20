@@ -73,6 +73,7 @@ export default function GlobalSquare() {
   const [usernameColor, setUsernameColor] = useState<string>(
     localStorage.getItem('username_color') || ''
   );
+  const [debugPanelOpen, setDebugPanelOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
@@ -86,6 +87,7 @@ export default function GlobalSquare() {
   
   // Check if developer menu should be shown
   const showDevMenu = () => {
+    if (typeof window === 'undefined') return false;
     const isDev = process.env.NODE_ENV !== 'production';
     const hasDevParam = window.location.search.includes('dev=1');
     return isDev || hasDevParam;
@@ -820,6 +822,19 @@ export default function GlobalSquare() {
               )}
             </Button>
 
+            {/* Debug Panel Toggle Button (dev mode only) */}
+            {showDevMenu() && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDebugPanelOpen(!debugPanelOpen)}
+                data-testid="button-debug-toggle"
+                className={debugPanelOpen ? 'bg-accent' : ''}
+              >
+                <Shield className="h-4 w-4" />
+              </Button>
+            )}
+
             {/* Mobile: Dropdown menu with Settings, Theme, Work Mode, and Friends */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="md:hidden">
@@ -1510,6 +1525,73 @@ export default function GlobalSquare() {
           <OnlineUsersSidebar presence={presence} />
         </SheetContent>
       </Sheet>
+
+      {/* Debug Panel (Dev Mode Only) - SYNC DIAGNOSTICS */}
+      {debugPanelOpen && (
+        <div className="fixed bottom-5 right-5 bg-card border border-border rounded-lg shadow-xl p-4 max-w-md z-50">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Sync Diagnostics
+            </h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDebugPanelOpen(false)}
+              className="h-6 w-6 p-0"
+            >
+              ×
+            </Button>
+          </div>
+          
+          <div className="space-y-2 text-xs font-mono">
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Session ID:</span>
+              <span className="text-primary truncate" title={sessionId || 'N/A'}>
+                {sessionId ? `${sessionId.substring(0, 12)}...` : 'N/A'}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Last Poll:</span>
+              <span className={`${secondsSinceLastPoll > 5 ? 'text-red-500' : 'text-green-500'}`}>
+                {lastPollTime ? `${secondsSinceLastPoll}s ago` : 'Never'}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Messages (State):</span>
+              <span className="text-foreground">{messages.length}</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Polling Status:</span>
+              <span className={`${usePollingFallback ? 'text-blue-500' : isConnected ? 'text-green-500' : 'text-red-500'}`}>
+                {usePollingFallback ? 'Polling' : isConnected ? 'WebSocket' : 'Disconnected'}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">Refresh Count:</span>
+              <span className="text-foreground">{refreshCount}</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-1">
+              <span className="text-muted-foreground">User ID:</span>
+              <span className="text-primary truncate" title={currentUserHumanId || 'N/A'}>
+                {currentUserHumanId ? `${currentUserHumanId.substring(0, 15)}...` : 'N/A'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+            <p className="mb-1">Check browser console for detailed poll logs</p>
+            <p className="text-[10px] opacity-70">
+              Look for [POLL #X] and [GET /api/messages/global] logs
+            </p>
+          </div>
+        </div>
+      )}
       
       {/* Orange/Gold Color Bar at Bottom */}
       <div className="h-1 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-400" style={{ height: '4px' }} />
