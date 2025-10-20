@@ -582,7 +582,28 @@ export default function GlobalSquare() {
             Global Square
           </h1>
           <div className="flex items-center space-x-1">
-            {/* Mobile: Dropdown menu combining theme toggle and settings */}
+            {/* Mobile: Dark mode toggle button visible on mobile */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                // Quick toggle between light and dark
+                if (mode === 'light') {
+                  setMode('dark');
+                } else if (mode === 'dark') {
+                  setMode('light');
+                } else {
+                  // If in system or autoSun mode, switch to the opposite of current theme
+                  setMode(activeTheme === 'light' ? 'dark' : 'light');
+                }
+              }}
+              data-testid="button-mobile-theme-toggle"
+              className="md:hidden"
+            >
+              {activeTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
+            {/* Mobile: Dropdown menu with settings and friends */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="md:hidden">
                 <Button variant="ghost" size="sm" data-testid="button-mobile-menu">
@@ -591,29 +612,21 @@ export default function GlobalSquare() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
-                  onClick={() => {
-                    // Quick toggle between light and dark
-                    if (mode === 'light') {
-                      setMode('dark');
-                    } else if (mode === 'dark') {
-                      setMode('light');
-                    } else {
-                      // If in system or autoSun mode, switch to the opposite of current theme
-                      setMode(activeTheme === 'light' ? 'dark' : 'light');
-                    }
-                  }}
-                  data-testid="dropdown-theme-toggle"
-                >
-                  {activeTheme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-                  {activeTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
                   onClick={() => setThemeSheetOpen(true)}
                   data-testid="dropdown-theme-settings"
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   Theme Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setFriendsDialogOpen(true)}
+                  data-testid="dropdown-friends"
+                  className="relative"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Friends
+                  <span className="ml-auto text-xs text-muted-foreground">Soon</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -756,7 +769,7 @@ export default function GlobalSquare() {
               variant="ghost"
               size="sm"
               onClick={() => setFriendsDialogOpen(true)}
-              className="relative"
+              className="relative hidden md:flex"
               data-testid="button-friends"
             >
               <UserPlus className="h-4 w-4" />
