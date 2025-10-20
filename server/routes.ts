@@ -134,6 +134,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('WebSocket client connected');
     wsClients.add(ws);
 
+    // Set up heartbeat for this connection
+    let pingInterval: NodeJS.Timeout | null = null;
+    
+    // Start sending heartbeat pings
+    const startHeartbeat = () => {
+      pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        } else {
+          // Connection is closed, clear the interval
+          if (pingInterval) {
+            clearInterval(pingInterval);
+            pingInterval = null;
+          }
+        }
+      }, 10000); // Send ping every 10 seconds
+    };
+    
+    // Start heartbeat immediately
+    startHeartbeat();
+
     ws.on('message', async (data) => {
       try {
         const message = JSON.parse(data.toString());
@@ -148,6 +169,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'presence_update',
             data: presence
           });
+        } else if (message.type === 'pong') {
+          // Client acknowledged the ping, connection is alive
+          // No action needed, just acknowledgment
         }
       } catch (error) {
         console.error('WebSocket message error:', error);
@@ -157,11 +181,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('close', () => {
       console.log('WebSocket client disconnected');
       wsClients.delete(ws);
+      // Clear heartbeat interval
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
     });
 
     ws.on('error', (error) => {
       console.error('WebSocket error:', error);
       wsClients.delete(ws);
+      // Clear heartbeat interval
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
     });
   });
 
