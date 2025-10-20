@@ -9,9 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, UserX, Volume2, Sun, Moon, Shield, Info, Trash2 } from "lucide-react";
+import { ArrowLeft, UserX, Volume2, Shield, Info, Trash2, Settings as SettingsIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useThemeContext } from "@/theme/ThemeProvider";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { apiRequest } from "@/lib/queryClient";
@@ -22,11 +21,10 @@ export default function Settings() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
   const { humanId, isVerified } = useWorldId();
   const { role, isGuest } = useAuthRole();
   const [sessionId] = useState<string | null>(getSessionIdSync());
-  const [activeTab, setActiveTab] = useState("blocked");
+  const [activeTab, setActiveTab] = useState("general");
   const [usernameColor, setUsernameColor] = useState<string>(
     localStorage.getItem('username_color') || ''
   );
@@ -197,28 +195,100 @@ export default function Settings() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-auto">
-            <TabsTrigger value="blocked" data-testid="tab-blocked" className="flex items-center gap-2 px-3 py-2.5">
-              <UserX className="h-4 w-4" />
-              <span>Blocked</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex gap-6">
+          {/* Vertical Sidebar Tabs */}
+          <TabsList className="flex flex-col h-fit w-full sm:w-[200px] bg-muted/30 p-1">
+            <TabsTrigger 
+              value="general" 
+              data-testid="tab-general" 
+              className="w-full justify-start gap-3 px-3 py-2.5 text-left data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <SettingsIcon className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium">General</span>
             </TabsTrigger>
-            <TabsTrigger value="muted" data-testid="tab-muted" className="flex items-center gap-2 px-3 py-2.5">
-              <Volume2 className="h-4 w-4" />
-              <span>Muted</span>
+            <TabsTrigger 
+              value="blocked" 
+              data-testid="tab-blocked" 
+              className="w-full justify-start gap-3 px-3 py-2.5 text-left data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <UserX className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium">Blocked</span>
             </TabsTrigger>
-            <TabsTrigger value="theme" data-testid="tab-theme" className="flex items-center gap-2 px-3 py-2.5">
-              {activeTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-              <span>Theme</span>
+            <TabsTrigger 
+              value="muted" 
+              data-testid="tab-muted" 
+              className="w-full justify-start gap-3 px-3 py-2.5 text-left data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Volume2 className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium">Muted</span>
             </TabsTrigger>
-            <TabsTrigger value="account" data-testid="tab-account" className="flex items-center gap-2 px-3 py-2.5">
-              <Info className="h-4 w-4" />
-              <span>Account</span>
+            <TabsTrigger 
+              value="account" 
+              data-testid="tab-account" 
+              className="w-full justify-start gap-3 px-3 py-2.5 text-left data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Info className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium">Account</span>
             </TabsTrigger>
           </TabsList>
+          
+          {/* Tab Content Area */}
+          <div className="flex-1">
+            {/* General Tab */}
+            <TabsContent value="general" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>General Settings</CardTitle>
+                  <CardDescription>
+                    Manage your general preferences and settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Username Color */}
+                  <div>
+                    <h3 className="text-sm font-medium mb-4">Username Color</h3>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Choose a color to personalize how your username appears in chat
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      {colorOptions.map(option => (
+                        <button
+                          key={option.value}
+                          onClick={() => handleColorSelect(option.value)}
+                          className={`relative p-3 rounded-lg border transition-all ${
+                            usernameColor === option.value
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                          data-testid={`color-option-${option.label.toLowerCase()}`}
+                        >
+                          <div
+                            className="font-semibold text-sm"
+                            style={{ color: option.value || undefined }}
+                          >
+                            {option.label}
+                          </div>
+                          {usernameColor === option.value && (
+                            <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-          {/* Blocked Users Tab */}
-          <TabsContent value="blocked" className="space-y-4">
+                  {/* More settings can be added here in the future */}
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-medium mb-2">More Settings Coming Soon</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Additional preferences and customization options will be available here in future updates.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Blocked Users Tab */}
+            <TabsContent value="blocked" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Blocked Users</CardTitle>
@@ -349,109 +419,7 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* Theme Tab */}
-          <TabsContent value="theme" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Appearance</CardTitle>
-                <CardDescription>
-                  Customize how Mall Space looks on your device
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Theme Mode */}
-                <div>
-                  <h3 className="text-sm font-medium mb-4">Theme Mode</h3>
-                  <RadioGroup value={mode} onValueChange={(value) => setMode(value as any)}>
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="light" id="light" />
-                        <Label htmlFor="light" className="flex-1">
-                          <div className="font-medium">Light</div>
-                          <div className="text-xs text-muted-foreground">Always use light theme</div>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="dark" id="dark" />
-                        <Label htmlFor="dark" className="flex-1">
-                          <div className="font-medium">Dark</div>
-                          <div className="text-xs text-muted-foreground">Always use dark theme</div>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="system" id="system" />
-                        <Label htmlFor="system" className="flex-1">
-                          <div className="font-medium">System</div>
-                          <div className="text-xs text-muted-foreground">Match your device settings</div>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="autoSun" id="autoSun" />
-                        <Label htmlFor="autoSun" className="flex-1">
-                          <div className="font-medium">Auto (Sunrise → Sunset)</div>
-                          <div className="text-xs text-muted-foreground">
-                            {sunTimes.sunrise && sunTimes.sunset ? (
-                              <span>
-                                Light from {sunTimes.sunrise.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to{' '}
-                                {sunTimes.sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            ) : (
-                              <span>Light from 7:00 to 19:00, dark otherwise</span>
-                            )}
-                          </div>
-                        </Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                  {mode === 'autoSun' && (
-                    <div className="mt-4 p-3 bg-muted rounded-lg">
-                      <div className="flex items-center gap-2">
-                        {activeTheme === 'light' ? (
-                          <Sun className="h-4 w-4 text-warning" />
-                        ) : (
-                          <Moon className="h-4 w-4 text-primary" />
-                        )}
-                        <span className="text-sm">
-                          Currently: {activeTheme === 'light' ? 'Daytime' : 'Nighttime'} mode
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Username Color */}
-                <div className="border-t pt-6">
-                  <h3 className="text-sm font-medium mb-4">Username Color</h3>
-                  <div className="grid grid-cols-5 gap-3">
-                    {colorOptions.map(option => (
-                      <button
-                        key={option.value}
-                        onClick={() => handleColorSelect(option.value)}
-                        className={`relative p-3 rounded-lg border transition-all ${
-                          usernameColor === option.value
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                        data-testid={`color-option-${option.label.toLowerCase()}`}
-                      >
-                        <div
-                          className="font-semibold text-sm"
-                          style={{ color: option.value || undefined }}
-                        >
-                          {option.label}
-                        </div>
-                        {usernameColor === option.value && (
-                          <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Account Tab */}
+            {/* Account Tab */}
           <TabsContent value="account" className="space-y-4">
             <Card>
               <CardHeader>
@@ -545,6 +513,7 @@ export default function Settings() {
               </CardContent>
             </Card>
           </TabsContent>
+          </div>
         </Tabs>
       </div>
     </div>
