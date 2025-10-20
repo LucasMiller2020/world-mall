@@ -105,6 +105,9 @@ export default function GlobalSquare() {
   const { humanId, isVerified, verify } = useWorldId();
   const { isConnected, usePollingFallback } = useWebSocket(humanId, 'global');
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
+  const [lastPollTime, setLastPollTime] = useState<Date | null>(null);
+  const [pollStatus, setPollStatus] = useState<'active' | 'paused'>('active');
+  const [secondsSinceLastPoll, setSecondsSinceLastPoll] = useState(0);
   
   // Version to force cache refresh
   const appVersion = 'v2.2.1-worldapp-detection';
@@ -138,6 +141,8 @@ export default function GlobalSquare() {
     queryFn: async () => {
       const res = await fetch('/api/messages/global');
       if (!res.ok) throw new Error('Failed to fetch messages');
+      setLastPollTime(new Date()); // Update last poll time
+      console.log('[GlobalSquare] Messages fetched at', new Date().toISOString());
       return res.json();
     },
   });
@@ -174,6 +179,17 @@ export default function GlobalSquare() {
       });
     }
   }, [userInfo]);
+
+  // Update seconds since last poll display
+  useEffect(() => {
+    if (!lastPollTime) return;
+    
+    const interval = setInterval(() => {
+      setSecondsSinceLastPoll(Math.floor((Date.now() - lastPollTime.getTime()) / 1000));
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [lastPollTime]);
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -594,14 +610,33 @@ export default function GlobalSquare() {
           <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-foreground" data-testid="text-page-title">
             Global Square
             {/* Connection status indicator - check Settings for debug info */}
-            <span 
-              className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                isConnected && !usePollingFallback ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-              }`}
-              data-testid="badge-connection-status"
-            >
-              {isConnected && !usePollingFallback ? 'Live' : 'Polling'}
-            </span>
+            <Tooltip>
+              <TooltipTrigger>
+                <span 
+                  className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                    isConnected && !usePollingFallback ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}
+                  data-testid="badge-connection-status"
+                >
+                  {isConnected && !usePollingFallback ? 'Live' : 
+                    lastPollTime ? `Polling (${secondsSinceLastPoll}s ago)` : 'Polling'
+                  }
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {usePollingFallback && (
+                  <div className="text-xs">
+                    <p>Using polling mode (2.5s interval)</p>
+                    {lastPollTime && (
+                      <p>Last update: {lastPollTime.toLocaleTimeString()}</p>
+                    )}
+                  </div>
+                )}
+                {!usePollingFallback && isConnected && (
+                  <p className="text-xs">Real-time WebSocket connection</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
           </h1>
           <div className="flex items-center space-x-1">
             {/* Mobile: Dark mode toggle button visible on mobile */}
