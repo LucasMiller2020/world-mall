@@ -62,6 +62,14 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Focus on Harmful Content**: Content moderation now focuses solely on genuinely harmful content (slurs, hate speech, explicit material)
 - **Expressive Formatting**: Users can express excitement and emotion through capitalization without being blocked
 
+### Mobile UX Improvements (Completed - October 20, 2025)
+- **WebSocket Reliability**: Enhanced connection monitoring with heartbeat detection (15s stale timeout)
+- **Aggressive Polling Fallback**: 1.5s polling interval activates when WebSocket fails for responsive mobile sync
+- **Automatic Recovery**: WebSocket reconnection attempts every 30s to restore real-time sync after network issues
+- **Mobile Header Dropdown**: Consolidated settings and theme toggle into single ⋮ menu button on mobile (<768px)
+- **Responsive Design**: Desktop (≥768px) keeps individual theme/settings buttons, mobile shows dropdown menu
+- **Cleaner Mobile Header**: Reduced header clutter by combining two buttons into vertical dropdown menu
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
