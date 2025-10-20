@@ -36,9 +36,7 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     
     // Skip WebSocket connection in Mini App, use polling instead
     if (isInMiniApp) {
-      console.log('[WebSocket] Running in Mini App - activating polling fallback');
-      setUsePollingFallback(true);
-      setIsConnected(true); // Mark as "connected" for polling mode
+      console.log('[WebSocket] Running in Mini App - polling handled by useEffect');
       return;
     }
 
@@ -193,6 +191,9 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       const source = isInMiniApp ? 'Mini App' : 'WebSocket fallback';
       console.log(`[Polling] Starting polling (${source}) with interval: ${pollInterval}ms`);
       
+      // Mark as using polling fallback for status badge
+      setUsePollingFallback(true);
+      
       // Initial poll
       pollMessages();
       
@@ -202,8 +203,9 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       // Mark as connected for polling mode
       setIsConnected(true);
       
-      // If in fallback mode, periodically try to reconnect WebSocket
-      if (usePollingFallback) {
+      // If in fallback mode (but NOT Mini App), periodically try to reconnect WebSocket
+      // Mini App should NEVER try to reconnect WebSocket - polling only
+      if (usePollingFallback && !isInMiniApp) {
         const reconnectInterval = setInterval(() => {
           console.log('[WebSocket] Attempting to reconnect from fallback mode...');
           reconnectAttemptsRef.current = 0; // Reset attempts
@@ -215,6 +217,13 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
         };
       }
+      
+      // For Mini App, return cleanup function to clear polling on unmount
+      return () => {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+        }
+      };
     } else {
       // Use WebSocket for regular web
       connect();
