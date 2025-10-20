@@ -12,14 +12,26 @@ export const humans = pgTable("humans", {
   preferredLanguage: varchar("preferred_language", { length: 10 }).default("en").notNull(), // User's preferred language (e.g., 'en', 'es', 'fr')
   role: varchar("role", { enum: ["guest", "verified", "admin"] }).default("guest").notNull(), // User role for access control
   // Profile fields
-  handle: varchar("handle", { length: 20 }), // Username/handle for profile
+  handle: varchar("handle", { length: 25 }), // Username/handle for profile (guest or verified)
+  handleReserved: boolean("handle_reserved").default(false).notNull(), // True if World ID user has reserved this username
   avatarUrl: varchar("avatar_url", { length: 255 }), // Profile avatar URL
   mbti: varchar("mbti", { length: 4 }), // MBTI personality type (e.g., "INTJ", "ENFP")
   zodiac: varchar("zodiac", { length: 12 }), // Zodiac sign (e.g., "Aries", "Pisces")
   age: integer("age"), // User age
+  // Online tracking for guest username availability
+  lastOnline: timestamp("last_online").defaultNow().notNull(), // Last activity timestamp
+  isOnline: boolean("is_online").default(false).notNull(), // True if user is currently online
+  // World ID re-verification tracking
+  lastVerification: timestamp("last_verification"), // Last time user verified with World ID
+  verificationInterval: integer("verification_interval").default(1).notNull(), // Current interval in years (1, 2, or 3)
+  nextVerificationDue: timestamp("next_verification_due"), // When user needs to re-verify
 }, (table) => ({
-  // Index on handle for fast profile lookups
+  // Index on handle for fast profile lookups and uniqueness checks
   handleIdx: index("humans_handle_idx").on(table.handle),
+  // Index for online user queries
+  isOnlineIdx: index("humans_is_online_idx").on(table.isOnline),
+  // Index for verification due date queries
+  nextVerificationDueIdx: index("humans_next_verification_due_idx").on(table.nextVerificationDue),
 }));
 
 // Message table - for both global and work rooms
