@@ -176,9 +176,22 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
   // Polling function for Mini App and fallback
   const pollMessages = async () => {
     try {
-      // Invalidate queries to trigger refetch
-      queryClient.invalidateQueries({ queryKey: ['/api/messages', room] });
-      queryClient.invalidateQueries({ queryKey: ['/api/presence'] });
+      console.log('[Polling] Executing poll at', new Date().toISOString());
+      
+      // Force actual refetch, not just invalidation
+      // This is more aggressive and ensures the fetch actually happens
+      await Promise.all([
+        queryClient.refetchQueries({ 
+          queryKey: ['/api/messages', room],
+          type: 'active'
+        }),
+        queryClient.refetchQueries({ 
+          queryKey: ['/api/presence'],
+          type: 'active'
+        })
+      ]);
+      
+      console.log('[Polling] Poll completed successfully');
     } catch (error) {
       console.error('[Polling] Error polling messages:', error);
     }
@@ -197,8 +210,45 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       // Initial poll
       pollMessages();
       
-      // Set up recurring polls
-      pollIntervalRef.current = setInterval(pollMessages, pollInterval);
+      // Set up recurring polls with more aggressive approach
+      let pollCount = 0;
+      const startPolling = () => {
+        // Clear any existing interval
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+        }
+        
+        pollIntervalRef.current = setInterval(() => {
+          pollCount++;
+          console.log(`[Polling] Poll #${pollCount} triggered`);
+          pollMessages();
+        }, pollInterval);
+      };
+      
+      startPolling();
+      
+      // Add visibility/focus handlers to restart polling when app comes back
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          console.log('[Polling] App became visible, forcing immediate poll');
+          pollMessages();
+          startPolling(); // Restart interval
+        } else {
+          console.log('[Polling] App hidden, pausing polls');
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+          }
+        }
+      };
+      
+      const handleFocus = () => {
+        console.log('[Polling] Window focused, forcing immediate poll');
+        pollMessages();
+        startPolling();
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleFocus);
       
       // Mark as connected for polling mode
       setIsConnected(true);
@@ -223,6 +273,8 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current);
         }
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', handleFocus);
       };
     } else {
       // Use WebSocket for regular web
