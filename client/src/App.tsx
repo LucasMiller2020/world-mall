@@ -19,6 +19,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import AdminTopics from "@/pages/admin-topics";
 import AdminSchedules from "@/pages/admin-schedules";
 import AdminModeration from "@/pages/admin-moderation";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/room/global" component={GlobalSquare} />
       <Route path="/room/work" component={WorkMode} />
+      <Route path="/settings" component={Settings} />
       <Route path="/capsule" component={Capsule} />
       <Route path="/ledger" component={Ledger} />
       <Route path="/invite/:code" component={InvitePage} />

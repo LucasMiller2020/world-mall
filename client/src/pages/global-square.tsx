@@ -793,25 +793,15 @@ export default function GlobalSquare() {
               )}
             </Button>
             
-            {/* Mobile: Dark mode toggle button visible on mobile */}
+            {/* Mobile: Settings button */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                // Quick toggle between light and dark
-                if (mode === 'light') {
-                  setMode('dark');
-                } else if (mode === 'dark') {
-                  setMode('light');
-                } else {
-                  // If in system or autoSun mode, switch to the opposite of current theme
-                  setMode(activeTheme === 'light' ? 'dark' : 'light');
-                }
-              }}
-              data-testid="button-mobile-theme-toggle"
+              onClick={() => setLocation('/settings')}
+              data-testid="button-mobile-settings"
               className="md:hidden"
             >
-              {activeTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <Settings className="h-4 w-4" />
             </Button>
 
             {/* Mobile: Dropdown menu with theme, settings, and more */}
@@ -839,14 +829,6 @@ export default function GlobalSquare() {
                   Theme
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => setThemeSheetOpen(true)}
-                  data-testid="dropdown-settings"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
                   onClick={() => setLocation('/room/work')}
                   data-testid="dropdown-work-mode"
                 >
@@ -865,30 +847,22 @@ export default function GlobalSquare() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Desktop: Individual buttons for theme toggle and settings */}
+            {/* Desktop: Settings button */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                // Quick toggle between light and dark
-                if (mode === 'light') {
-                  setMode('dark');
-                } else if (mode === 'dark') {
-                  setMode('light');
-                } else {
-                  // If in system or autoSun mode, switch to the opposite of current theme
-                  setMode(activeTheme === 'light' ? 'dark' : 'light');
-                }
-              }}
-              data-testid="button-theme-toggle"
+              onClick={() => setLocation('/settings')}
+              data-testid="button-desktop-settings"
               className="hidden md:flex"
             >
-              {activeTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <Settings className="h-4 w-4" />
             </Button>
-            <Sheet open={themeSheetOpen} onOpenChange={setThemeSheetOpen}>
+            
+            {/* Theme sheet (now hidden, keeping for backwards compatibility) */}
+            <Sheet open={false} onOpenChange={setThemeSheetOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" data-testid="button-theme-settings" className="hidden md:flex">
-                  <Settings className="h-4 w-4" />
+                <Button variant="ghost" size="sm" data-testid="button-theme-settings" className="hidden">
+                  <span></span>
                 </Button>
               </SheetTrigger>
               <SheetContent>
