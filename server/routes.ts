@@ -1354,13 +1354,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Create message for guest
+        console.log(`[POST /api/messages] ========== GUEST MESSAGE CREATION ==========`);
+        console.log(`[POST /api/messages] Room: ${messageData.room}`);
+        console.log(`[POST /api/messages] Text: ${messageData.text.substring(0, 50)}...`);
+        console.log(`[POST /api/messages] Author HumanId: ${humanId}`);
+        console.log(`[POST /api/messages] GuestSessionId: ${req.guestSessionId}`);
+        console.log(`[POST /api/messages] About to call storage.createMessage()...`);
+        
         const message = await storage.createMessage({
           ...messageData,
           authorHumanId: humanId,  // Field name is authorHumanId in the table
           authorRole: 'guest'
         });
         
+        console.log(`[POST /api/messages] ✅ GUEST MESSAGE CREATED SUCCESSFULLY!`);
+        console.log(`[POST /api/messages] Message ID: ${message.id}`);
+        console.log(`[POST /api/messages] Created at: ${message.createdAt}`);
+        console.log(`[POST /api/messages] Author: ${message.authorHumanId}`);
+        console.log(`[POST /api/messages] Hidden: ${message.isHidden}`);
+        
+        // Verify the message was saved by trying to retrieve it
+        console.log(`[POST /api/messages] Verifying message exists in storage...`);
+        const verifyMessage = await storage.getMessageById(message.id);
+        if (verifyMessage) {
+          console.log(`[POST /api/messages] ✅ VERIFIED - Message ${message.id} exists in storage!`);
+          console.log(`[POST /api/messages] Verified message text: ${verifyMessage.text.substring(0, 50)}...`);
+        } else {
+          console.error(`[POST /api/messages] ❌ ERROR - Message ${message.id} NOT FOUND after creation!`);
+        }
+        
         // Broadcast new message
+        console.log(`[POST /api/messages] Broadcasting new message to WebSocket clients`);
         broadcast({
           type: 'new_message',
           data: {
@@ -1509,11 +1533,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create message (it will be processed further by moderation system)
+      console.log(`[POST /api/messages] ========== VERIFIED USER MESSAGE CREATION ==========`);
+      console.log(`[POST /api/messages] Room: ${messageData.room}`);
+      console.log(`[POST /api/messages] Text: ${messageData.text.substring(0, 50)}...`);
+      console.log(`[POST /api/messages] Author HumanId: ${humanId}`);
+      console.log(`[POST /api/messages] UserRole: ${userRole}`);
+      console.log(`[POST /api/messages] About to call storage.createMessage()...`);
+      
       const message = await storage.createMessage({
         ...messageData,
         authorHumanId: humanId,  // Field name is authorHumanId in the table
         authorRole: userRole || 'verified'
       });
+      
+      console.log(`[POST /api/messages] ✅ VERIFIED MESSAGE CREATED SUCCESSFULLY!`);
+      console.log(`[POST /api/messages] Message ID: ${message.id}`);
+      console.log(`[POST /api/messages] Created at: ${message.createdAt}`);
+      console.log(`[POST /api/messages] Author: ${message.authorHumanId}`);
+      console.log(`[POST /api/messages] Hidden: ${message.isHidden}`);
+      
+      // Verify the message was saved
+      console.log(`[POST /api/messages] Verifying message exists in storage...`);
+      const verifyMessage = await storage.getMessageById(message.id);
+      if (verifyMessage) {
+        console.log(`[POST /api/messages] ✅ VERIFIED - Message ${message.id} exists in storage!`);
+        console.log(`[POST /api/messages] Verified message text: ${verifyMessage.text.substring(0, 50)}...`);
+      } else {
+        console.error(`[POST /api/messages] ❌ ERROR - Message ${message.id} NOT FOUND after creation!`);
+      }
 
       // No rate limit tracking - unlimited for everyone
 

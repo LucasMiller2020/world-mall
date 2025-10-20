@@ -182,29 +182,83 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     const pollId = ++pollCountRef.current;
     const timestamp = Date.now();
     
+    console.log(`[POLL #${pollId}] ========== STARTING POLL FROM ${source.toUpperCase()} ==========`);
+    console.log(`[POLL #${pollId}] Room: ${room}, Timestamp: ${timestamp}`);
+    
     try {
-      console.log(`[POLL #${pollId}] ${source} - Starting at ${new Date().toISOString()}`);
-      
-      // FIX 1 & 2: Cache busting + XMLHttpRequest
+      // FIX 1 & 2: Cache busting + XMLHttpRequest with ABSOLUTE URL
       const messagesUrl = `/api/messages/${room}?t=${timestamp}&r=${Math.random()}&poll=${pollId}&src=${source}`;
+      const fullMessagesUrl = `${window.location.protocol}//${window.location.host}${messagesUrl}`;
       const presenceUrl = `/api/presence?t=${timestamp}&r=${Math.random()}&poll=${pollId}`;
+      const fullPresenceUrl = `${window.location.protocol}//${window.location.host}${presenceUrl}`;
       
-      // Use XMLHttpRequest for better WebView support
-      const messagesResponse = await fetchWithXHR(messagesUrl, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-Poll-ID': String(pollId),
-          'X-Source': source
+      console.log(`[POLL #${pollId}] 📡 Fetching messages from: ${fullMessagesUrl}`);
+      console.log(`[POLL #${pollId}] About to call fetchWithXHR...`);
+      
+      let messagesResponse;
+      let messages;
+      
+      try {
+        // Try XHR first
+        messagesResponse = await fetchWithXHR(messagesUrl, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Poll-ID': String(pollId),
+            'X-Source': source
+          }
+        });
+        console.log(`[POLL #${pollId}] fetchWithXHR completed, status: ${messagesResponse.status}`);
+        
+        if (messagesResponse.ok) {
+          messages = await messagesResponse.json();
+          console.log(`[POLL #${pollId}] ✅ XHR SUCCESS - Fetched ${messages?.length || 0} messages`);
+        } else {
+          console.error(`[POLL #${pollId}] ❌ XHR failed with status ${messagesResponse.status}`);
         }
-      });
+      } catch (xhrError) {
+        console.error(`[POLL #${pollId}] ❌ XHR FAILED:`, xhrError);
+        console.log(`[POLL #${pollId}] 🔄 FALLBACK - Trying native fetch...`);
+        
+        // FALLBACK TO NATIVE FETCH
+        try {
+          const nativeResponse = await fetch(fullMessagesUrl, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'X-Poll-ID': String(pollId),
+              'X-Source': source + '-fallback'
+            }
+          });
+          
+          console.log(`[POLL #${pollId}] Native fetch status: ${nativeResponse.status}`);
+          
+          if (nativeResponse.ok) {
+            messages = await nativeResponse.json();
+            console.log(`[POLL #${pollId}] ✅ NATIVE FETCH SUCCESS - Fetched ${messages?.length || 0} messages`);
+          } else {
+            console.error(`[POLL #${pollId}] ❌ Native fetch failed with status ${nativeResponse.status}`);
+          }
+        } catch (fetchError) {
+          console.error(`[POLL #${pollId}] ❌ BOTH XHR AND NATIVE FETCH FAILED:`, fetchError);
+          
+          // Last resort: localStorage
+          const cached = localStorage.getItem(`wm_messages_${room}`);
+          if (cached) {
+            messages = JSON.parse(cached);
+            console.log(`[POLL #${pollId}] 📦 Using cached messages (${messages?.length || 0} items)`);
+          }
+        }
+      }
       
-      if (messagesResponse.ok) {
-        const messages = await messagesResponse.json();
-        console.log(`[POLL #${pollId}] Fetched ${messages?.length || 0} messages`);
+      // Process messages if we got any
+      if (messages) {
+        console.log(`[POLL #${pollId}] 📝 Updating query cache with ${messages.length} messages`);
         
         // FIX 4: Manual cache manipulation
         queryClient.setQueryData(['/api/messages', room], messages);
@@ -212,7 +266,7 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
         // FIX 7: LocalStorage sync
         const messageHash = JSON.stringify(messages?.slice(0, 5)?.map((m: any) => m.id));
         if (messageHash !== lastMessageHashRef.current) {
-          console.log(`[POLL #${pollId}] NEW MESSAGES DETECTED!`);
+          console.log(`[POLL #${pollId}] 🆕 NEW MESSAGES DETECTED! Hash changed`);
           lastMessageHashRef.current = messageHash;
           localStorage.setItem(`wm_messages_${room}`, JSON.stringify(messages));
           localStorage.setItem(`wm_messages_time_${room}`, String(timestamp));
@@ -224,34 +278,59 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
             newValue: JSON.stringify(messages),
             url: window.location.href
           }));
+        } else {
+          console.log(`[POLL #${pollId}] No new messages (hash unchanged)`);
         }
       } else {
-        console.error(`[POLL #${pollId}] Failed with status ${messagesResponse.status}`);
-        
-        // Fallback to localStorage
-        const cached = localStorage.getItem(`wm_messages_${room}`);
-        if (cached) {
-          queryClient.setQueryData(['/api/messages', room], JSON.parse(cached));
-        }
+        console.error(`[POLL #${pollId}] ⚠️ No messages received from any source`);
       }
       
-      // Fetch presence
-      const presenceResponse = await fetchWithXHR(presenceUrl, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
+      // Fetch presence with similar fallback logic
+      console.log(`[POLL #${pollId}] 📡 Fetching presence from: ${fullPresenceUrl}`);
       
-      if (presenceResponse.ok) {
-        const presence = await presenceResponse.json();
-        queryClient.setQueryData(['/api/presence'], presence);
-        localStorage.setItem('wm_presence', JSON.stringify(presence));
+      try {
+        const presenceResponse = await fetchWithXHR(presenceUrl, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (presenceResponse.ok) {
+          const presence = await presenceResponse.json();
+          console.log(`[POLL #${pollId}] ✅ Presence fetched successfully`);
+          queryClient.setQueryData(['/api/presence'], presence);
+          localStorage.setItem('wm_presence', JSON.stringify(presence));
+        }
+      } catch (presenceError) {
+        console.error(`[POLL #${pollId}] ❌ Presence fetch failed:`, presenceError);
+        
+        // Try native fetch for presence
+        try {
+          const nativePresence = await fetch(fullPresenceUrl, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          
+          if (nativePresence.ok) {
+            const presence = await nativePresence.json();
+            console.log(`[POLL #${pollId}] ✅ Presence fetched via native fetch`);
+            queryClient.setQueryData(['/api/presence'], presence);
+            localStorage.setItem('wm_presence', JSON.stringify(presence));
+          }
+        } catch (e) {
+          console.error(`[POLL #${pollId}] ❌ Presence native fetch also failed:`, e);
+        }
       }
       
       // Also do traditional refetch as backup
+      console.log(`[POLL #${pollId}] 🔄 Running traditional refetch as backup...`);
       await Promise.all([
         queryClient.refetchQueries({ 
           queryKey: ['/api/messages', room],
@@ -263,10 +342,11 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
         })
       ]);
       
-      console.log(`[POLL #${pollId}] Completed from ${source}`);
+      console.log(`[POLL #${pollId}] ✅ POLL COMPLETED from ${source}`);
       return true;
     } catch (error) {
-      console.error(`[POLL #${pollId}] Error from ${source}:`, error);
+      console.error(`[POLL #${pollId}] ❌ CRITICAL ERROR in polling from ${source}:`, error);
+      console.error(`[POLL #${pollId}] Stack trace:`, (error as Error).stack);
       return false;
     }
   };

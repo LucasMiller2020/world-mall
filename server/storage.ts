@@ -980,16 +980,29 @@ export class MemStorage implements IStorage {
   }
 
   async getMessages(room: string, limit = 50, currentUserHumanId?: string): Promise<MessageWithAuthor[]> {
+    console.log(`[MemoryStorage.getMessages] Fetching messages for room: ${room}, limit: ${limit}, currentUser: ${currentUserHumanId}`);
+    console.log(`[MemoryStorage.getMessages] Total messages in storage: ${this.messages.size}`);
+    
+    // FIX: For global room, show ALL non-hidden messages to EVERYONE
     const allMessages = Array.from(this.messages.values())
       .filter(m => {
-        // Show message if:
-        // 1. It's in the requested room
-        // 2. It's not hidden OR it's hidden but belongs to the current user
+        // CRITICAL FIX: For global room, show ALL non-hidden messages
+        if (room === 'global') {
+          const shouldShow = m.room === room && !m.isHidden;
+          console.log(`[MemoryStorage] Message ${m.id} by ${m.authorHumanId}: hidden=${m.isHidden}, showing=${shouldShow}`);
+          return shouldShow;
+        }
+        
+        // For other rooms, keep the original logic
         return m.room === room && (!m.isHidden || (currentUserHumanId && m.authorHumanId === currentUserHumanId));
       })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit)
       .reverse(); // Return in chronological order
+
+    console.log(`[MemoryStorage.getMessages] Returning ${allMessages.length} messages for room ${room}`);
+    const messageIds = allMessages.map(m => `${m.id.substring(0, 8)}...`).join(', ');
+    console.log(`[MemoryStorage.getMessages] Message IDs: ${messageIds}`);
 
     return allMessages.map(message => {
       const author = this.humans.get(message.authorHumanId);
@@ -1008,8 +1021,15 @@ export class MemStorage implements IStorage {
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    console.log(`[MemoryStorage.createMessage] ========== CREATING MESSAGE ==========`);
+    console.log(`[MemoryStorage.createMessage] Room: ${insertMessage.room}`);
+    console.log(`[MemoryStorage.createMessage] Text: ${insertMessage.text.substring(0, 50)}...`);
+    console.log(`[MemoryStorage.createMessage] Author: ${insertMessage.authorHumanId}`);
+    console.log(`[MemoryStorage.createMessage] Role: ${insertMessage.authorRole}`);
+    
+    const messageId = randomUUID();
     const message: Message = {
-      id: randomUUID(),
+      id: messageId,
       ...insertMessage,
       link: insertMessage.link || null,
       category: insertMessage.category || null,
@@ -1019,7 +1039,23 @@ export class MemStorage implements IStorage {
       reportsCount: 0,
       isHidden: false
     };
+    
+    console.log(`[MemoryStorage.createMessage] Generated message ID: ${messageId}`);
+    console.log(`[MemoryStorage.createMessage] Message object created, saving to memory...`);
+    
     this.messages.set(message.id, message);
+    
+    console.log(`[MemoryStorage.createMessage] ✅ MESSAGE SAVED TO MEMORY!`);
+    console.log(`[MemoryStorage.createMessage] Total messages in memory: ${this.messages.size}`);
+    
+    // Verify it was saved
+    const verifyMessage = this.messages.get(message.id);
+    if (verifyMessage) {
+      console.log(`[MemoryStorage.createMessage] ✅ VERIFIED - Message ${message.id} exists in memory storage!`);
+    } else {
+      console.error(`[MemoryStorage.createMessage] ❌ ERROR - Message ${message.id} NOT FOUND immediately after saving!`);
+    }
+    
     return message;
   }
 
@@ -3250,14 +3286,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessages(room: string, limit = 50, currentUserHumanId?: string): Promise<MessageWithAuthor[]> {
-    // Build the where condition: show messages that are not hidden OR belong to current user
-    const whereCondition = currentUserHumanId
-      ? and(
-          eq(messages.room, room),
-          sql`(${messages.isHidden} = false OR ${messages.authorHumanId} = ${currentUserHumanId})`
-        )
-      : and(eq(messages.room, room), eq(messages.isHidden, false));
+    console.log(`[DatabaseStorage.getMessages] Starting - room: ${room}, limit: ${limit}, currentUser: ${currentUserHumanId}`);
+    
+    // CRITICAL FIX: For global room, show ALL non-hidden messages to EVERYONE
+    // No filtering by authorHumanId!
+    let whereCondition;
+    
+    if (room === 'global') {
+      // For global room: show ALL non-hidden messages, regardless of author
+      console.log(`[DatabaseStorage.getMessages] GLOBAL ROOM - showing ALL non-hidden messages`);
+      whereCondition = and(
+        eq(messages.room, room),
+        eq(messages.isHidden, false)
+      );
+    } else {
+      // For other rooms: keep the original logic (show non-hidden OR user's own hidden)
+      whereCondition = currentUserHumanId
+        ? and(
+            eq(messages.room, room),
+            sql`(${messages.isHidden} = false OR ${messages.authorHumanId} = ${currentUserHumanId})`
+          )
+        : and(eq(messages.room, room), eq(messages.isHidden, false));
+    }
 
+    console.log(`[DatabaseStorage.getMessages] Executing query for room: ${room}`);
     const messageResults = await db
       .select({
         message: messages,
@@ -3269,15 +3321,25 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(messages.createdAt))
       .limit(limit);
 
+    console.log(`[DatabaseStorage.getMessages] Query returned ${messageResults.length} messages`);
+    
+    // Log each message for debugging
+    messageResults.forEach((result, index) => {
+      console.log(`[DatabaseStorage] Message ${index}: id=${result.message.id.substring(0, 8)}..., author=${result.message.authorHumanId.substring(0, 8)}..., hidden=${result.message.isHidden}`);
+    });
+
     // Reverse to get chronological order
     const sortedMessages = messageResults.reverse();
 
-    return sortedMessages.map(result => ({
+    const finalMessages = sortedMessages.map(result => ({
       ...result.message,
       // Use actual handle from database, fallback to generated handle if not set
       authorHandle: result.author?.handle || this.generateHandle(result.message.authorHumanId),
       isStarredByUser: false
     }));
+    
+    console.log(`[DatabaseStorage.getMessages] Returning ${finalMessages.length} messages for room ${room}`);
+    return finalMessages;
   }
 
   async getMessageById(id: string): Promise<Message | undefined> {
@@ -3286,8 +3348,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
-    const result = await db.insert(messages).values(insertMessage).returning();
-    return result[0];
+    console.log(`[DatabaseStorage.createMessage] ========== CREATING MESSAGE IN DATABASE ==========`);
+    console.log(`[DatabaseStorage.createMessage] Room: ${insertMessage.room}`);
+    console.log(`[DatabaseStorage.createMessage] Text: ${insertMessage.text.substring(0, 50)}...`);
+    console.log(`[DatabaseStorage.createMessage] Author: ${insertMessage.authorHumanId}`);
+    console.log(`[DatabaseStorage.createMessage] Role: ${insertMessage.authorRole}`);
+    console.log(`[DatabaseStorage.createMessage] Hidden: ${insertMessage.isHidden || false}`);
+    
+    console.log(`[DatabaseStorage.createMessage] About to execute INSERT query...`);
+    
+    try {
+      const result = await db.insert(messages).values(insertMessage).returning();
+      
+      if (!result || result.length === 0) {
+        console.error(`[DatabaseStorage.createMessage] ❌ ERROR - INSERT returned empty result!`);
+        throw new Error('Database INSERT failed - no result returned');
+      }
+      
+      const createdMessage = result[0];
+      console.log(`[DatabaseStorage.createMessage] ✅ MESSAGE INSERTED INTO DATABASE!`);
+      console.log(`[DatabaseStorage.createMessage] Generated ID: ${createdMessage.id}`);
+      console.log(`[DatabaseStorage.createMessage] Created at: ${createdMessage.createdAt}`);
+      
+      // Verify the message was actually saved
+      console.log(`[DatabaseStorage.createMessage] Verifying message exists in database...`);
+      const verifyResult = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.id, createdMessage.id))
+        .limit(1);
+      
+      if (verifyResult && verifyResult.length > 0) {
+        console.log(`[DatabaseStorage.createMessage] ✅ VERIFIED - Message ${createdMessage.id} exists in database!`);
+        console.log(`[DatabaseStorage.createMessage] Verified text: ${verifyResult[0].text.substring(0, 50)}...`);
+      } else {
+        console.error(`[DatabaseStorage.createMessage] ❌ ERROR - Message ${createdMessage.id} NOT FOUND in database after INSERT!`);
+      }
+      
+      return createdMessage;
+    } catch (error) {
+      console.error(`[DatabaseStorage.createMessage] ❌ CRITICAL ERROR during message creation:`, error);
+      console.error(`[DatabaseStorage.createMessage] Error details:`, JSON.stringify(error, null, 2));
+      throw error;
+    }
   }
 
   async updateMessage(messageId: string, text: string): Promise<Message | undefined> {
