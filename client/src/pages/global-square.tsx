@@ -612,6 +612,14 @@ export default function GlobalSquare() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
+                  onClick={() => setLocation('/room/work')}
+                  data-testid="dropdown-work-mode"
+                >
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Work Mode
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
                   onClick={() => setThemeSheetOpen(true)}
                   data-testid="dropdown-theme-settings"
                 >
@@ -781,6 +789,7 @@ export default function GlobalSquare() {
               size="sm"
               onClick={() => setLocation('/room/work')}
               data-testid="button-toggle-work-mode"
+              className="hidden md:flex"
             >
               <Briefcase className="h-4 w-4" />
             </Button>
