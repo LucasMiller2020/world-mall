@@ -355,7 +355,7 @@ export function MessageItem({
   return (
     <>
       <div 
-        className={`flex items-start gap-3 px-4 py-2 hover:bg-muted/5 ${isPreview ? 'border-b border-gray-200/50 dark:border-gray-600/30 last:border-0' : 'border-2 border-gray-200 dark:border-gray-700/30'} ${getBackgroundClass()}`}
+        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/5 ${isPreview ? 'border-b border-gray-200/50 dark:border-gray-600/30 last:border-0' : 'border-2 border-gray-200 dark:border-gray-700/30'} ${getBackgroundClass()}`}
         data-testid={isOwnHiddenMessage ? 'card-message-hidden' : 'card-message'}
       >
         {/* Avatar - 40px */}
@@ -367,6 +367,7 @@ export function MessageItem({
 
         {/* Content area - flex-1 */}
         <div className="flex-1 min-w-0">
+          {/* Row 1: Username + badges */}
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <button
               onClick={onProfileClick}
@@ -384,6 +385,7 @@ export function MessageItem({
             )}
           </div>
           
+          {/* Row 2: Message text */}
           {isEditing ? (
             <div className="mb-2">
               <Textarea
@@ -424,192 +426,199 @@ export function MessageItem({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-foreground" data-testid="text-message-content">
+            <p className="text-sm text-foreground mb-2" data-testid="text-message-content">
               {message.text}
               {message.editedAt && (
                 <span className="text-xs text-muted-foreground ml-2">(edited)</span>
               )}
             </p>
           )}
-        </div>
 
-        {/* Actions/timestamp on right side */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-xs text-muted-foreground mr-2" data-testid="text-message-timestamp">
-            {formatTimeAgo(message.createdAt)}
-          </span>
-          
-          {!isPreview && (
-            <>
-              {/* Upvote */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleUpvote}
-                className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
-                data-testid="button-upvote"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-
-              {/* Downvote */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDownvote}
-                className={`h-auto p-1 ${downvoted ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'}`}
-                data-testid="button-downvote"
-              >
-                <ArrowDown className="h-4 w-4" />
-              </Button>
-
-              {/* Emoji Reaction */}
-              <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
-                <PopoverTrigger asChild>
+          {/* Row 3: Actions on left, timestamp + menu on right */}
+          <div className="flex items-center justify-between">
+            {/* Left side: Upvote, downvote, emoji buttons */}
+            <div className="flex items-center gap-1">
+              {!isPreview && (
+                <>
+                  {/* Upvote */}
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-auto p-1 text-muted-foreground hover:text-foreground"
-                    data-testid="button-emoji-reaction"
+                    onClick={handleUpvote}
+                    className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
+                    data-testid="button-upvote"
                   >
-                    {selectedEmoji || <Smile className="h-4 w-4" />}
+                    <ArrowUp className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEmojiSelect('❤️')}
-                      className="h-auto p-1"
-                      data-testid="button-emoji-heart"
-                    >
-                      <span className="text-base">❤️</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEmojiSelect('👍')}
-                      className="h-auto p-1"
-                      data-testid="button-emoji-thumbs-up"
-                    >
-                      <span className="text-base">👍</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEmojiSelect('👎')}
-                      className="h-auto p-1"
-                      data-testid="button-emoji-thumbs-down"
-                    >
-                      <span className="text-base">👎</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEmojiSelect('😂')}
-                      className="h-auto p-1"
-                      data-testid="button-emoji-laugh"
-                    >
-                      <span className="text-base">😂</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEmojiSelect('❗')}
-                      className="h-auto p-1"
-                      data-testid="button-emoji-emphasized"
-                    >
-                      <span className="text-base">❗</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEmojiSelect('🎉')}
-                      className="h-auto p-1"
-                      data-testid="button-emoji-party"
-                    >
-                      <span className="text-base">🎉</span>
-                    </Button>
-                    <div className="border-l pl-1 ml-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleCustomEmoji}
-                            disabled
-                            className="h-auto p-1"
-                            data-testid="button-premium-emoji"
-                          >
-                            <Smile className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Premium emojis coming soon</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
 
-              {/* Overflow Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                  {/* Downvote */}
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-auto p-1 text-muted-foreground hover:text-foreground"
-                    data-testid="button-overflow-menu"
+                    onClick={handleDownvote}
+                    className={`h-auto p-1 ${downvoted ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'}`}
+                    data-testid="button-downvote"
                   >
-                    <MoreHorizontal className="h-4 w-4" />
+                    <ArrowDown className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {canEdit && !isEditing && (
-                    <>
-                      <DropdownMenuItem onClick={handleEditClick} data-testid="menuitem-edit">
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit ({Math.ceil((timeRemaining || 0) / 1000)}s)
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  {canDelete && !isEditing && (
-                    <>
-                      <DropdownMenuItem onClick={handleDeleteClick} data-testid="menuitem-delete">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete ({Math.ceil((timeRemainingDelete || 0) / 1000)}s)
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuItem onClick={onReportClick} data-testid="menuitem-report">
-                    <Flag className="h-4 w-4 mr-2" />
-                    Report
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={handleMute} 
-                    disabled={muteMutation.isPending}
-                    data-testid="menuitem-mute"
-                  >
-                    <VolumeX className="h-4 w-4 mr-2" />
-                    {muteMutation.isPending ? "Muting..." : "Mute"}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={handleBlock}
-                    disabled={blockMutation.isPending}
-                    data-testid="menuitem-block"
-                  >
-                    <Ban className="h-4 w-4 mr-2" />
-                    {blockMutation.isPending ? "Blocking..." : "Block user"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
+
+                  {/* Emoji Reaction */}
+                  <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                        data-testid="button-emoji-reaction"
+                      >
+                        {selectedEmoji || <Smile className="h-4 w-4" />}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-2" align="start">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('❤️')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-heart"
+                        >
+                          <span className="text-base">❤️</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('👍')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-thumbs-up"
+                        >
+                          <span className="text-base">👍</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('👎')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-thumbs-down"
+                        >
+                          <span className="text-base">👎</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('😂')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-laugh"
+                        >
+                          <span className="text-base">😂</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('❗')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-emphasized"
+                        >
+                          <span className="text-base">❗</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEmojiSelect('🎉')}
+                          className="h-auto p-1"
+                          data-testid="button-emoji-party"
+                        >
+                          <span className="text-base">🎉</span>
+                        </Button>
+                        <div className="border-l pl-1 ml-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCustomEmoji}
+                                disabled
+                                className="h-auto p-1"
+                                data-testid="button-premium-emoji"
+                              >
+                                <Smile className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Premium emojis coming soon</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </>
+              )}
+            </div>
+
+            {/* Right side: Timestamp + overflow menu */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground" data-testid="text-message-timestamp">
+                {formatTimeAgo(message.createdAt)}
+              </span>
+              
+              {!isPreview && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                      data-testid="button-overflow-menu"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {canEdit && !isEditing && (
+                      <>
+                        <DropdownMenuItem onClick={handleEditClick} data-testid="menuitem-edit">
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit ({Math.ceil((timeRemaining || 0) / 1000)}s)
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    {canDelete && !isEditing && (
+                      <>
+                        <DropdownMenuItem onClick={handleDeleteClick} data-testid="menuitem-delete">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete ({Math.ceil((timeRemainingDelete || 0) / 1000)}s)
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuItem onClick={onReportClick} data-testid="menuitem-report">
+                      <Flag className="h-4 w-4 mr-2" />
+                      Report
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={handleMute} 
+                      disabled={muteMutation.isPending}
+                      data-testid="menuitem-mute"
+                    >
+                      <VolumeX className="h-4 w-4 mr-2" />
+                      {muteMutation.isPending ? "Muting..." : "Mute"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={handleBlock}
+                      disabled={blockMutation.isPending}
+                      data-testid="menuitem-block"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      {blockMutation.isPending ? "Blocking..." : "Block user"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
