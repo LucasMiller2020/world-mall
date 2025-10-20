@@ -437,7 +437,7 @@ export function MessageItem({
           {/* Row 3: Actions on left, timestamp + menu on right */}
           <div className="flex items-center justify-between">
             {/* Left side: Upvote, downvote, emoji buttons */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center">
               {!isPreview && (
                 <>
                   {/* Upvote */}

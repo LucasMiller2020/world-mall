@@ -4,10 +4,31 @@
  */
 
 /**
+ * Detects if the current device is a mobile device
+ * Used as fallback when World App objects aren't available
+ */
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+  
+  const userAgent = navigator.userAgent || '';
+  
+  // Check for mobile indicators in user agent
+  const mobileIndicators = ['iPhone', 'iPad', 'iPod', 'Android', 'Mobile'];
+  const isMobileUA = mobileIndicators.some(indicator => userAgent.includes(indicator));
+  
+  // Check screen width as secondary indicator
+  const isSmallScreen = window.innerWidth < 768;
+  
+  return isMobileUA || isSmallScreen;
+}
+
+/**
  * Checks if the app is running as a Mini App inside World App
  * Uses window.WorldApp object which World App sets on initialization
- * This works immediately without waiting for MiniKit.install()
- * @returns true if running as Mini App, false if running in regular browser
+ * Falls back to mobile device detection if World App objects aren't available
+ * @returns true if running as Mini App or on mobile device, false if running in regular browser
  */
 export function isMiniApp(): boolean {
   if (typeof window === 'undefined') {
@@ -16,7 +37,7 @@ export function isMiniApp(): boolean {
   
   const globalAny = window as any;
   
-  // World App sets window.WorldApp object when loading mini apps
+  // Primary detection: World App sets window.WorldApp object when loading mini apps
   // This is available immediately, unlike MiniKit.isInstalled() which requires install() first
   const hasWorldApp = !!globalAny.WorldApp;
   
@@ -25,7 +46,16 @@ export function isMiniApp(): boolean {
     return true;
   }
   
-  // Not a Mini App - use WebSocket for real-time sync
+  // Fallback detection: If we're on a mobile device, assume it might be World App
+  // This handles cases where World App doesn't set the expected objects
+  const isMobile = isMobileDevice();
+  
+  if (isMobile) {
+    console.log('[Platform] Detected mobile device - forcing polling mode for reliability');
+    return true;
+  }
+  
+  // Not a Mini App and not mobile - use WebSocket for real-time sync
   return false;
 }
 
