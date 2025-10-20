@@ -1432,13 +1432,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // LOG: Final response details
       const messageIds = messages.slice(0, 5).map(m => m.id.substring(0, 8)).join(', ');
-      const messageAuthors = messages.slice(0, 5).map(m => m.authorHumanId?.substring(0, 20) || 'unknown').join(', ');
+      const messageAuthors = messages.slice(0, 5).map(m => (m as any).authorHandle || m.authorHumanId?.substring(0, 20) || 'unknown').join(', ');
       const totalDuration = Date.now() - requestStartTime;
       
       console.log(`[GET /api/messages/${room}] ✅ SENDING RESPONSE:`);
       console.log(`[GET /api/messages/${room}]    Total Messages: ${messages.length}`);
       console.log(`[GET /api/messages/${room}]    Message IDs (first 5): ${messageIds || 'none'}`);
-      console.log(`[GET /api/messages/${room}]    Authors (first 5): ${messageAuthors || 'none'}`);
+      console.log(`[GET /api/messages/${room}]    Author Handles (first 5): ${messageAuthors || 'none'}`);
       console.log(`[GET /api/messages/${room}]    Total Duration: ${totalDuration}ms`);
       console.log(`[GET /api/messages/${room}] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       

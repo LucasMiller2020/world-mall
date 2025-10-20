@@ -150,8 +150,9 @@ app.use((req, res, next) => {
   log('Topic rotation scheduler started');
   
   // Start online status cleanup job
-  // Mark users as offline if they haven't sent a heartbeat in 60 seconds
-  const HEARTBEAT_STALE_THRESHOLD = 60; // seconds
+  // Mark users as offline if they haven't sent a heartbeat in 150 seconds
+  // This tolerates browser throttling when tabs are backgrounded (3-5 missed heartbeats)
+  const HEARTBEAT_STALE_THRESHOLD = 150; // seconds (tolerates 3-5 missed 30s heartbeats)
   const CLEANUP_INTERVAL = 30000; // 30 seconds
   
   const cleanupInterval = setInterval(async () => {

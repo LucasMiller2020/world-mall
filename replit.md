@@ -38,6 +38,8 @@ The platform supports two authentication methods: guest access and World ID veri
 
 **Guest Login System**: Users can join immediately by choosing a username (2-25 characters, alphanumeric with underscores/hyphens). Guest usernames are only reserved while the user is online - when they leave, the username becomes available for others. This provides a Chat Ave-style frictionless onboarding experience.
 
+**Online Tracking**: The system uses a heartbeat mechanism to track online status. Clients send heartbeats every 30 seconds. The server runs a cleanup job every 30 seconds that marks users offline if they haven't sent a heartbeat in 150 seconds (tolerating 3-5 missed heartbeats). This threshold accounts for browser throttling when tabs are backgrounded, preventing false offline detections.
+
 **World ID Verification**: Users can verify with World ID to permanently reserve their username. Human verification is performed via World ID Cloud v2 server-side verification using SHA-256 nullifier hashing. The system relies on hashed nullifiers from World ID for unique identification, ensuring no personally identifiable information is stored.
 
 Session handling is managed by Express sessions with a PostgreSQL store. Guest sessions are tracked via cookies and online status is monitored to determine username availability.
