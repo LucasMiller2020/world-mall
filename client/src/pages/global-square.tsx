@@ -444,6 +444,40 @@ export default function GlobalSquare() {
     },
   });
 
+  // Unblock user mutation - EMERGENCY for unblocking zoe_builder
+  const unblockMutation = useMutation({
+    mutationFn: async (blockedHumanId: string) => {
+      const res = await fetch(`/api/blocks/${blockedHumanId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-World-ID-Proof': humanId || '',
+        },
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to unblock user');
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "User unblocked successfully",
+        description: "You can now see each other's messages again.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', 'global'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unblock user",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Report message mutation
   const reportMessageMutation = useMutation({
     mutationFn: async (messageId: string) => {
@@ -1052,17 +1086,52 @@ export default function GlobalSquare() {
                     </SheetDescription>
                   </SheetHeader>
                   <div className="py-4 space-y-4">
-                    <Button 
-                      onClick={resetGuestSession}
-                      variant="outline"
-                      className="w-full justify-start"
-                      data-testid="button-reset-guest-session"
-                    >
-                      Reset Guest Session
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      This will clear your guest session and reload the page, allowing you to test guest limits from scratch.
-                    </p>
+                    {/* Emergency unblock button */}
+                    <div className="space-y-2">
+                      <Button 
+                        onClick={() => {
+                          // Find zoe_builder's humanId from messages 
+                          const zoeMsgs = messages.filter(m => m.handle === 'zoe_builder');
+                          if (zoeMsgs.length > 0 && zoeMsgs[0].authorHumanId) {
+                            unblockMutation.mutate(zoeMsgs[0].authorHumanId);
+                          } else {
+                            // Try the hardcoded IDs we saw in the DB
+                            const possibleIds = [
+                              'guest_d3ba19f1-dd63-432c-bc90-8c4354c54d54', // zoe_builder from mobile
+                              'guest_52d24386-7e90-472e-b5bd-78698969c3c4'  // Another ID from DB
+                            ];
+                            // Try both IDs
+                            possibleIds.forEach(id => unblockMutation.mutate(id));
+                            toast({
+                              title: "Attempting to unblock",
+                              description: "Trying to unblock zoe_builder with known IDs",
+                            });
+                          }
+                        }}
+                        variant="destructive"
+                        className="w-full justify-start"
+                        data-testid="button-emergency-unblock"
+                      >
+                        🚨 EMERGENCY: Unblock zoe_builder
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Click this to immediately unblock zoe_builder. This is a temporary fix while we build the Settings page.
+                      </p>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <Button 
+                        onClick={resetGuestSession}
+                        variant="outline"
+                        className="w-full justify-start"
+                        data-testid="button-reset-guest-session"
+                      >
+                        Reset Guest Session
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        This will clear your guest session and reload the page, allowing you to test guest limits from scratch.
+                      </p>
+                    </div>
                   </div>
                 </SheetContent>
               </Sheet>
