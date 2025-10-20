@@ -445,7 +445,7 @@ export function MessageItem({
                     variant="ghost"
                     size="sm"
                     onClick={handleUpvote}
-                    className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
+                    className={`h-auto p-1 -ml-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
                     data-testid="button-upvote"
                   >
                     <ArrowUp className="h-4 w-4" />
