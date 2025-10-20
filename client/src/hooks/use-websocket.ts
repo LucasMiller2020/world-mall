@@ -28,6 +28,12 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
   }, []);
 
   const connect = () => {
+    console.log('[WebSocket] Connect function called', {
+      isInMiniApp,
+      currentConnection: wsRef.current?.readyState,
+      timestamp: new Date().toISOString()
+    });
+    
     // Skip WebSocket connection in Mini App, use polling instead
     if (isInMiniApp) {
       console.log('[WebSocket] Running in Mini App - using polling strategy');
@@ -36,6 +42,7 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     }
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('[WebSocket] Already connected, skipping');
       return;
     }
 
@@ -43,8 +50,10 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       
+      console.log('[WebSocket] Attempting to connect to:', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      console.log('[WebSocket] WebSocket object created');
 
       ws.onopen = () => {
         setIsConnected(true);

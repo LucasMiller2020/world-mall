@@ -105,6 +105,9 @@ export default function GlobalSquare() {
   const { humanId, isVerified, verify } = useWorldId();
   const { isConnected } = useWebSocket(humanId, 'global');
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
+  
+  // Version to force cache refresh
+  const appVersion = 'v2.0.0-websocket-fix';
   const [guestStats, setGuestStats] = useState<{ messagesRemaining: number; nextMessageIn: number } | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(getSessionIdSync());
 
@@ -580,6 +583,12 @@ export default function GlobalSquare() {
           </Button>
           <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-foreground" data-testid="text-page-title">
             Global Square
+            {/* Connection status indicator */}
+            <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+              isConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {isConnected ? 'Live' : 'Polling'}
+            </span>
           </h1>
           <div className="flex items-center space-x-1">
             {/* Mobile: Dark mode toggle button visible on mobile */}
