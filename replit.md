@@ -55,6 +55,13 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Landing Page Polish**: Improved hero spacing (pt-16 md:pt-24), larger headings (text-4xl md:text-5xl), responsive button sizing
 - **Mobile-First Responsive**: Centered max-w-md on mobile, full-width on desktop with appropriate padding
 
+### Content Filter Adjustments (Completed - October 20, 2025)
+- **Caps Filter Removed**: Eliminated excessive capitalization filter (>70% caps threshold) from both client and server
+- **Allow All-Caps Messages**: Users can now freely use capital letters for emphasis and excitement (e.g., "WHATTTT THIS IS SO FUNNNN")
+- **Casual Language Support**: Previously removed "hell" from blocklist to allow casual expressions like "hell yeah"
+- **Focus on Harmful Content**: Content moderation now focuses solely on genuinely harmful content (slurs, hate speech, explicit material)
+- **Expressive Formatting**: Users can express excitement and emotion through capitalization without being blocked
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
