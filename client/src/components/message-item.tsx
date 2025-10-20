@@ -25,6 +25,7 @@ interface MessageItemProps {
   onEditMessage?: (messageId: string, newText: string) => Promise<void>;
   onDeleteMessage?: (messageId: string) => Promise<void>;
   onVote?: (messageId: string, voteType: number) => Promise<void>;
+  onReact?: (messageId: string, reactionType: string, action: 'add' | 'remove') => Promise<void>;
 }
 
 export function MessageItem({
@@ -40,6 +41,7 @@ export function MessageItem({
   onEditMessage,
   onDeleteMessage,
   onVote,
+  onReact,
 }: MessageItemProps) {
   // Initialize vote state from message userVote property
   const [userVoteType, setUserVoteType] = useState<number | null>(message.userVote || null);
@@ -47,6 +49,9 @@ export function MessageItem({
   const [starred, setStarred] = useState(message.isStarredByUser || false);
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
   const [emojiPopoverOpen, setEmojiPopoverOpen] = useState(false);
+  
+  // Track user reactions for this message
+  const [messageReactions, setMessageReactions] = useState(message.reactions || {});
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(message.text);
   const [isSaving, setIsSaving] = useState(false);
@@ -200,9 +205,43 @@ export function MessageItem({
     }
   };
 
-  const handleEmojiSelect = (emoji: string) => {
-    setSelectedEmoji(emoji);
-    setEmojiPopoverOpen(false);
+  const handleReactionClick = async (reactionType: string) => {
+    if (!onReact) return;
+    
+    // Check if user has already reacted with this emoji
+    const hasReacted = messageReactions[reactionType]?.hasReacted || false;
+    const action = hasReacted ? 'remove' : 'add';
+    
+    // Optimistic update
+    const newReactions = { ...messageReactions };
+    if (!newReactions[reactionType]) {
+      newReactions[reactionType] = { count: 0, hasReacted: false };
+    }
+    
+    if (action === 'add') {
+      newReactions[reactionType].count++;
+      newReactions[reactionType].hasReacted = true;
+    } else {
+      newReactions[reactionType].count = Math.max(0, newReactions[reactionType].count - 1);
+      newReactions[reactionType].hasReacted = false;
+    }
+    
+    setMessageReactions(newReactions);
+    
+    try {
+      await onReact(message.id, reactionType, action);
+    } catch (error) {
+      // Revert optimistic update on error
+      setMessageReactions(messageReactions);
+      toast({
+        title: "Error",
+        description: "Failed to update reaction",
+        variant: "destructive",
+      });
+    }
+    
+    // Keep popover open for multiple reactions
+    // setEmojiPopoverOpen(false);
   };
 
   const handleCustomEmoji = () => {
@@ -556,7 +595,7 @@ export function MessageItem({
                         className="h-auto p-1 text-muted-foreground hover:text-foreground"
                         data-testid="button-emoji-reaction"
                       >
-                        {selectedEmoji || <Smile className="h-4 w-4" />}
+                        <Smile className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-2" align="start">
@@ -564,35 +603,17 @@ export function MessageItem({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEmojiSelect('❤️')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-heart"
-                        >
-                          <span className="text-base">❤️</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('👍')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-thumbs-up"
+                          onClick={() => handleReactionClick('like')}
+                          className={`h-auto p-1 ${messageReactions.like?.hasReacted ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
+                          data-testid="button-emoji-like"
                         >
                           <span className="text-base">👍</span>
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEmojiSelect('👎')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-thumbs-down"
-                        >
-                          <span className="text-base">👎</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmojiSelect('😂')}
-                          className="h-auto p-1"
+                          onClick={() => handleReactionClick('laugh')}
+                          className={`h-auto p-1 ${messageReactions.laugh?.hasReacted ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
                           data-testid="button-emoji-laugh"
                         >
                           <span className="text-base">😂</span>
@@ -600,40 +621,39 @@ export function MessageItem({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEmojiSelect('❗')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-emphasized"
+                          onClick={() => handleReactionClick('emphasize')}
+                          className={`h-auto p-1 ${messageReactions.emphasize?.hasReacted ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
+                          data-testid="button-emoji-emphasize"
                         >
                           <span className="text-base">❗</span>
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEmojiSelect('🎉')}
-                          className="h-auto p-1"
-                          data-testid="button-emoji-party"
+                          onClick={() => handleReactionClick('heart')}
+                          className={`h-auto p-1 ${messageReactions.heart?.hasReacted ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
+                          data-testid="button-emoji-heart"
                         >
-                          <span className="text-base">🎉</span>
+                          <span className="text-base">❤️</span>
                         </Button>
-                        <div className="border-l pl-1 ml-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleCustomEmoji}
-                                disabled
-                                className="h-auto p-1"
-                                data-testid="button-premium-emoji"
-                              >
-                                <Smile className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Premium emojis coming soon</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReactionClick('fire')}
+                          className={`h-auto p-1 ${messageReactions.fire?.hasReacted ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
+                          data-testid="button-emoji-fire"
+                        >
+                          <span className="text-base">🔥</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReactionClick('eyes')}
+                          className={`h-auto p-1 ${messageReactions.eyes?.hasReacted ? 'bg-blue-100 dark:bg-blue-900' : ''}`}
+                          data-testid="button-emoji-eyes"
+                        >
+                          <span className="text-base">👀</span>
+                        </Button>
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -704,6 +724,40 @@ export function MessageItem({
               )}
             </div>
           </div>
+          
+          {/* Row 4: Display reactions */}
+          {!isPreview && (
+            <div className="flex items-center gap-1 -ml-1 mt-1">
+              {Object.entries(messageReactions || {}).map(([reactionType, reactionData]) => {
+                if (!reactionData || reactionData.count === 0) return null;
+                
+                const emoji = reactionType === 'like' ? '👍' :
+                              reactionType === 'laugh' ? '😂' :
+                              reactionType === 'emphasize' ? '❗' :
+                              reactionType === 'heart' ? '❤️' :
+                              reactionType === 'fire' ? '🔥' :
+                              reactionType === 'eyes' ? '👀' : '';
+                
+                return (
+                  <Button
+                    key={reactionType}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleReactionClick(reactionType)}
+                    className={`h-auto px-1.5 py-0.5 text-xs ${
+                      reactionData.hasReacted 
+                        ? 'bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700' 
+                        : 'bg-muted border border-border'
+                    }`}
+                    data-testid={`reaction-${reactionType}`}
+                  >
+                    <span className="mr-0.5">{emoji}</span>
+                    <span>{reactionData.count}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

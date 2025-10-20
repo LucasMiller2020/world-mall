@@ -741,6 +741,36 @@ export default function GlobalSquare() {
       throw error;
     }
   };
+  
+  const handleReactMessage = async (messageId: string, reactionType: string, action: 'add' | 'remove') => {
+    try {
+      const response = await apiRequest("POST", `/api/messages/${messageId}/react`, { reactionType, action });
+      
+      // Update the message in the cache with new reaction data
+      queryClient.setQueryData(["/api/messages/global"], (oldData: any) => {
+        if (!oldData || !oldData.messages) return oldData;
+        
+        return {
+          ...oldData,
+          messages: oldData.messages.map((msg: any) => 
+            msg.id === messageId 
+              ? { 
+                  ...msg, 
+                  reactions: response.reactions
+                }
+              : msg
+          )
+        };
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update reaction",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
 
   // Calculate current user's humanId (for both guests and verified users)
   // Use useMemo to recalculate when sessionId or humanId changes
@@ -1398,6 +1428,7 @@ export default function GlobalSquare() {
                 onEditMessage={handleEditMessage}
                 onDeleteMessage={handleDeleteMessage}
                 onVote={handleVoteMessage}
+                onReact={handleReactMessage}
                 data-testid={`message-item-${msg.id}`}
               />
             </div>

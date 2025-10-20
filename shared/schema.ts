@@ -74,6 +74,22 @@ export const messageVotes = pgTable("message_votes", {
   userIdx: index("message_votes_user_idx").on(table.userId),
 }));
 
+// Message reactions table - tracks emoji reactions (like Discord/Slack)
+export const messageReactions = pgTable("message_reactions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  messageId: varchar("message_id").notNull().references(() => messages.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull(), // Session ID
+  reactionType: varchar("reaction_type").notNull(), // 'like', 'laugh', 'emphasize', 'heart', 'fire', 'eyes'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Unique constraint to ensure one of each reaction type per user per message
+  messageUserReactionUnique: uniqueIndex("message_reactions_message_user_reaction_unique_idx").on(table.messageId, table.userId, table.reactionType),
+  // Index for fast lookups by message
+  messageIdx: index("message_reactions_message_idx").on(table.messageId),
+  // Index for fast lookups by user
+  userIdx: index("message_reactions_user_idx").on(table.userId),
+}));
+
 // Rate limit tracking
 export const rateLimits = pgTable("rate_limits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -599,6 +615,12 @@ export const insertMessageVoteSchema = createInsertSchema(messageVotes).omit({
   createdAt: true,
 });
 
+// Message reactions insert schema
+export const insertMessageReactionSchema = createInsertSchema(messageReactions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Topic system insert schemas
 export const insertTopicSchema = createInsertSchema(topics).omit({
   id: true,
@@ -767,6 +789,9 @@ export type Report = typeof reports.$inferSelect;
 
 export type InsertMessageVote = z.infer<typeof insertMessageVoteSchema>;
 export type MessageVote = typeof messageVotes.$inferSelect;
+
+export type InsertMessageReaction = z.infer<typeof insertMessageReactionSchema>;
+export type MessageReaction = typeof messageReactions.$inferSelect;
 
 // Topic system types
 export type InsertTopic = z.infer<typeof insertTopicSchema>;

@@ -2023,6 +2023,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // React to a message with emoji reactions
+  app.post('/api/messages/:messageId/react', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Allow guests to react
+      const userRole = req.userRole || 'guest';
+      const userId = req.sessionId || req.guestSessionId || '';
+      const messageId = req.params.messageId;
+      const { reactionType, action } = req.body;
+      
+      // Validate reaction type
+      const validReactionTypes = ['like', 'laugh', 'emphasize', 'heart', 'fire', 'eyes'];
+      if (!validReactionTypes.includes(reactionType)) {
+        return res.status(400).json({
+          message: 'Invalid reaction type',
+          code: 'INVALID_REACTION_TYPE'
+        });
+      }
+      
+      // Validate action
+      if (!['add', 'remove'].includes(action)) {
+        return res.status(400).json({
+          message: 'Invalid action. Must be "add" or "remove"',
+          code: 'INVALID_ACTION'
+        });
+      }
+      
+      // Check if message exists
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).json({
+          message: 'Message not found',
+          code: 'MESSAGE_NOT_FOUND'
+        });
+      }
+      
+      if (action === 'add') {
+        // Add reaction
+        try {
+          await storage.createReaction({
+            messageId,
+            userId,
+            reactionType
+          });
+        } catch (error: any) {
+          // If unique constraint violation, the reaction already exists - that's ok
+          if (!error.message?.includes('unique')) {
+            throw error;
+          }
+        }
+      } else {
+        // Remove reaction
+        await storage.deleteReaction(messageId, userId, reactionType);
+      }
+      
+      // Get updated reaction data for the message
+      const reactions = await storage.getMessageReactions(messageId, userId);
+      
+      // Broadcast reaction update
+      broadcast({
+        type: 'message_reacted',
+        data: {
+          messageId: messageId,
+          reactions: reactions
+        }
+      });
+      
+      res.json({ reactions });
+    } catch (error) {
+      console.error('Error reacting to message:', error);
+      res.status(500).json({ message: 'Failed to react to message' });
+    }
+  });
+
   // Report a message (requires authentication)
   app.post('/api/reports', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {

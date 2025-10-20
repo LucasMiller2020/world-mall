@@ -9,6 +9,8 @@ import {
   type InsertStar,
   type MessageVote,
   type InsertMessageVote,
+  type MessageReaction,
+  type InsertMessageReaction,
   type Report,
   type InsertReport,
   type Theme,
@@ -151,6 +153,7 @@ import {
   messages,
   stars,
   messageVotes,
+  messageReactions,
   reports,
   themes,
   topics,
@@ -250,6 +253,12 @@ export interface IStorage {
   createOrUpdateVote(vote: InsertMessageVote): Promise<MessageVote>;
   deleteVote(messageId: string, userId: string): Promise<void>;
   updateMessageVoteCounts(messageId: string): Promise<void>;
+  
+  // Reaction operations
+  getUserReactionsForMessage(messageId: string, userId: string): Promise<MessageReaction[]>;
+  getMessageReactions(messageId: string): Promise<{ [key: string]: { count: number; hasReacted?: boolean } }>;
+  createReaction(reaction: InsertMessageReaction): Promise<MessageReaction>;
+  deleteReaction(messageId: string, userId: string, reactionType: string): Promise<void>;
   
   // Report operations
   createReport(report: InsertReport): Promise<Report>;
@@ -3356,12 +3365,55 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
+    // Get reactions for all messages
+    const messageReactionData = new Map<string, { [key: string]: { count: number; hasReacted?: boolean } }>();
+    if (sortedMessages.length > 0) {
+      const messageIds = sortedMessages.map(m => m.message.id);
+      
+      // Batch fetch all reactions for the messages
+      const allReactions = await db
+        .select({
+          messageId: messageReactions.messageId,
+          reactionType: messageReactions.reactionType,
+          userId: messageReactions.userId,
+        })
+        .from(messageReactions)
+        .where(sql`${messageReactions.messageId} IN (${sql.join(messageIds.map(id => sql`${id}`), sql`, `)})`);
+      
+      // Process reactions into the expected format
+      for (const msgResult of sortedMessages) {
+        const msgId = msgResult.message.id;
+        const msgReactions = allReactions.filter(r => r.messageId === msgId);
+        
+        const reactionData: { [key: string]: { count: number; hasReacted?: boolean } } = {};
+        const reactionTypes = ['like', 'laugh', 'emphasize', 'heart', 'fire', 'eyes'];
+        
+        for (const type of reactionTypes) {
+          const reactionsOfType = msgReactions.filter(r => r.reactionType === type);
+          reactionData[type] = {
+            count: reactionsOfType.length,
+            hasReacted: currentUserHumanId ? reactionsOfType.some(r => r.userId === currentUserHumanId) : false,
+          };
+        }
+        
+        messageReactionData.set(msgId, reactionData);
+      }
+    }
+
     const finalMessages = sortedMessages.map(result => ({
       ...result.message,
       // Use actual handle from database, fallback to generated handle if not set
       authorHandle: result.author?.handle || this.generateHandle(result.message.authorHumanId),
       isStarredByUser: false,
-      userVote: userVotes.get(result.message.id) || null
+      userVote: userVotes.get(result.message.id) || null,
+      reactions: messageReactionData.get(result.message.id) || {
+        like: { count: 0, hasReacted: false },
+        laugh: { count: 0, hasReacted: false },
+        emphasize: { count: 0, hasReacted: false },
+        heart: { count: 0, hasReacted: false },
+        fire: { count: 0, hasReacted: false },
+        eyes: { count: 0, hasReacted: false },
+      }
     }));
     
     console.log(`[DatabaseStorage.getMessages] Returning ${finalMessages.length} messages for room ${room}`);
@@ -3564,6 +3616,59 @@ export class DatabaseStorage implements IStorage {
       .update(messages)
       .set({ upvotes, downvotes })
       .where(eq(messages.id, messageId));
+  }
+
+  // Reaction operations
+  async getUserReactionsForMessage(messageId: string, userId: string): Promise<MessageReaction[]> {
+    return await db
+      .select()
+      .from(messageReactions)
+      .where(and(eq(messageReactions.messageId, messageId), eq(messageReactions.userId, userId)));
+  }
+
+  async getMessageReactions(messageId: string, userId?: string): Promise<{ [key: string]: { count: number; hasReacted?: boolean } }> {
+    // Get all reactions for the message
+    const allReactions = await db
+      .select({
+        reactionType: messageReactions.reactionType,
+        userId: messageReactions.userId,
+      })
+      .from(messageReactions)
+      .where(eq(messageReactions.messageId, messageId));
+    
+    // Count reactions by type and check if current user has reacted
+    const reactionData: { [key: string]: { count: number; hasReacted?: boolean } } = {};
+    const reactionTypes = ['like', 'laugh', 'emphasize', 'heart', 'fire', 'eyes'];
+    
+    for (const type of reactionTypes) {
+      const reactionsOfType = allReactions.filter(r => r.reactionType === type);
+      reactionData[type] = {
+        count: reactionsOfType.length,
+        hasReacted: userId ? reactionsOfType.some(r => r.userId === userId) : undefined,
+      };
+    }
+    
+    return reactionData;
+  }
+
+  async createReaction(reaction: InsertMessageReaction): Promise<MessageReaction> {
+    const result = await db
+      .insert(messageReactions)
+      .values(reaction)
+      .returning();
+    return result[0];
+  }
+
+  async deleteReaction(messageId: string, userId: string, reactionType: string): Promise<void> {
+    await db
+      .delete(messageReactions)
+      .where(
+        and(
+          eq(messageReactions.messageId, messageId),
+          eq(messageReactions.userId, userId),
+          eq(messageReactions.reactionType, reactionType)
+        )
+      );
   }
 
   async createReport(insertReport: InsertReport): Promise<Report> {
