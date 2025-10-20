@@ -64,6 +64,13 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
           lastHeartbeatRef.current = Date.now();
           
           switch (message.type) {
+            case 'ping':
+              // Server sent a ping, respond with pong to acknowledge
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'pong' }));
+              }
+              break;
+              
             case 'new_message':
               // Invalidate messages query to refetch
               queryClient.invalidateQueries({ queryKey: ['/api/messages', message.room] });
