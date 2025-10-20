@@ -107,7 +107,17 @@ export default function GlobalSquare() {
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
   
   // Version to force cache refresh
-  const appVersion = 'v2.0.0-websocket-fix';
+  const appVersion = 'v2.1.0-debug-platform';
+  
+  // Platform debug info
+  const [showDebug, setShowDebug] = useState(false);
+  const platformInfo = {
+    hasMinikit: typeof window !== 'undefined' && !!(window as any).minikit,
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+    isConnected,
+    usePollingFallback,
+    timestamp: new Date().toISOString()
+  };
   const [guestStats, setGuestStats] = useState<{ messagesRemaining: number; nextMessageIn: number } | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(getSessionIdSync());
 
@@ -584,9 +594,13 @@ export default function GlobalSquare() {
           <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-foreground" data-testid="text-page-title">
             Global Square
             {/* Connection status indicator */}
-            <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-              isConnected && !usePollingFallback ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-            }`}>
+            <span 
+              className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer ${
+                isConnected && !usePollingFallback ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+              }`}
+              onClick={() => setShowDebug(!showDebug)}
+              data-testid="badge-connection-status"
+            >
               {isConnected && !usePollingFallback ? 'Live' : 'Polling'}
             </span>
           </h1>
@@ -896,6 +910,21 @@ export default function GlobalSquare() {
             </p>
           )}
         </div>
+        
+        {/* Debug Panel */}
+        {showDebug && (
+          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 rounded-lg text-xs font-mono">
+            <div className="font-bold mb-2 text-yellow-900 dark:text-yellow-100">🔍 Platform Debug Info (Click badge to hide)</div>
+            <div className="space-y-1 text-yellow-800 dark:text-yellow-200">
+              <div>window.minikit: <strong>{platformInfo.hasMinikit ? 'YES ✓' : 'NO ✗'}</strong></div>
+              <div>isConnected: <strong>{platformInfo.isConnected ? 'YES' : 'NO'}</strong></div>
+              <div>usePollingFallback: <strong>{platformInfo.usePollingFallback ? 'YES (should show Polling badge)' : 'NO (should show Live badge)'}</strong></div>
+              <div className="truncate">User Agent: <strong>{platformInfo.userAgent}</strong></div>
+              <div className="text-[10px] mt-2">Updated: {platformInfo.timestamp}</div>
+            </div>
+          </div>
+        )}
+        
         <div className="flex items-center justify-center gap-2 mt-2">
           <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'} ${isConnected ? 'animate-pulse' : ''}`} />
           <span className="text-xs text-muted-foreground" data-testid="text-online-count">
