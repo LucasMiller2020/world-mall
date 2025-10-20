@@ -709,6 +709,11 @@ export interface IStorage {
   updatePremiumStatus(humanId: string, status: 'active' | 'expired' | 'cancelled'): Promise<void>;
   checkPremiumExpiration(humanId: string): Promise<boolean>;
   getActivePremiumUsers(): Promise<PremiumUser[]>;
+  
+  // Username and online status operations
+  getUserByHandle(handle: string, reservedOnly: boolean): Promise<Human | undefined>;
+  updateHumanHandle(humanId: string, handle: string, reserved: boolean): Promise<void>;
+  updateOnlineStatus(humanId: string, isOnline: boolean): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -4694,6 +4699,40 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(1);
     return result.length > 0;
+  }
+
+  // Username and online status operations
+  async getUserByHandle(handle: string, reservedOnly: boolean): Promise<Human | undefined> {
+    // Critical fix: Check for reserved OR online users to prevent duplicate usernames
+    const whereCondition = reservedOnly
+      ? and(eq(humans.handle, handle), eq(humans.handleReserved, true))
+      : and(
+          eq(humans.handle, handle),
+          sql`(${humans.handleReserved} = true OR ${humans.isOnline} = true)`
+        );
+    
+    // Order by reserved first, then online, to prioritize permanent reservations
+    const result = await db.select()
+      .from(humans)
+      .where(whereCondition)
+      .orderBy(desc(humans.handleReserved), desc(humans.isOnline))
+      .limit(1);
+    return result[0] || undefined;
+  }
+
+  async updateHumanHandle(humanId: string, handle: string, reserved: boolean): Promise<void> {
+    await db.update(humans)
+      .set({ handle, handleReserved: reserved })
+      .where(eq(humans.id, humanId));
+  }
+
+  async updateOnlineStatus(humanId: string, isOnline: boolean): Promise<void> {
+    await db.update(humans)
+      .set({ 
+        isOnline, 
+        lastOnline: new Date() 
+      })
+      .where(eq(humans.id, humanId));
   }
 }
 

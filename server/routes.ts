@@ -934,6 +934,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check username availability
+  app.get('/api/username/check', async (req, res) => {
+    try {
+      const username = req.query.username as string;
+      
+      if (!username || typeof username !== 'string') {
+        return res.status(400).json({
+          available: false,
+          reason: 'Username is required'
+        });
+      }
+
+      // Validate username format
+      if (username.length < 2) {
+        return res.status(400).json({
+          available: false,
+          reason: 'Username must be at least 2 characters'
+        });
+      }
+
+      if (username.length > 25) {
+        return res.status(400).json({
+          available: false,
+          reason: 'Username cannot exceed 25 characters'
+        });
+      }
+
+      if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+        return res.status(400).json({
+          available: false,
+          reason: 'Username can only contain letters, numbers, underscores, and hyphens'
+        });
+      }
+
+      // Check if username is reserved by a World ID user
+      const reservedUser = await storage.getUserByHandle(username, true); // only reserved
+      if (reservedUser) {
+        return res.json({
+          available: false,
+          reason: 'Username is reserved by a verified user'
+        });
+      }
+
+      // Check if username is currently in use by an online guest
+      const onlineUser = await storage.getUserByHandle(username, false); // check all users
+      if (onlineUser && onlineUser.isOnline) {
+        return res.json({
+          available: false,
+          reason: 'Username is currently in use'
+        });
+      }
+
+      return res.json({
+        available: true
+      });
+    } catch (error) {
+      console.error('Username check error:', error);
+      return res.status(500).json({
+        available: false,
+        reason: 'Failed to check username availability'
+      });
+    }
+  });
+
+  // Guest authentication - create session with chosen username
+  app.post('/api/auth/guest', handleGuestSession, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { username } = req.body;
+      
+      if (!username || typeof username !== 'string') {
+        return res.status(400).json({
+          message: 'Username is required'
+        });
+      }
+
+      const trimmedUsername = username.trim();
+
+      // Validate username format
+      if (trimmedUsername.length < 2) {
+        return res.status(400).json({
+          message: 'Username must be at least 2 characters'
+        });
+      }
+
+      if (trimmedUsername.length > 25) {
+        return res.status(400).json({
+          message: 'Username cannot exceed 25 characters'
+        });
+      }
+
+      if (!/^[a-zA-Z0-9_-]+$/.test(trimmedUsername)) {
+        return res.status(400).json({
+          message: 'Username can only contain letters, numbers, underscores, and hyphens'
+        });
+      }
+
+      // Check if username is reserved
+      const reservedUser = await storage.getUserByHandle(trimmedUsername, true);
+      if (reservedUser) {
+        return res.status(409).json({
+          message: 'Username is reserved by a verified user'
+        });
+      }
+
+      // Check if username is in use by another online user
+      const onlineUser = await storage.getUserByHandle(trimmedUsername, false);
+      if (onlineUser && onlineUser.isOnline) {
+        return res.status(409).json({
+          message: 'Username is currently in use'
+        });
+      }
+
+      // Get or create the guest session ID
+      const guestSessionId = req.guestSessionId;
+      if (!guestSessionId) {
+        return res.status(500).json({
+          message: 'Failed to create guest session'
+        });
+      }
+
+      // Use guest session ID as the human ID for guests
+      const humanId = `guest_${guestSessionId}`;
+
+      // Create or update human record with username
+      let human = await storage.getHuman(humanId);
+      if (!human) {
+        human = await storage.createHuman({
+          id: humanId,
+          role: 'guest',
+          handle: trimmedUsername,
+          handleReserved: false
+        });
+      } else {
+        // Update existing guest with new username
+        await storage.updateHumanHandle(humanId, trimmedUsername, false);
+      }
+
+      // Mark user as online
+      await storage.updateOnlineStatus(humanId, true);
+
+      return res.json({
+        ok: true,
+        humanId,
+        username: trimmedUsername,
+        role: 'guest'
+      });
+    } catch (error: any) {
+      console.error('Guest auth error:', error);
+      return res.status(500).json({
+        message: error.message || 'Failed to create guest session'
+      });
+    }
+  });
+
   // Me endpoint - returns current user info and role
   app.get('/api/me', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     const role = req.userRole || 'guest';
