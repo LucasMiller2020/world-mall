@@ -435,9 +435,9 @@ export function MessageItem({
           )}
 
           {/* Row 3: Actions on left, timestamp + menu on right */}
-          <div className="flex items-center justify-between">
-            {/* Left side: Upvote, downvote, emoji buttons */}
-            <div className="flex items-center">
+          <div className="flex items-start">
+            {/* Left side: Upvote, downvote, emoji buttons - aligned under username */}
+            <div className="flex items-center -ml-1">
               {!isPreview && (
                 <>
                   {/* Upvote */}
@@ -445,7 +445,7 @@ export function MessageItem({
                     variant="ghost"
                     size="sm"
                     onClick={handleUpvote}
-                    className={`h-auto p-1 -ml-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
+                    className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
                     data-testid="button-upvote"
                   >
                     <ArrowUp className="h-4 w-4" />
@@ -557,7 +557,7 @@ export function MessageItem({
             </div>
 
             {/* Right side: Timestamp + overflow menu */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 ml-auto">
               <span className="text-xs text-muted-foreground" data-testid="text-message-timestamp">
                 {formatTimeAgo(message.createdAt)}
               </span>

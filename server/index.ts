@@ -9,6 +9,10 @@ import { db } from "./db";
 import { humans } from "@shared/schema";
 
 const app = express();
+
+// Disable ETags globally to prevent 304 responses that break polling sync
+app.set('etag', false);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
