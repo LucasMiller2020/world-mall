@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/theme/ThemeProvider";
 import '@/lib/i18n'; // Initialize i18n
 
 import Landing from "@/pages/landing";
+import Join from "@/pages/join";
 import GlobalSquare from "@/pages/global-square";
 import WorkMode from "@/pages/work-mode";
 import Capsule from "@/pages/capsule";
@@ -28,6 +29,7 @@ function Router() {
       {/* Homepage with "Enter the Global Square" button */}
       <Route path="/" component={Landing} />
       <Route path="/landing" component={Landing} />
+      <Route path="/join" component={Join} />
       <Route path="/room/global" component={GlobalSquare} />
       <Route path="/room/work" component={WorkMode} />
       <Route path="/settings" component={Settings} />

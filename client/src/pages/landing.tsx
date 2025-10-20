@@ -86,8 +86,8 @@ export default function Landing() {
   }, [isInMiniApp, refetch]);
 
   const handleEnterGlobalSquare = () => {
-    // Allow immediate entry without verification
-    setLocation('/room/global');
+    // Navigate to join page instead of directly to chat
+    setLocation('/join');
   };
 
   return (
