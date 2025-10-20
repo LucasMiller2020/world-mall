@@ -32,6 +32,7 @@ function Router() {
       <Route path="/join" component={Join} />
       <Route path="/room/global" component={GlobalSquare} />
       <Route path="/room/work" component={WorkMode} />
+      <Route path="/settings/:category" component={Settings} />
       <Route path="/settings" component={Settings} />
       <Route path="/capsule" component={Capsule} />
       <Route path="/ledger" component={Ledger} />
