@@ -694,7 +694,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         merkle_root,
         verification_level,
         action,
-        signal
+        signal,
+        username
       } = req.body;
 
       actionForLog = action;
@@ -718,6 +719,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Missing required verification parameters',
           code: 'INVALID_REQUEST'
         });
+      }
+      
+      // Validate username if provided
+      if (username) {
+        const trimmedUsername = username.trim();
+        
+        // Validate username format
+        if (trimmedUsername.length < 2 || trimmedUsername.length > 25) {
+          return res.status(400).json({
+            message: 'Username must be between 2 and 25 characters',
+            code: 'INVALID_USERNAME'
+          });
+        }
+        
+        if (!/^[a-zA-Z0-9_-]+$/.test(trimmedUsername)) {
+          return res.status(400).json({
+            message: 'Username can only contain letters, numbers, underscores, and hyphens',
+            code: 'INVALID_USERNAME'
+          });
+        }
+        
+        // Check if username is already reserved
+        const reservedUser = await storage.getUserByHandle(trimmedUsername, true);
+        if (reservedUser) {
+          return res.status(409).json({
+            message: 'Username is already reserved by another verified user',
+            code: 'USERNAME_TAKEN'
+          });
+        }
+        
+        // Check if username is in use by an online user
+        const onlineUser = await storage.getUserByHandle(trimmedUsername, false);
+        if (onlineUser && onlineUser.isOnline) {
+          return res.status(409).json({
+            message: 'Username is currently in use',
+            code: 'USERNAME_TAKEN'
+          });
+        }
       }
       
       // Validate action matches policy
@@ -861,19 +900,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // New verification - create user and verification record
       const userId = crypto.createHash('sha256').update(nullifier_hash + 'user').digest('hex');
       
+      // Determine handle to use
+      const trimmedUsername = username?.trim();
+      const userHandle = trimmedUsername || `user_${userId.substring(0, 8)}`;
+      const handleReserved = !!trimmedUsername; // Reserve if user provided a username
+      
       // Create or update human
       let human = await storage.getHuman(userId);
       if (!human) {
-        // Generate a unique handle from the userId (first 8 chars)
-        const baseHandle = `user_${userId.substring(0, 8)}`;
         human = await storage.createHuman({ 
           id: userId, 
           role: 'verified',
-          handle: baseHandle
+          handle: userHandle,
+          handleReserved
         });
       } else {
+        // Update existing user
         await storage.updateHumanRole(userId, 'verified');
+        if (trimmedUsername) {
+          await storage.updateHumanHandle(userId, userHandle, handleReserved);
+        }
       }
+      
+      // Set re-verification schedule: 1 year initially, then 2 years, then 3 years recurring
+      const now = new Date();
+      let intervalYears = 1; // Start with 1 year
+      let nextVerificationDue = new Date(now);
+      nextVerificationDue.setFullYear(nextVerificationDue.getFullYear() + intervalYears);
+      
+      // Update verification tracking fields
+      await storage.updateVerificationTracking(userId, now, intervalYears, nextVerificationDue);
       
       // Create verification record
       await storage.createVerification({

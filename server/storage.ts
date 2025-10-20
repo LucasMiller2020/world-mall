@@ -714,6 +714,7 @@ export interface IStorage {
   getUserByHandle(handle: string, reservedOnly: boolean): Promise<Human | undefined>;
   updateHumanHandle(humanId: string, handle: string, reserved: boolean): Promise<void>;
   updateOnlineStatus(humanId: string, isOnline: boolean): Promise<void>;
+  updateVerificationTracking(humanId: string, lastVerification: Date, intervalYears: number, nextVerificationDue: Date): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -4731,6 +4732,21 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         isOnline, 
         lastOnline: new Date() 
+      })
+      .where(eq(humans.id, humanId));
+  }
+
+  async updateVerificationTracking(
+    humanId: string, 
+    lastVerification: Date, 
+    intervalYears: number, 
+    nextVerificationDue: Date
+  ): Promise<void> {
+    await db.update(humans)
+      .set({ 
+        lastVerification,
+        verificationInterval: intervalYears,
+        nextVerificationDue
       })
       .where(eq(humans.id, humanId));
   }

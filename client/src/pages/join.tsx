@@ -286,7 +286,7 @@ export default function Join() {
               </CardContent>
             </Card>
           ) : (
-            // World ID form (placeholder for now)
+            // World ID form with username selection
             <Card data-testid="card-worldid-form">
               <CardHeader>
                 <CardTitle>Verify with World ID</CardTitle>
@@ -295,21 +295,67 @@ export default function Join() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="worldid-username">Choose Username</Label>
+                  <Input
+                    id="worldid-username"
+                    type="text"
+                    placeholder="Enter username"
+                    value={username}
+                    onChange={(e) => handleUsernameChange(e.target.value)}
+                    onBlur={() => username && checkUsernameAvailability(username)}
+                    maxLength={25}
+                    disabled={isSubmitting}
+                    data-testid="input-worldid-username"
+                    className={usernameError ? "border-destructive" : ""}
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      {username.length}/25 characters
+                    </span>
+                    {isCheckingUsername && (
+                      <span className="text-muted-foreground">Checking...</span>
+                    )}
+                  </div>
+                  {usernameError && (
+                    <Alert variant="destructive" className="mt-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{usernameError}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
                 <Alert>
                   <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    World ID verification will be available soon. This will let you reserve your username permanently.
+                  <AlertDescription className="text-xs">
+                    World ID verification permanently reserves your username. 
+                    You'll need to re-verify: first after 1 year, then every 2 years, then every 3 years.
                   </AlertDescription>
                 </Alert>
 
-                <Button
-                  variant="outline"
-                  onClick={handleBack}
-                  className="w-full"
-                  data-testid="button-back-from-worldid"
-                >
-                  Back to Options
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={isSubmitting}
+                    data-testid="button-back-from-worldid"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      toast({
+                        title: "Coming Soon",
+                        description: "World ID verification will be available soon with username reservation."
+                      });
+                    }}
+                    disabled={isSubmitting || !!usernameError || !username.trim() || isCheckingUsername}
+                    className="flex-1"
+                    data-testid="button-verify-worldid"
+                  >
+                    {isSubmitting ? "Verifying..." : "Verify with World ID"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
