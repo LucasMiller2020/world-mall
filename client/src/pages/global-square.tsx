@@ -74,6 +74,10 @@ export default function GlobalSquare() {
     localStorage.getItem('username_color') || ''
   );
   const [debugPanelOpen, setDebugPanelOpen] = useState(false);
+  const [showVoting, setShowVoting] = useState<boolean>(() => {
+    const saved = localStorage.getItem('showVoting');
+    return saved !== null ? saved === 'true' : true; // Default to true
+  });
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mode, setMode, activeTheme, sunTimes } = useThemeContext();
@@ -142,6 +146,18 @@ export default function GlobalSquare() {
     };
     initSession();
   }, [isGuest]);
+
+  // Listen for voting preference changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'showVoting') {
+        setShowVoting(e.newValue !== null ? e.newValue === 'true' : true);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // FIX 8: Manual refresh function
   const manualRefresh = useCallback(async () => {
@@ -1374,6 +1390,7 @@ export default function GlobalSquare() {
                 message={msg}
                 index={idx}
                 currentUserHumanId={currentUserHumanId}
+                showVoting={showVoting}
                 onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
                 onStarClick={() => handleStarMessage(msg.id)}
                 onReportClick={() => handleReportMessage(msg.id)}

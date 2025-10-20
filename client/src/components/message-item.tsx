@@ -17,6 +17,7 @@ interface MessageItemProps {
   index?: number;
   isPreview?: boolean;
   currentUserHumanId?: string | null;
+  showVoting?: boolean;
   onProfileClick: () => void;
   onStarClick: () => void;
   onReportClick: () => void;
@@ -31,6 +32,7 @@ export function MessageItem({
   index,
   isPreview = false,
   currentUserHumanId,
+  showVoting = true,
   onProfileClick,
   onStarClick,
   onReportClick,
@@ -509,36 +511,41 @@ export function MessageItem({
             <div className="flex items-center -ml-1">
               {!isPreview && (
                 <>
-                  {/* Upvote */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleUpvote}
-                    className={`h-auto p-1 ${userVoteType === 1 ? 'text-blue-600' : 'text-muted-foreground hover:text-blue-600'}`}
-                    data-testid="button-upvote"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
+                  {/* Voting UI - conditionally rendered based on showVoting prop */}
+                  {showVoting && (
+                    <>
+                      {/* Upvote */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleUpvote}
+                        className={`h-auto p-1 ${userVoteType === 1 ? 'text-blue-600' : 'text-muted-foreground hover:text-blue-600'}`}
+                        data-testid="button-upvote"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
 
-                  {/* Net Score Display */}
-                  <span className={`px-1 text-sm font-medium ${
-                    netScore > 0 ? 'text-blue-600' : 
-                    netScore < 0 ? 'text-orange-600' : 
-                    'text-muted-foreground'
-                  }`}>
-                    {netScore}
-                  </span>
+                      {/* Net Score Display */}
+                      <span className={`px-1 text-sm font-medium ${
+                        netScore > 0 ? 'text-blue-600' : 
+                        netScore < 0 ? 'text-orange-600' : 
+                        'text-muted-foreground'
+                      }`}>
+                        {netScore}
+                      </span>
 
-                  {/* Downvote */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDownvote}
-                    className={`h-auto p-1 ${userVoteType === -1 ? 'text-orange-600' : 'text-muted-foreground hover:text-orange-600'}`}
-                    data-testid="button-downvote"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
+                      {/* Downvote */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDownvote}
+                        className={`h-auto p-1 ${userVoteType === -1 ? 'text-orange-600' : 'text-muted-foreground hover:text-orange-600'}`}
+                        data-testid="button-downvote"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
 
                   {/* Emoji Reaction */}
                   <Popover open={emojiPopoverOpen} onOpenChange={setEmojiPopoverOpen}>

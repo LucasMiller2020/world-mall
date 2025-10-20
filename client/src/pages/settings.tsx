@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, UserX, Volume2, Shield, Info, Trash2, Settings as SettingsIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWorldId } from "@/hooks/use-world-id";
@@ -28,6 +29,10 @@ export default function Settings() {
   const [usernameColor, setUsernameColor] = useState<string>(
     localStorage.getItem('username_color') || ''
   );
+  const [showVoting, setShowVoting] = useState<boolean>(() => {
+    const saved = localStorage.getItem('showVoting');
+    return saved !== null ? saved === 'true' : true; // Default to true
+  });
 
   // Platform debug info
   const platformInfo = {
@@ -165,6 +170,18 @@ export default function Settings() {
     });
   };
 
+  const handleVotingToggle = (checked: boolean) => {
+    setShowVoting(checked);
+    localStorage.setItem('showVoting', String(checked));
+    toast({
+      title: checked ? "Voting enabled" : "Voting disabled",
+      description: checked 
+        ? "You can now see voting arrows and scores on messages." 
+        : "Voting UI has been hidden from your view.",
+      duration: 2000,
+    });
+  };
+
   const colorOptions = [
     { value: '', label: 'Default', preview: 'text-foreground' },
     { value: '#FF6B6B', label: 'Coral', preview: 'text-red-400' },
@@ -273,6 +290,23 @@ export default function Settings() {
                           )}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Voting Preferences */}
+                  <div className="border-t pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-medium">Show voting on messages</h3>
+                        <p className="text-xs text-muted-foreground">
+                          Display voting arrows and scores on messages in the chat
+                        </p>
+                      </div>
+                      <Switch
+                        checked={showVoting}
+                        onCheckedChange={handleVotingToggle}
+                        data-testid="switch-show-voting"
+                      />
                     </div>
                   </div>
 
