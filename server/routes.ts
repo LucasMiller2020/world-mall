@@ -1954,6 +1954,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vote on a message (requires authentication)
+  app.post('/api/messages/:messageId/vote', authenticateHuman, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Allow guests to vote
+      const userRole = req.userRole || 'guest';
+      const userId = req.sessionId || req.guestSessionId || '';
+      const messageId = req.params.messageId;
+      const { voteType } = req.body;
+      
+      // Validate vote type
+      if (![1, -1, 0].includes(voteType)) {
+        return res.status(400).json({
+          message: 'Invalid vote type. Must be 1 (upvote), -1 (downvote), or 0 (remove vote)',
+          code: 'INVALID_VOTE_TYPE'
+        });
+      }
+      
+      // Get current user vote
+      const existingVote = await storage.getUserVoteForMessage(messageId, userId);
+      
+      if (voteType === 0) {
+        // Remove vote
+        if (existingVote) {
+          await storage.deleteVote(messageId, userId);
+        }
+      } else {
+        // Create or update vote
+        await storage.createOrUpdateVote({
+          messageId,
+          userId,
+          voteType
+        });
+      }
+      
+      // Get updated message with vote counts
+      const message = await storage.getMessageById(messageId);
+      if (!message) {
+        return res.status(404).json({
+          message: 'Message not found',
+          code: 'MESSAGE_NOT_FOUND'
+        });
+      }
+      
+      // Get user's new vote status
+      const userVote = voteType === 0 ? null : await storage.getUserVoteForMessage(messageId, userId);
+      
+      // Broadcast vote update
+      broadcast({
+        type: 'message_voted',
+        data: {
+          messageId: messageId,
+          upvotes: message.upvotes,
+          downvotes: message.downvotes,
+          netScore: message.upvotes - message.downvotes
+        }
+      });
+      
+      res.json({
+        upvotes: message.upvotes,
+        downvotes: message.downvotes,
+        netScore: message.upvotes - message.downvotes,
+        userVote: userVote?.voteType || null
+      });
+    } catch (error) {
+      console.error('Error voting on message:', error);
+      res.status(500).json({ message: 'Failed to vote on message' });
+    }
+  });
+
   // Report a message (requires authentication)
   app.post('/api/reports', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {

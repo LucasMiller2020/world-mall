@@ -7,6 +7,8 @@ import {
   type InsertMessage,
   type Star,
   type InsertStar,
+  type MessageVote,
+  type InsertMessageVote,
   type Report,
   type InsertReport,
   type Theme,
@@ -148,6 +150,7 @@ import {
   humans,
   messages,
   stars,
+  messageVotes,
   reports,
   themes,
   topics,
@@ -241,6 +244,12 @@ export interface IStorage {
   getUserStarForMessage(messageId: string, humanId: string): Promise<Star | undefined>;
   createStar(star: InsertStar): Promise<Star>;
   getUserStarCount(humanId: string): Promise<number>;
+  
+  // Voting operations
+  getUserVoteForMessage(messageId: string, userId: string): Promise<MessageVote | undefined>;
+  createOrUpdateVote(vote: InsertMessageVote): Promise<MessageVote>;
+  deleteVote(messageId: string, userId: string): Promise<void>;
+  updateMessageVoteCounts(messageId: string): Promise<void>;
   
   // Report operations
   createReport(report: InsertReport): Promise<Report>;
@@ -3331,11 +3340,28 @@ export class DatabaseStorage implements IStorage {
     // Reverse to get chronological order
     const sortedMessages = messageResults.reverse();
 
+    // Get user's votes for messages if userId is provided
+    const userVotes = new Map<string, number>();
+    if (currentUserHumanId) {
+      const votes = await db
+        .select()
+        .from(messageVotes)
+        .where(and(
+          eq(messageVotes.userId, currentUserHumanId),
+          sql`${messageVotes.messageId} IN (${sql.join(sortedMessages.map(m => sql`${m.message.id}`), sql`, `)})`
+        ));
+      
+      votes.forEach(vote => {
+        userVotes.set(vote.messageId, vote.voteType);
+      });
+    }
+
     const finalMessages = sortedMessages.map(result => ({
       ...result.message,
       // Use actual handle from database, fallback to generated handle if not set
       authorHandle: result.author?.handle || this.generateHandle(result.message.authorHumanId),
-      isStarredByUser: false
+      isStarredByUser: false,
+      userVote: userVotes.get(result.message.id) || null
     }));
     
     console.log(`[DatabaseStorage.getMessages] Returning ${finalMessages.length} messages for room ${room}`);
@@ -3458,6 +3484,86 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(messages, eq(messages.id, stars.messageId))
       .where(eq(messages.authorHumanId, humanId));
     return result[0]?.count || 0;
+  }
+
+  async getUserVoteForMessage(messageId: string, userId: string): Promise<MessageVote | undefined> {
+    const result = await db
+      .select()
+      .from(messageVotes)
+      .where(and(eq(messageVotes.messageId, messageId), eq(messageVotes.userId, userId)))
+      .limit(1);
+    return result[0] || undefined;
+  }
+
+  async createOrUpdateVote(vote: InsertMessageVote): Promise<MessageVote> {
+    // Check if vote already exists
+    const existingVote = await this.getUserVoteForMessage(vote.messageId, vote.userId);
+    
+    if (existingVote) {
+      // Update existing vote
+      const result = await db
+        .update(messageVotes)
+        .set({ voteType: vote.voteType })
+        .where(and(
+          eq(messageVotes.messageId, vote.messageId),
+          eq(messageVotes.userId, vote.userId)
+        ))
+        .returning();
+      
+      // Update message vote counts
+      await this.updateMessageVoteCounts(vote.messageId);
+      
+      return result[0];
+    } else {
+      // Create new vote
+      const result = await db.insert(messageVotes).values(vote).returning();
+      
+      // Update message vote counts
+      await this.updateMessageVoteCounts(vote.messageId);
+      
+      return result[0];
+    }
+  }
+
+  async deleteVote(messageId: string, userId: string): Promise<void> {
+    await db
+      .delete(messageVotes)
+      .where(and(
+        eq(messageVotes.messageId, messageId),
+        eq(messageVotes.userId, userId)
+      ));
+    
+    // Update message vote counts
+    await this.updateMessageVoteCounts(messageId);
+  }
+
+  async updateMessageVoteCounts(messageId: string): Promise<void> {
+    // Count upvotes
+    const upvotesResult = await db
+      .select({ count: count() })
+      .from(messageVotes)
+      .where(and(
+        eq(messageVotes.messageId, messageId),
+        eq(messageVotes.voteType, 1)
+      ));
+    
+    // Count downvotes
+    const downvotesResult = await db
+      .select({ count: count() })
+      .from(messageVotes)
+      .where(and(
+        eq(messageVotes.messageId, messageId),
+        eq(messageVotes.voteType, -1)
+      ));
+    
+    const upvotes = upvotesResult[0]?.count || 0;
+    const downvotes = downvotesResult[0]?.count || 0;
+    
+    // Update message with new counts
+    await db
+      .update(messages)
+      .set({ upvotes, downvotes })
+      .where(eq(messages.id, messageId));
   }
 
   async createReport(insertReport: InsertReport): Promise<Report> {

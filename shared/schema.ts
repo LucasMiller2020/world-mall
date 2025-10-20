@@ -32,6 +32,9 @@ export const messages = pgTable("messages", {
   editedAt: timestamp("edited_at"), // Timestamp of last edit (null if never edited)
   starsCount: integer("stars_count").default(0).notNull(),
   reportsCount: integer("reports_count").default(0).notNull(),
+  // Voting counts (denormalized for performance)
+  upvotes: integer("upvotes").default(0).notNull(),
+  downvotes: integer("downvotes").default(0).notNull(),
   // Work mode specific fields
   category: varchar("category", { enum: ["help", "advice", "collab"] }),
   link: text("link"),
@@ -53,6 +56,22 @@ export const stars = pgTable("stars", {
 }, (table) => ({
   // Unique constraint to ensure one star per human per message
   humanMessageUnique: uniqueIndex("stars_human_message_unique_idx").on(table.humanId, table.messageId),
+}));
+
+// Message votes table - tracks individual votes (upvote/downvote)
+export const messageVotes = pgTable("message_votes", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  messageId: varchar("message_id").notNull().references(() => messages.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull(), // Session ID
+  voteType: integer("vote_type").notNull(), // 1 for upvote, -1 for downvote
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Unique constraint to ensure one vote per user per message
+  messageUserUnique: uniqueIndex("message_votes_message_user_unique_idx").on(table.messageId, table.userId),
+  // Index for fast lookups by message
+  messageIdx: index("message_votes_message_idx").on(table.messageId),
+  // Index for fast lookups by user
+  userIdx: index("message_votes_user_idx").on(table.userId),
 }));
 
 // Rate limit tracking
@@ -575,6 +594,11 @@ export const insertReportSchema = createInsertSchema(reports).omit({
   reporterHumanId: true, // This will be added by authentication middleware
 });
 
+export const insertMessageVoteSchema = createInsertSchema(messageVotes).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Topic system insert schemas
 export const insertTopicSchema = createInsertSchema(topics).omit({
   id: true,
@@ -741,6 +765,9 @@ export type Star = typeof stars.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
 export type Report = typeof reports.$inferSelect;
 
+export type InsertMessageVote = z.infer<typeof insertMessageVoteSchema>;
+export type MessageVote = typeof messageVotes.$inferSelect;
+
 // Topic system types
 export type InsertTopic = z.infer<typeof insertTopicSchema>;
 export type Topic = typeof topics.$inferSelect;
@@ -814,6 +841,7 @@ export type DmMessage = typeof dmMessages.$inferSelect;
 export type MessageWithAuthor = Message & {
   authorHandle: string;
   isStarredByUser?: boolean;
+  userVote?: number | null; // 1 for upvote, -1 for downvote, null for no vote
 };
 
 export type HumanProfile = {

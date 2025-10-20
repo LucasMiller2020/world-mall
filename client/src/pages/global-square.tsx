@@ -694,6 +694,38 @@ export default function GlobalSquare() {
     await deleteMessageMutation.mutateAsync(messageId);
   };
 
+  const handleVoteMessage = async (messageId: string, voteType: number) => {
+    try {
+      const response = await apiRequest("POST", `/api/messages/${messageId}/vote`, { voteType });
+      
+      // Update the message in the cache with new vote counts
+      queryClient.setQueryData(["/api/messages/global"], (oldData: any) => {
+        if (!oldData || !oldData.messages) return oldData;
+        
+        return {
+          ...oldData,
+          messages: oldData.messages.map((msg: any) => 
+            msg.id === messageId 
+              ? { 
+                  ...msg, 
+                  upvotes: response.upvotes,
+                  downvotes: response.downvotes,
+                  userVote: response.userVote
+                }
+              : msg
+          )
+        };
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update vote",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   // Calculate current user's humanId (for both guests and verified users)
   // Use useMemo to recalculate when sessionId or humanId changes
   const currentUserHumanId = useMemo(() => {
@@ -1348,6 +1380,7 @@ export default function GlobalSquare() {
                 onMuteClick={() => {}}
                 onEditMessage={handleEditMessage}
                 onDeleteMessage={handleDeleteMessage}
+                onVote={handleVoteMessage}
                 data-testid={`message-item-${msg.id}`}
               />
             </div>

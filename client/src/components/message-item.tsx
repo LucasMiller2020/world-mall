@@ -23,6 +23,7 @@ interface MessageItemProps {
   onMuteClick: () => void;
   onEditMessage?: (messageId: string, newText: string) => Promise<void>;
   onDeleteMessage?: (messageId: string) => Promise<void>;
+  onVote?: (messageId: string, voteType: number) => Promise<void>;
 }
 
 export function MessageItem({
@@ -36,9 +37,11 @@ export function MessageItem({
   onMuteClick,
   onEditMessage,
   onDeleteMessage,
+  onVote,
 }: MessageItemProps) {
-  const [upvoted, setUpvoted] = useState(false);
-  const [downvoted, setDownvoted] = useState(false);
+  // Initialize vote state from message userVote property
+  const [userVoteType, setUserVoteType] = useState<number | null>(message.userVote || null);
+  const [netScore, setNetScore] = useState((message.upvotes || 0) - (message.downvotes || 0));
   const [starred, setStarred] = useState(message.isStarredByUser || false);
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
   const [emojiPopoverOpen, setEmojiPopoverOpen] = useState(false);
@@ -119,14 +122,80 @@ export function MessageItem({
                     timeRemainingDelete !== null &&
                     timeRemainingDelete > 0;
 
-  const handleUpvote = () => {
-    setUpvoted(!upvoted);
-    if (downvoted) setDownvoted(false);
+  const handleUpvote = async () => {
+    if (!onVote) return;
+    
+    // Optimistic update
+    const newVoteType = userVoteType === 1 ? null : 1;
+    const prevVoteType = userVoteType;
+    
+    // Update local state optimistically
+    setUserVoteType(newVoteType);
+    
+    // Update net score optimistically
+    let scoreDelta = 0;
+    if (prevVoteType === 1) {
+      // Removing upvote
+      scoreDelta = -1;
+    } else if (prevVoteType === -1) {
+      // Changing from downvote to upvote
+      scoreDelta = 2;
+    } else {
+      // Adding upvote
+      scoreDelta = 1;
+    }
+    setNetScore(prev => prev + scoreDelta);
+    
+    try {
+      await onVote(message.id, newVoteType === null ? 0 : newVoteType);
+    } catch (error) {
+      // Revert on error
+      setUserVoteType(prevVoteType);
+      setNetScore(prev => prev - scoreDelta);
+      toast({
+        title: "Error",
+        description: "Failed to update vote",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDownvote = () => {
-    setDownvoted(!downvoted);
-    if (upvoted) setUpvoted(false);
+  const handleDownvote = async () => {
+    if (!onVote) return;
+    
+    // Optimistic update
+    const newVoteType = userVoteType === -1 ? null : -1;
+    const prevVoteType = userVoteType;
+    
+    // Update local state optimistically
+    setUserVoteType(newVoteType);
+    
+    // Update net score optimistically
+    let scoreDelta = 0;
+    if (prevVoteType === -1) {
+      // Removing downvote
+      scoreDelta = 1;
+    } else if (prevVoteType === 1) {
+      // Changing from upvote to downvote
+      scoreDelta = -2;
+    } else {
+      // Adding downvote
+      scoreDelta = -1;
+    }
+    setNetScore(prev => prev + scoreDelta);
+    
+    try {
+      await onVote(message.id, newVoteType === null ? 0 : newVoteType);
+    } catch (error) {
+      // Revert on error
+      setUserVoteType(prevVoteType);
+      setNetScore(prev => prev - scoreDelta);
+      toast({
+        title: "Error",
+        description: "Failed to update vote",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEmojiSelect = (emoji: string) => {
@@ -445,18 +514,27 @@ export function MessageItem({
                     variant="ghost"
                     size="sm"
                     onClick={handleUpvote}
-                    className={`h-auto p-1 ${upvoted ? 'text-green-600' : 'text-muted-foreground hover:text-green-600'}`}
+                    className={`h-auto p-1 ${userVoteType === 1 ? 'text-blue-600' : 'text-muted-foreground hover:text-blue-600'}`}
                     data-testid="button-upvote"
                   >
                     <ArrowUp className="h-4 w-4" />
                   </Button>
+
+                  {/* Net Score Display */}
+                  <span className={`px-1 text-sm font-medium ${
+                    netScore > 0 ? 'text-blue-600' : 
+                    netScore < 0 ? 'text-orange-600' : 
+                    'text-muted-foreground'
+                  }`}>
+                    {netScore}
+                  </span>
 
                   {/* Downvote */}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleDownvote}
-                    className={`h-auto p-1 ${downvoted ? 'text-red-600' : 'text-muted-foreground hover:text-red-600'}`}
+                    className={`h-auto p-1 ${userVoteType === -1 ? 'text-orange-600' : 'text-muted-foreground hover:text-orange-600'}`}
                     data-testid="button-downvote"
                   >
                     <ArrowDown className="h-4 w-4" />
