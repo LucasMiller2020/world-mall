@@ -26,6 +26,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import {
@@ -575,6 +582,43 @@ export default function GlobalSquare() {
             Global Square
           </h1>
           <div className="flex items-center space-x-1">
+            {/* Mobile: Dropdown menu combining theme toggle and settings */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild className="md:hidden">
+                <Button variant="ghost" size="sm" data-testid="button-mobile-menu">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => {
+                    // Quick toggle between light and dark
+                    if (mode === 'light') {
+                      setMode('dark');
+                    } else if (mode === 'dark') {
+                      setMode('light');
+                    } else {
+                      // If in system or autoSun mode, switch to the opposite of current theme
+                      setMode(activeTheme === 'light' ? 'dark' : 'light');
+                    }
+                  }}
+                  data-testid="dropdown-theme-toggle"
+                >
+                  {activeTheme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+                  {activeTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setThemeSheetOpen(true)}
+                  data-testid="dropdown-theme-settings"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Theme Settings
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Desktop: Individual buttons for theme toggle and settings */}
             <Button
               variant="ghost"
               size="sm"
@@ -590,12 +634,13 @@ export default function GlobalSquare() {
                 }
               }}
               data-testid="button-theme-toggle"
+              className="hidden md:flex"
             >
               {activeTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <Sheet open={themeSheetOpen} onOpenChange={setThemeSheetOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" data-testid="button-theme-settings">
+                <Button variant="ghost" size="sm" data-testid="button-theme-settings" className="hidden md:flex">
                   <Settings className="h-4 w-4" />
                 </Button>
               </SheetTrigger>

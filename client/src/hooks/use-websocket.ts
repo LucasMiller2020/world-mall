@@ -12,6 +12,9 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
   const pollIntervalRef = useRef<NodeJS.Timeout>();
   const lastMessageIdRef = useRef<string | null>(null);
   const isInMiniApp = isMiniApp();
+  const heartbeatTimeoutRef = useRef<NodeJS.Timeout>();
+  const lastHeartbeatRef = useRef<number>(Date.now());
+  const [usePollingFallback, setUsePollingFallback] = useState(false);
 
   const connect = () => {
     // Skip WebSocket connection in Mini App, use polling instead
@@ -34,7 +37,9 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
 
       ws.onopen = () => {
         setIsConnected(true);
+        setUsePollingFallback(false);
         reconnectAttemptsRef.current = 0;
+        lastHeartbeatRef.current = Date.now();
         
         // Send authentication message if humanId is available
         if (humanId) {
@@ -43,11 +48,20 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
             humanId: humanId
           }));
         }
+
+        // Start heartbeat monitoring
+        if (heartbeatTimeoutRef.current) {
+          clearTimeout(heartbeatTimeoutRef.current);
+        }
+        heartbeatTimeoutRef.current = setTimeout(checkHeartbeat, 5000);
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          
+          // Update heartbeat timestamp on any message
+          lastHeartbeatRef.current = Date.now();
           
           switch (message.type) {
             case 'new_message':
@@ -86,6 +100,11 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       ws.onclose = () => {
         setIsConnected(false);
         
+        // Clear heartbeat timeout
+        if (heartbeatTimeoutRef.current) {
+          clearTimeout(heartbeatTimeoutRef.current);
+        }
+        
         // Attempt to reconnect with exponential backoff
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
@@ -93,6 +112,10 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
             reconnectAttemptsRef.current++;
             connect();
           }, delay);
+        } else {
+          // Max reconnect attempts reached, switch to polling
+          console.log('[WebSocket] Max reconnect attempts reached, switching to polling fallback');
+          setUsePollingFallback(true);
         }
       };
 
@@ -107,40 +130,40 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     }
   };
 
-  // Polling function for Mini App
+  // Heartbeat check function
+  const checkHeartbeat = () => {
+    const now = Date.now();
+    const timeSinceLastHeartbeat = now - lastHeartbeatRef.current;
+    
+    // If no message received in 15 seconds, connection might be stale
+    if (timeSinceLastHeartbeat > 15000) {
+      console.log('[WebSocket] No heartbeat detected, connection may be stale');
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    } else {
+      // Schedule next heartbeat check
+      heartbeatTimeoutRef.current = setTimeout(checkHeartbeat, 5000);
+    }
+  };
+
+  // Polling function for Mini App and fallback
   const pollMessages = async () => {
     try {
-      // Build query params
-      const params = new URLSearchParams();
-      if (lastMessageIdRef.current) {
-        params.append('since', lastMessageIdRef.current);
-      }
-      
-      const response = await fetch(`/api/messages/${room}?${params}`);
-      if (response.ok) {
-        const messages = await response.json();
-        
-        if (Array.isArray(messages) && messages.length > 0) {
-          // Update last message ID for next poll
-          const latestMessage = messages[messages.length - 1];
-          if (latestMessage?.id) {
-            lastMessageIdRef.current = latestMessage.id;
-          }
-          
-          // Invalidate queries to update UI
-          queryClient.invalidateQueries({ queryKey: ['/api/messages', room] });
-        }
-      }
+      // Invalidate queries to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', room] });
+      queryClient.invalidateQueries({ queryKey: ['/api/presence'] });
     } catch (error) {
-      console.error('[Polling] Error fetching messages:', error);
+      console.error('[Polling] Error polling messages:', error);
     }
   };
 
   useEffect(() => {
-    if (isInMiniApp) {
-      // Set up polling for Mini App
-      const pollInterval = getMiniAppPollInterval();
-      console.log(`[Polling] Starting polling with interval: ${pollInterval}ms`);
+    if (isInMiniApp || usePollingFallback) {
+      // Set up polling for Mini App or when WebSocket has failed
+      const pollInterval = isInMiniApp ? getMiniAppPollInterval() : 1500; // 1.5s for fallback, 2.5s for MiniApp
+      const source = isInMiniApp ? 'Mini App' : 'WebSocket fallback';
+      console.log(`[Polling] Starting polling (${source}) with interval: ${pollInterval}ms`);
       
       // Initial poll
       pollMessages();
@@ -150,6 +173,20 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       
       // Mark as connected for polling mode
       setIsConnected(true);
+      
+      // If in fallback mode, periodically try to reconnect WebSocket
+      if (usePollingFallback) {
+        const reconnectInterval = setInterval(() => {
+          console.log('[WebSocket] Attempting to reconnect from fallback mode...');
+          reconnectAttemptsRef.current = 0; // Reset attempts
+          setUsePollingFallback(false); // Try WebSocket again
+        }, 30000); // Try every 30 seconds
+        
+        return () => {
+          clearInterval(reconnectInterval);
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
+      }
     } else {
       // Use WebSocket for regular web
       connect();
@@ -163,24 +200,29 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
+      if (heartbeatTimeoutRef.current) {
+        clearTimeout(heartbeatTimeoutRef.current);
+      }
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
-  }, [humanId, room, isInMiniApp]);
+  }, [humanId, room, isInMiniApp, usePollingFallback]);
 
-  // Start polling as fallback when WebSocket is disconnected (for web only)
+  // Additional aggressive polling when WebSocket is disconnected (for web only)
+  // This ensures messages still come through even when WebSocket is temporarily down
   useEffect(() => {
-    if (!isConnected && !isInMiniApp) {
+    if (!isConnected && !isInMiniApp && !usePollingFallback) {
+      console.log('[Polling] WebSocket disconnected, starting temporary polling');
       const pollInterval = setInterval(() => {
         // Invalidate queries to trigger polling fallback
         queryClient.invalidateQueries({ queryKey: ['/api/messages', room] });
         queryClient.invalidateQueries({ queryKey: ['/api/presence'] });
-      }, 2000);
+      }, 1500); // Poll every 1.5 seconds when disconnected
 
       return () => clearInterval(pollInterval);
     }
-  }, [isConnected, queryClient, isInMiniApp]);
+  }, [isConnected, queryClient, isInMiniApp, usePollingFallback, room]);
 
   return { isConnected };
 }
