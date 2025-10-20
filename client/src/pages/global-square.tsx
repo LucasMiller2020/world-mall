@@ -744,58 +744,64 @@ export default function GlobalSquare() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-foreground" data-testid="text-page-title">
-            Global Square
-            {/* Enhanced connection status indicator with pulsing animation */}
-            <Tooltip>
-              <TooltipTrigger>
-                <span 
-                  className={`ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                    isConnected && !usePollingFallback 
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
-                      : secondsSinceLastPoll > 10 
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                  }`}
-                  data-testid="badge-connection-status"
-                >
-                  <span className={`h-2 w-2 rounded-full ${
-                    isConnected && !usePollingFallback 
-                      ? 'bg-green-500 animate-pulse' 
-                      : secondsSinceLastPoll > 10
-                      ? 'bg-red-500'
-                      : 'bg-blue-500 animate-pulse'
-                  }`} />
-                  {isConnected && !usePollingFallback ? 'Live' : 
-                    secondsSinceLastPoll > 10 ? 'Syncing...' :
-                    lastPollTime ? `Synced ${secondsSinceLastPoll}s ago` : 'Syncing'
-                  }
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {usePollingFallback && (
-                  <div className="text-xs space-y-1">
-                    <p className="font-medium">📡 Universal Polling Mode</p>
-                    <p>Checking for new messages every 2.5s</p>
-                    {lastPollTime && (
+          <button 
+            onClick={() => setLocation('/')}
+            className="absolute left-1/2 transform -translate-x-1/2 hover:opacity-80 transition-opacity"
+            data-testid="button-title-home"
+          >
+            <h1 className="text-lg font-semibold text-foreground flex items-center" data-testid="text-page-title">
+              Global Square
+              {/* Enhanced connection status indicator with pulsing animation */}
+              <Tooltip>
+                <TooltipTrigger>
+                  <span 
+                    className={`ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                      isConnected && !usePollingFallback 
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                        : secondsSinceLastPoll > 10 
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                        : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                    }`}
+                    data-testid="badge-connection-status"
+                  >
+                    <span className={`h-2 w-2 rounded-full ${
+                      isConnected && !usePollingFallback 
+                        ? 'bg-green-500 animate-pulse' 
+                        : secondsSinceLastPoll > 10
+                        ? 'bg-red-500'
+                        : 'bg-blue-500 animate-pulse'
+                    }`} />
+                    {isConnected && !usePollingFallback ? 'Live' : 
+                      secondsSinceLastPoll > 10 ? 'Syncing...' :
+                      lastPollTime ? `Synced ${secondsSinceLastPoll}s ago` : 'Syncing'
+                    }
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {usePollingFallback && (
+                    <div className="text-xs space-y-1">
+                      <p className="font-medium">📡 Universal Polling Mode</p>
+                      <p>Checking for new messages every 2.5s</p>
+                      {lastPollTime && (
+                        <p className="text-muted-foreground">
+                          Last sync: {lastPollTime.toLocaleTimeString()}
+                        </p>
+                      )}
                       <p className="text-muted-foreground">
-                        Last sync: {lastPollTime.toLocaleTimeString()}
+                        Messages sync across all your devices
                       </p>
-                    )}
-                    <p className="text-muted-foreground">
-                      Messages sync across all your devices
-                    </p>
-                  </div>
-                )}
-                {!usePollingFallback && isConnected && (
-                  <div className="text-xs">
-                    <p className="font-medium">⚡ Real-time Connection</p>
-                    <p className="text-muted-foreground">Messages appear instantly</p>
-                  </div>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </h1>
+                    </div>
+                  )}
+                  {!usePollingFallback && isConnected && (
+                    <div className="text-xs">
+                      <p className="font-medium">⚡ Real-time Connection</p>
+                      <p className="text-muted-foreground">Messages appear instantly</p>
+                    </div>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </h1>
+          </button>
           <div className="flex items-center space-x-1">
             {/* FIX 8: Manual refresh button */}
             <Button
@@ -813,19 +819,8 @@ export default function GlobalSquare() {
                 </span>
               )}
             </Button>
-            
-            {/* Mobile: Settings button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation('/settings')}
-              data-testid="button-mobile-settings"
-              className="md:hidden"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
 
-            {/* Mobile: Dropdown menu with theme, settings, and more */}
+            {/* Mobile: Dropdown menu with Settings, Theme, Work Mode, and Friends */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="md:hidden">
                 <Button variant="ghost" size="sm" data-testid="button-mobile-menu">
@@ -833,6 +828,14 @@ export default function GlobalSquare() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => setLocation('/settings')}
+                  data-testid="dropdown-settings"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
                     // Quick theme toggle
@@ -868,16 +871,56 @@ export default function GlobalSquare() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Desktop: Settings button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation('/settings')}
-              data-testid="button-desktop-settings"
-              className="hidden md:flex"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
+            {/* Desktop: Dropdown menu with Settings, Theme, Work Mode, and Friends */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild className="hidden md:flex">
+                <Button variant="ghost" size="sm" data-testid="button-desktop-menu">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => setLocation('/settings')}
+                  data-testid="dropdown-desktop-settings"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    // Quick theme toggle
+                    if (mode === 'light') {
+                      setMode('dark');
+                    } else if (mode === 'dark') {
+                      setMode('light');
+                    } else {
+                      setMode(activeTheme === 'light' ? 'dark' : 'light');
+                    }
+                  }}
+                  data-testid="dropdown-desktop-theme-toggle"
+                >
+                  {activeTheme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+                  Theme
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLocation('/room/work')}
+                  data-testid="dropdown-desktop-work-mode"
+                >
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Work Mode
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setFriendsDialogOpen(true)}
+                  data-testid="dropdown-desktop-friends"
+                  className="relative"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Friends
+                  <span className="ml-auto text-xs text-muted-foreground">Soon</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             {/* Theme sheet (now hidden, keeping for backwards compatibility) */}
             <Sheet open={false} onOpenChange={setThemeSheetOpen}>
@@ -1019,26 +1062,6 @@ export default function GlobalSquare() {
                 <Users className="h-4 w-4" />
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setFriendsDialogOpen(true)}
-              className="relative hidden md:flex"
-              data-testid="button-friends"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span className="sr-only">Friends (coming soon)</span>
-              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-muted-foreground/30" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setLocation('/room/work')}
-              data-testid="button-toggle-work-mode"
-              className="hidden md:flex"
-            >
-              <Briefcase className="h-4 w-4" />
-            </Button>
             
             {/* Premium Upgrade Button */}
             {!isPremium && isVerified && (
