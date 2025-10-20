@@ -15,6 +15,17 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
   const heartbeatTimeoutRef = useRef<NodeJS.Timeout>();
   const lastHeartbeatRef = useRef<number>(Date.now());
   const [usePollingFallback, setUsePollingFallback] = useState(false);
+  
+  // Debug logging to diagnose platform detection issues
+  useEffect(() => {
+    console.log('[Platform Detection]', {
+      isInMiniApp,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+      hasMinikit: typeof window !== 'undefined' && !!(window as any).minikit,
+      willUseWebSocket: !isInMiniApp,
+      willUsePolling: isInMiniApp
+    });
+  }, []);
 
   const connect = () => {
     // Skip WebSocket connection in Mini App, use polling instead
