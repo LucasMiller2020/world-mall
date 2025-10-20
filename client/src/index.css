@@ -127,6 +127,7 @@
   }
   100% {
     opacity: 0;
+    visibility: hidden;
   }
 }
 
@@ -135,61 +136,48 @@ button:focus-visible,
 [role="button"]:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  outline: none;
   position: relative;
 }
 
-/* Auto-dismiss focus rings after 500ms */
-button:focus-visible::after,
-[role="button"]:focus-visible::after {
+/* Auto-dismiss focus rings after 500ms using ::before pseudo-element */
+button:focus-visible::before,
+[role="button"]:focus-visible::before,
+a:focus-visible::before,
+[tabindex]:focus-visible::before {
   content: "";
   position: absolute;
   inset: -4px;
   border: 2px solid var(--ring);
   border-radius: inherit;
   pointer-events: none;
-  animation: fadeOutFocus 0.5s forwards;
-  animation-delay: 0.5s;
+  opacity: 1;
+  animation: fadeOutFocus 0.3s ease-out 0.5s forwards;
+  z-index: 10;
 }
 
-/* Ensure the actual focus outline also fades */
-button:focus-visible,
-[role="button"]:focus-visible {
-  animation: fadeOutFocus 0.5s forwards;
-  animation-delay: 0.5s;
-  animation-fill-mode: forwards;
-}
-
-/* Keep the button interactive even when focus fades */
+/* Keep the button interactive and visible */
 button,
 [role="button"] {
   position: relative;
-  z-index: 1;
 }
 
-/* Improve focus visibility without covering content */
-button:focus-visible svg,
-[role="button"]:focus-visible svg {
-  opacity: 1;
-  z-index: 2;
+/* Ensure icons and content stay visible above focus ring */
+button > *,
+[role="button"] > * {
   position: relative;
+  z-index: 11;
 }
 
 /* Special handling for icon buttons to ensure icons stay visible */
-.lucide:focus-visible,
-button:has(.lucide):focus-visible {
-  outline-offset: 3px;
+button:has(svg):focus-visible::before {
+  inset: -3px;
 }
 
-/* Reduce focus ring intensity for better visibility */
-:focus-visible {
-  outline-color: hsl(210, 100%, 45%, 0.6);
-}
-
-/* Dark mode adjustments */
-:root[data-theme="dark"] :focus-visible {
-  outline-color: hsl(210, 100%, 60%, 0.5);
+/* Dark mode adjustments for ring color */
+:root[data-theme="dark"] button:focus-visible::before,
+:root[data-theme="dark"] [role="button"]:focus-visible::before {
+  border-color: hsl(210, 100%, 60%, 0.7);
 }
 
 @layer base {
