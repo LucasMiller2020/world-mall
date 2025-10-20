@@ -39,6 +39,7 @@ export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   room: varchar("room", { enum: ["global", "work"] }).notNull(),
   authorHumanId: varchar("author_human_id").notNull().references(() => humans.id),
+  authorHandle: varchar("author_handle", { length: 25 }), // Username snapshot at time of message creation
   text: text("text").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   editedAt: timestamp("edited_at"), // Timestamp of last edit (null if never edited)

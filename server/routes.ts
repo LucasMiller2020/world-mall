@@ -1575,6 +1575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: humanId,
             role: 'guest'
           });
+          guestHuman = await storage.getHuman(humanId);
         }
         
         // Check if user is banned
@@ -1647,7 +1648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const message = await storage.createMessage({
           ...messageData,
-          authorHumanId: humanId,  // Field name is authorHumanId in the table
+          authorHumanId: humanId,
+          authorHandle: guestHuman?.handle || null,
           authorRole: 'guest'
         });
         
@@ -1673,7 +1675,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'new_message',
           data: {
             ...message,
-            authorHandle: `Guest`,
             isStarredByUser: false
           }
         });
@@ -1696,6 +1697,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verified user flow continues below
       const humanId = req.humanId!;
+      
+      // Get user to fetch handle
+      const verifiedHuman = await storage.getHuman(humanId);
       
       // Check if user is banned (via warning system)
       const isBanned = await storage.isUserBanned(humanId);
@@ -1826,7 +1830,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const message = await storage.createMessage({
         ...messageData,
-        authorHumanId: humanId,  // Field name is authorHumanId in the table
+        authorHumanId: humanId,
+        authorHandle: verifiedHuman?.handle || null,
         authorRole: userRole || 'verified'
       });
       
