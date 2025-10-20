@@ -5,6 +5,7 @@ import {
   type InsertGuestSession,
   type Message,
   type InsertMessage,
+  type InsertMessageInternal,
   type Star,
   type InsertStar,
   type MessageVote,
@@ -235,7 +236,7 @@ export interface IStorage {
   // Message operations
   getMessages(room: string, limit?: number, currentUserHumanId?: string): Promise<MessageWithAuthor[]>;
   getMessageById(id: string): Promise<Message | undefined>;
-  createMessage(message: InsertMessage): Promise<Message>;
+  createMessage(message: InsertMessageInternal): Promise<Message>;
   updateMessage(messageId: string, text: string): Promise<Message | undefined>;
   deleteMessage(messageId: string): Promise<void>;
   incrementMessageStars(messageId: string): Promise<void>;
@@ -1044,7 +1045,7 @@ export class MemStorage implements IStorage {
     return this.messages.get(id);
   }
 
-  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+  async createMessage(insertMessage: InsertMessageInternal): Promise<Message> {
     console.log(`[MemoryStorage.createMessage] ========== CREATING MESSAGE ==========`);
     console.log(`[MemoryStorage.createMessage] Room: ${insertMessage.room}`);
     console.log(`[MemoryStorage.createMessage] Text: ${insertMessage.text.substring(0, 50)}...`);
@@ -3431,11 +3432,12 @@ export class DatabaseStorage implements IStorage {
     return result[0] || undefined;
   }
 
-  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+  async createMessage(insertMessage: InsertMessageInternal): Promise<Message> {
     console.log(`[DatabaseStorage.createMessage] ========== CREATING MESSAGE IN DATABASE ==========`);
     console.log(`[DatabaseStorage.createMessage] Room: ${insertMessage.room}`);
     console.log(`[DatabaseStorage.createMessage] Text: ${insertMessage.text.substring(0, 50)}...`);
     console.log(`[DatabaseStorage.createMessage] Author: ${insertMessage.authorHumanId}`);
+    console.log(`[DatabaseStorage.createMessage] AuthorHandle: ${insertMessage.authorHandle}`);
     console.log(`[DatabaseStorage.createMessage] Role: ${insertMessage.authorRole}`);
     console.log(`[DatabaseStorage.createMessage] Hidden: ${insertMessage.isHidden || false}`);
     

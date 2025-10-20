@@ -603,6 +603,7 @@ export const insertHumanSchema = createInsertSchema(humans).omit({
   joinedAt: true,
 });
 
+// Schema for validating client-submitted message data (from API requests)
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
   createdAt: true,
@@ -610,6 +611,22 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   reportsCount: true,
   isHidden: true,
   authorHumanId: true, // This will be added by authentication middleware
+  authorHandle: true, // This will be added by authentication middleware
+  authorRole: true, // This will be added by authentication middleware
+  upvotes: true,
+  downvotes: true,
+});
+
+// Internal schema for storage layer - includes all fields needed for message creation
+export const insertMessageInternalSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+  starsCount: true,
+  reportsCount: true,
+  isHidden: true,
+  editedAt: true,
+  upvotes: true,
+  downvotes: true,
 });
 
 export const insertStarSchema = createInsertSchema(stars).omit({
@@ -780,6 +797,7 @@ export type InsertHuman = z.infer<typeof insertHumanSchema>;
 export type Human = typeof humans.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type InsertMessageInternal = z.infer<typeof insertMessageInternalSchema>;
 export type Message = typeof messages.$inferSelect;
 
 export type InsertGuestSession = z.infer<typeof insertGuestSessionSchema>;
