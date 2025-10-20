@@ -17,6 +17,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import { useWorldId } from "@/hooks/use-world-id";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { useToast } from "@/hooks/use-toast";
+import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { useThemeContext } from "@/theme/ThemeProvider";
 import { usePayment, usePremiumStatus } from "@/hooks/use-payment";
 import {
@@ -112,6 +113,9 @@ export default function GlobalSquare() {
   const { humanId, isVerified, verify } = useWorldId();
   const { isConnected, usePollingFallback } = useWebSocket(humanId, 'global');
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
+  
+  // Send periodic heartbeats to keep user marked as online
+  useHeartbeat(true);
   const [lastPollTime, setLastPollTime] = useState<Date | null>(null);
   const [pollStatus, setPollStatus] = useState<'active' | 'paused'>('active');
   const [secondsSinceLastPoll, setSecondsSinceLastPoll] = useState(0);

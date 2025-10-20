@@ -7,6 +7,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { TopicRotationScheduler } from "./topic-scheduler";
 import { db } from "./db";
 import { humans } from "@shared/schema";
+import { storage } from "./storage";
 
 const app = express();
 
@@ -148,15 +149,35 @@ app.use((req, res, next) => {
   await topicScheduler.start();
   log('Topic rotation scheduler started');
   
+  // Start online status cleanup job
+  // Mark users as offline if they haven't sent a heartbeat in 60 seconds
+  const HEARTBEAT_STALE_THRESHOLD = 60; // seconds
+  const CLEANUP_INTERVAL = 30000; // 30 seconds
+  
+  const cleanupInterval = setInterval(async () => {
+    try {
+      const markedOffline = await storage.markStaleUsersOffline(HEARTBEAT_STALE_THRESHOLD);
+      if (markedOffline > 0) {
+        log(`Marked ${markedOffline} stale users as offline`);
+      }
+    } catch (error) {
+      log(`Error in online status cleanup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, CLEANUP_INTERVAL);
+  
+  log('Online status cleanup job started');
+  
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
+    clearInterval(cleanupInterval);
     await topicScheduler.stop();
     process.exit(0);
   });
   
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
+    clearInterval(cleanupInterval);
     await topicScheduler.stop();
     process.exit(0);
   });

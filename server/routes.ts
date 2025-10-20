@@ -1088,6 +1088,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Heartbeat endpoint - keeps user marked as online
+  app.post('/api/heartbeat', authenticateHuman, handleGuestSession, async (req: AuthenticatedRequest, res) => {
+    try {
+      const role = req.userRole || 'guest';
+      
+      if (role === 'guest' && req.guestSessionId) {
+        const humanId = `guest_${req.guestSessionId}`;
+        const human = await storage.getHuman(humanId);
+        
+        if (human) {
+          await storage.updateOnlineStatus(humanId, true);
+          return res.json({ ok: true });
+        }
+      } else if (req.humanId) {
+        await storage.updateOnlineStatus(req.humanId, true);
+        return res.json({ ok: true });
+      }
+      
+      return res.json({ ok: false, message: 'No active session' });
+    } catch (error: any) {
+      console.error('Heartbeat error:', error);
+      return res.status(500).json({ ok: false, message: 'Heartbeat failed' });
+    }
+  });
+
   // Me endpoint - returns current user info and role
   app.get('/api/me', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     const role = req.userRole || 'guest';

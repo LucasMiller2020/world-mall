@@ -4734,6 +4734,21 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(humans.id, humanId));
   }
+
+  async markStaleUsersOffline(staleThresholdSeconds: number = 60): Promise<number> {
+    const staleTime = new Date(Date.now() - staleThresholdSeconds * 1000);
+    
+    const result = await db.update(humans)
+      .set({ isOnline: false })
+      .where(
+        and(
+          eq(humans.isOnline, true),
+          sql`${humans.lastOnline} < ${staleTime}`
+        )
+      );
+    
+    return result.rowCount || 0;
+  }
 }
 
 export const storage = new DatabaseStorage();
