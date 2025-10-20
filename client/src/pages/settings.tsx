@@ -26,6 +26,7 @@ export default function Settings() {
   const { humanId, isVerified } = useWorldId();
   const { role, isGuest } = useAuthRole();
   const [sessionId] = useState<string | null>(getSessionIdSync());
+  const [activeTab, setActiveTab] = useState("blocked");
   const [usernameColor, setUsernameColor] = useState<string>(
     localStorage.getItem('username_color') || ''
   );
@@ -196,7 +197,7 @@ export default function Settings() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="blocked" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 h-auto">
             <TabsTrigger value="blocked" data-testid="tab-blocked" className="flex items-center gap-2 px-3 py-2.5">
               <UserX className="h-4 w-4" />
