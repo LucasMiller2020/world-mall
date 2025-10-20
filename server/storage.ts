@@ -256,10 +256,10 @@ export interface IStorage {
   updateMessageVoteCounts(messageId: string): Promise<void>;
   
   // Reaction operations
-  getUserReactionsForMessage(messageId: string, userId: string): Promise<MessageReaction[]>;
-  getMessageReactions(messageId: string): Promise<{ [key: string]: { count: number; hasReacted?: boolean } }>;
+  getUserReactionsForMessage(messageId: string, humanId: string): Promise<MessageReaction[]>;
+  getMessageReactions(messageId: string, humanId?: string): Promise<{ [key: string]: { count: number; hasReacted?: boolean } }>;
   createReaction(reaction: InsertMessageReaction): Promise<MessageReaction>;
-  deleteReaction(messageId: string, userId: string, reactionType: string): Promise<void>;
+  deleteReaction(messageId: string, humanId: string, reactionType: string): Promise<void>;
   
   // Report operations
   createReport(report: InsertReport): Promise<Report>;
@@ -3384,7 +3384,7 @@ export class DatabaseStorage implements IStorage {
         .select({
           messageId: messageReactions.messageId,
           reactionType: messageReactions.reactionType,
-          userId: messageReactions.userId,
+          humanId: messageReactions.humanId,
         })
         .from(messageReactions)
         .where(sql`${messageReactions.messageId} IN (${sql.join(messageIds.map(id => sql`${id}`), sql`, `)})`);
@@ -3401,7 +3401,7 @@ export class DatabaseStorage implements IStorage {
           const reactionsOfType = msgReactions.filter(r => r.reactionType === type);
           reactionData[type] = {
             count: reactionsOfType.length,
-            hasReacted: currentUserHumanId ? reactionsOfType.some(r => r.userId === currentUserHumanId) : false,
+            hasReacted: currentUserHumanId ? reactionsOfType.some(r => r.humanId === currentUserHumanId) : false,
           };
         }
         
@@ -3631,19 +3631,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Reaction operations
-  async getUserReactionsForMessage(messageId: string, userId: string): Promise<MessageReaction[]> {
+  async getUserReactionsForMessage(messageId: string, humanId: string): Promise<MessageReaction[]> {
     return await db
       .select()
       .from(messageReactions)
-      .where(and(eq(messageReactions.messageId, messageId), eq(messageReactions.userId, userId)));
+      .where(and(eq(messageReactions.messageId, messageId), eq(messageReactions.humanId, humanId)));
   }
 
-  async getMessageReactions(messageId: string, userId?: string): Promise<{ [key: string]: { count: number; hasReacted?: boolean } }> {
+  async getMessageReactions(messageId: string, humanId?: string): Promise<{ [key: string]: { count: number; hasReacted?: boolean } }> {
     // Get all reactions for the message
     const allReactions = await db
       .select({
         reactionType: messageReactions.reactionType,
-        userId: messageReactions.userId,
+        humanId: messageReactions.humanId,
       })
       .from(messageReactions)
       .where(eq(messageReactions.messageId, messageId));
@@ -3656,7 +3656,7 @@ export class DatabaseStorage implements IStorage {
       const reactionsOfType = allReactions.filter(r => r.reactionType === type);
       reactionData[type] = {
         count: reactionsOfType.length,
-        hasReacted: userId ? reactionsOfType.some(r => r.userId === userId) : undefined,
+        hasReacted: humanId ? reactionsOfType.some(r => r.humanId === humanId) : undefined,
       };
     }
     
@@ -3671,13 +3671,13 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async deleteReaction(messageId: string, userId: string, reactionType: string): Promise<void> {
+  async deleteReaction(messageId: string, humanId: string, reactionType: string): Promise<void> {
     await db
       .delete(messageReactions)
       .where(
         and(
           eq(messageReactions.messageId, messageId),
-          eq(messageReactions.userId, userId),
+          eq(messageReactions.humanId, humanId),
           eq(messageReactions.reactionType, reactionType)
         )
       );

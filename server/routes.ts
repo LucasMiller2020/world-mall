@@ -2266,9 +2266,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // React to a message with emoji reactions
   app.post('/api/messages/:messageId/react', authenticateHuman, async (req: AuthenticatedRequest, res) => {
     try {
-      // Allow guests to react
-      const userRole = req.userRole || 'guest';
-      const userId = req.sessionId || req.guestSessionId || '';
+      // Require humanId for reactions (no anonymous reactions)
+      const humanId = req.humanId;
+      if (!humanId) {
+        return res.status(401).json({
+          message: 'Authentication required to react',
+          code: 'AUTH_REQUIRED'
+        });
+      }
+
       const messageId = req.params.messageId;
       const { reactionType, action } = req.body;
       
@@ -2299,26 +2305,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (action === 'add') {
-        // Add reaction
-        try {
-          await storage.createReaction({
-            messageId,
-            userId,
-            reactionType
-          });
-        } catch (error: any) {
-          // If unique constraint violation, the reaction already exists - that's ok
-          if (!error.message?.includes('unique')) {
-            throw error;
-          }
-        }
+        // IMPORTANT: The unique constraint is now (messageId, humanId) WITHOUT reactionType
+        // This means ONE emoji reaction per human per message total
+        // If they click a different emoji, we need to delete their existing reaction first
+        
+        // Delete any existing reaction for this human on this message
+        await db
+          .delete(messageReactions)
+          .where(
+            and(
+              eq(messageReactions.messageId, messageId),
+              eq(messageReactions.humanId, humanId)
+            )
+          );
+        
+        // Now add the new reaction
+        await storage.createReaction({
+          messageId,
+          humanId,
+          reactionType
+        });
       } else {
         // Remove reaction
-        await storage.deleteReaction(messageId, userId, reactionType);
+        await storage.deleteReaction(messageId, humanId, reactionType);
       }
       
       // Get updated reaction data for the message
-      const reactions = await storage.getMessageReactions(messageId, userId);
+      const reactions = await storage.getMessageReactions(messageId, humanId);
       
       // Broadcast reaction update
       broadcast({

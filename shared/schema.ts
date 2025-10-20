@@ -91,16 +91,16 @@ export const messageVotes = pgTable("message_votes", {
 export const messageReactions = pgTable("message_reactions", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   messageId: varchar("message_id").notNull().references(() => messages.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull(), // Session ID
+  humanId: varchar("human_id").notNull().references(() => humans.id), // Changed from userId to humanId for session persistence
   reactionType: varchar("reaction_type").notNull(), // 'like', 'laugh', 'emphasize', 'heart', 'fire', 'eyes'
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
-  // Unique constraint to ensure one of each reaction type per user per message
-  messageUserReactionUnique: uniqueIndex("message_reactions_message_user_reaction_unique_idx").on(table.messageId, table.userId, table.reactionType),
+  // Unique constraint to ensure ONE TOTAL emoji reaction per human per message (can change type but not stack multiple)
+  messageHumanUnique: uniqueIndex("message_reactions_message_human_unique_idx").on(table.messageId, table.humanId),
   // Index for fast lookups by message
   messageIdx: index("message_reactions_message_idx").on(table.messageId),
-  // Index for fast lookups by user
-  userIdx: index("message_reactions_user_idx").on(table.userId),
+  // Index for fast lookups by human
+  humanIdx: index("message_reactions_human_idx").on(table.humanId),
 }));
 
 // Rate limit tracking
