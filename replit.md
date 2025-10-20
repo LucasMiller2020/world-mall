@@ -70,6 +70,14 @@ Mall Space is a bot-proof global chat platform designed as a World Mini App that
 - **Responsive Design**: Desktop (≥768px) keeps individual theme/settings buttons, mobile shows dropdown menu
 - **Cleaner Mobile Header**: Reduced header clutter by combining two buttons into vertical dropdown menu
 
+### WebSocket Polling Fix (Completed - October 20, 2025)
+- **Mini App Polling Activation**: Fixed critical bug where World App (Mini App) clients never started polling loop
+- **Connection Status Badge**: Added visible indicator showing "Live" (green) for WebSocket or "Polling" (yellow) for polling mode
+- **Platform-Specific Logic**: Desktop browsers use WebSocket, World App uses continuous 2.5s polling
+- **No Reconnection Attempts**: World App stays in polling mode permanently without trying WebSocket
+- **Bidirectional Sync**: Mac ↔ iPhone message synchronization now works in both directions
+- **Comprehensive Debugging**: Added platform detection logging and connection state monitoring
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
