@@ -1031,8 +1031,10 @@ export class MemStorage implements IStorage {
 
     return allMessages.map(message => {
       const author = this.humans.get(message.authorHumanId);
-      // Use actual handle from database, fallback to generated handle if not set
-      const authorHandle = author?.handle || this.generateHandle(message.authorHumanId);
+      // Use authorHandle snapshot from message first (for username persistence),
+      // fallback to current handle from humans table (for old messages),
+      // finally fallback to generated handle
+      const authorHandle = message.authorHandle || author?.handle || this.generateHandle(message.authorHumanId);
       return {
         ...message,
         authorHandle,
@@ -3350,7 +3352,7 @@ export class DatabaseStorage implements IStorage {
     
     // Log each message for debugging
     messageResults.forEach((result, index) => {
-      console.log(`[DatabaseStorage] Message ${index}: id=${result.message.id.substring(0, 8)}..., author=${result.message.authorHumanId.substring(0, 8)}..., hidden=${result.message.isHidden}`);
+      console.log(`[DatabaseStorage] Message ${index}: id=${result.message.id.substring(0, 8)}..., author=${result.message.authorHumanId.substring(0, 8)}..., authorHandle=${result.message.authorHandle}, currentHandle=${result.author?.handle}, hidden=${result.message.isHidden}`);
     });
 
     // Reverse to get chronological order
@@ -3409,8 +3411,10 @@ export class DatabaseStorage implements IStorage {
 
     const finalMessages = sortedMessages.map(result => ({
       ...result.message,
-      // Use actual handle from database, fallback to generated handle if not set
-      authorHandle: result.author?.handle || this.generateHandle(result.message.authorHumanId),
+      // Use authorHandle snapshot from message first (for username persistence),
+      // fallback to current handle from humans table (for old messages),
+      // finally fallback to generated handle
+      authorHandle: result.message.authorHandle || result.author?.handle || this.generateHandle(result.message.authorHumanId),
       isStarredByUser: false,
       userVote: userVotes.get(result.message.id) || null,
       reactions: messageReactionData.get(result.message.id) || {
