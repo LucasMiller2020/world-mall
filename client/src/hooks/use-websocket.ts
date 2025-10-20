@@ -36,7 +36,8 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     
     // Skip WebSocket connection in Mini App, use polling instead
     if (isInMiniApp) {
-      console.log('[WebSocket] Running in Mini App - using polling strategy');
+      console.log('[WebSocket] Running in Mini App - activating polling fallback');
+      setUsePollingFallback(true);
       setIsConnected(true); // Mark as "connected" for polling mode
       return;
     }
@@ -251,5 +252,5 @@ export function useWebSocket(humanId?: string | null, room: string = 'global') {
     }
   }, [isConnected, queryClient, isInMiniApp, usePollingFallback, room]);
 
-  return { isConnected };
+  return { isConnected, usePollingFallback };
 }

@@ -103,7 +103,7 @@ export default function GlobalSquare() {
   };
   
   const { humanId, isVerified, verify } = useWorldId();
-  const { isConnected } = useWebSocket(humanId, 'global');
+  const { isConnected, usePollingFallback } = useWebSocket(humanId, 'global');
   const { role, limits, isGuest, canStar, canReport, policy } = useAuthRole();
   
   // Version to force cache refresh
@@ -585,9 +585,9 @@ export default function GlobalSquare() {
             Global Square
             {/* Connection status indicator */}
             <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-              isConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+              isConnected && !usePollingFallback ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
             }`}>
-              {isConnected ? 'Live' : 'Polling'}
+              {isConnected && !usePollingFallback ? 'Live' : 'Polling'}
             </span>
           </h1>
           <div className="flex items-center space-x-1">
