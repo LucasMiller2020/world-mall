@@ -746,31 +746,52 @@ export default function GlobalSquare() {
           </Button>
           <h1 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-foreground" data-testid="text-page-title">
             Global Square
-            {/* Connection status indicator - check Settings for debug info */}
+            {/* Enhanced connection status indicator with pulsing animation */}
             <Tooltip>
               <TooltipTrigger>
                 <span 
-                  className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    isConnected && !usePollingFallback ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  className={`ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                    isConnected && !usePollingFallback 
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                      : secondsSinceLastPoll > 10 
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
                   }`}
                   data-testid="badge-connection-status"
                 >
+                  <span className={`h-2 w-2 rounded-full ${
+                    isConnected && !usePollingFallback 
+                      ? 'bg-green-500 animate-pulse' 
+                      : secondsSinceLastPoll > 10
+                      ? 'bg-red-500'
+                      : 'bg-blue-500 animate-pulse'
+                  }`} />
                   {isConnected && !usePollingFallback ? 'Live' : 
-                    lastPollTime ? `Polling (${secondsSinceLastPoll}s ago)` : 'Polling'
+                    secondsSinceLastPoll > 10 ? 'Syncing...' :
+                    lastPollTime ? `Synced ${secondsSinceLastPoll}s ago` : 'Syncing'
                   }
                 </span>
               </TooltipTrigger>
               <TooltipContent>
                 {usePollingFallback && (
-                  <div className="text-xs">
-                    <p>Using polling mode (2.5s interval)</p>
+                  <div className="text-xs space-y-1">
+                    <p className="font-medium">📡 Universal Polling Mode</p>
+                    <p>Checking for new messages every 2.5s</p>
                     {lastPollTime && (
-                      <p>Last update: {lastPollTime.toLocaleTimeString()}</p>
+                      <p className="text-muted-foreground">
+                        Last sync: {lastPollTime.toLocaleTimeString()}
+                      </p>
                     )}
+                    <p className="text-muted-foreground">
+                      Messages sync across all your devices
+                    </p>
                   </div>
                 )}
                 {!usePollingFallback && isConnected && (
-                  <p className="text-xs">Real-time WebSocket connection</p>
+                  <div className="text-xs">
+                    <p className="font-medium">⚡ Real-time Connection</p>
+                    <p className="text-muted-foreground">Messages appear instantly</p>
+                  </div>
                 )}
               </TooltipContent>
             </Tooltip>
@@ -1171,6 +1192,27 @@ export default function GlobalSquare() {
         </div>
       </div>
 
+      {/* Connection Status Banner - Shows when sync is delayed */}
+      {secondsSinceLastPoll > 10 && usePollingFallback && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-y border-amber-200 dark:border-amber-800 px-6 py-2 banner-slide-in" data-testid="banner-sync-delayed">
+          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-sm">
+            <RefreshCw className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-spin" />
+            <span className="text-amber-800 dark:text-amber-200">
+              Syncing messages... Last update {secondsSinceLastPoll}s ago
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={manualRefresh}
+              className="text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 h-auto py-1 px-2"
+              data-testid="button-banner-refresh"
+            >
+              Refresh now
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area: Single column centered layout on mobile, full-width on desktop */}
       <div className="flex-1 flex flex-col overflow-hidden max-w-md mx-auto px-6 md:mx-0 md:px-8 w-full md:max-w-none">
         {/* Chat Area (Composer + Messages) */}
@@ -1255,19 +1297,20 @@ export default function GlobalSquare() {
           ))
         ) : messages.length > 0 ? (
           messages.slice().reverse().map((msg, idx) => (
-            <MessageItem
-              key={msg.id}
-              message={msg}
-              index={idx}
-              currentUserHumanId={currentUserHumanId}
-              onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
-              onStarClick={() => handleStarMessage(msg.id)}
-              onReportClick={() => handleReportMessage(msg.id)}
-              onMuteClick={() => {}}
-              onEditMessage={handleEditMessage}
-              onDeleteMessage={handleDeleteMessage}
-              data-testid={`message-item-${msg.id}`}
-            />
+            <div key={msg.id} className="message-enter">
+              <MessageItem
+                message={msg}
+                index={idx}
+                currentUserHumanId={currentUserHumanId}
+                onProfileClick={() => setSelectedProfileHandle(msg.authorHandle)}
+                onStarClick={() => handleStarMessage(msg.id)}
+                onReportClick={() => handleReportMessage(msg.id)}
+                onMuteClick={() => {}}
+                onEditMessage={handleEditMessage}
+                onDeleteMessage={handleDeleteMessage}
+                data-testid={`message-item-${msg.id}`}
+              />
+            </div>
           ))
         ) : (
           <Card>

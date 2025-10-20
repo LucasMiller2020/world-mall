@@ -187,7 +187,7 @@ export default function Settings() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setLocation('/global')}
+            onClick={() => setLocation('/room/global')}
             data-testid="button-back"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -197,22 +197,22 @@ export default function Settings() {
 
         {/* Tabs */}
         <Tabs defaultValue="blocked" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="blocked" data-testid="tab-blocked">
-              <UserX className="h-4 w-4 mr-2" />
-              Blocked
+          <TabsList className="grid w-full grid-cols-4 h-auto">
+            <TabsTrigger value="blocked" data-testid="tab-blocked" className="flex items-center gap-2 px-3 py-2.5">
+              <UserX className="h-4 w-4" />
+              <span>Blocked</span>
             </TabsTrigger>
-            <TabsTrigger value="muted" data-testid="tab-muted">
-              <Volume2 className="h-4 w-4 mr-2" />
-              Muted
+            <TabsTrigger value="muted" data-testid="tab-muted" className="flex items-center gap-2 px-3 py-2.5">
+              <Volume2 className="h-4 w-4" />
+              <span>Muted</span>
             </TabsTrigger>
-            <TabsTrigger value="theme" data-testid="tab-theme">
-              {activeTheme === 'dark' ? <Moon className="h-4 w-4 mr-2" /> : <Sun className="h-4 w-4 mr-2" />}
-              Theme
+            <TabsTrigger value="theme" data-testid="tab-theme" className="flex items-center gap-2 px-3 py-2.5">
+              {activeTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              <span>Theme</span>
             </TabsTrigger>
-            <TabsTrigger value="account" data-testid="tab-account">
-              <Info className="h-4 w-4 mr-2" />
-              Account
+            <TabsTrigger value="account" data-testid="tab-account" className="flex items-center gap-2 px-3 py-2.5">
+              <Info className="h-4 w-4" />
+              <span>Account</span>
             </TabsTrigger>
           </TabsList>
 

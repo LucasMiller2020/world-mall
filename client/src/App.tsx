@@ -25,7 +25,9 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Landing} />
+      {/* Auto-redirect to global chat for instant sync */}
+      <Route path="/" component={GlobalSquare} />
+      <Route path="/landing" component={Landing} />
       <Route path="/room/global" component={GlobalSquare} />
       <Route path="/room/work" component={WorkMode} />
       <Route path="/settings" component={Settings} />

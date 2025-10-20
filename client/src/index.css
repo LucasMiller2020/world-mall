@@ -309,12 +309,75 @@
   }
 }
 
+/* Smooth message entrance animations */
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes messageFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.message-enter {
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+.message-fade-in {
+  animation: messageFadeIn 0.2s ease-out;
+}
+
+/* Pulsing sync indicator */
+@keyframes syncPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.sync-pulse {
+  animation: syncPulse 2s ease-in-out infinite;
+}
+
+/* Connection banner slide in */
+@keyframes bannerSlideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.banner-slide-in {
+  animation: bannerSlideDown 0.3s ease-out;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .message-bubble,
   .animate-pulse-skeleton,
   .cooldown-bar,
-  .star-animation {
+  .star-animation,
+  .message-enter,
+  .message-fade-in,
+  .sync-pulse,
+  .banner-slide-in {
     animation: none;
     transition: none;
   }
